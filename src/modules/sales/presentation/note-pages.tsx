@@ -11,7 +11,6 @@ import { isDomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { getDb } from "@/shared/infrastructure/db/client";
-import { drizzleDocumentCounter } from "@/shared/infrastructure/db/document-counters";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import {
   formatDate,
@@ -36,10 +35,10 @@ import {
 import type { NoteStatus } from "../application/note-ports";
 import { nextNoteNumber } from "../application/note-lifecycle";
 import { getNote, listNotes } from "../application/note-use-cases";
-import { drizzleNoteRepository } from "../infrastructure/drizzle-note-repository";
 import { DiscardDraftButton } from "./discard-draft-button";
 import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecycle-forms";
 import { NoteForm } from "./note-form";
+import { noteDeps } from "./note-deps";
 import { loadNoteFormOptions } from "./note-form-options";
 import { NOTES_PATH, editNotePath, notePath } from "./note-routes";
 
@@ -50,10 +49,7 @@ const STATUS_LABELS: Record<NoteStatus, string> = {
 };
 const FREE_LABELS = { bonus: "Bonificación", sample: "Muestra" } as const;
 
-const notesDeps = () => ({
-  notes: drizzleNoteRepository(getDb()),
-  numbering: drizzleDocumentCounter(getDb(), "delivery_note"),
-});
+const notesDeps = () => noteDeps(getDb());
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 export async function NotesTable({
@@ -167,7 +163,13 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
         </div>
         {canEdit && nextNumber !== null && (
           <div className="flex gap-2">
-            <ConfirmNoteButton noteId={note.id} total={total.toDecimalString()} nextNumber={nextNumber} />
+            <ConfirmNoteButton
+              noteId={note.id}
+              total={total.toDecimalString()}
+              exchangeRate={note.exchangeRate}
+              isCash={note.paymentTerms === "cash"}
+              nextNumber={nextNumber}
+            />
             <Link href={editNotePath(note.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
               Editar
             </Link>

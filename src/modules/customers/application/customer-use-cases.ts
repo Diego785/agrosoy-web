@@ -12,6 +12,7 @@ import type {
   CustomerDetail,
   CustomerFormData,
   CustomerListItem,
+  CustomerOption,
   CustomerRepository,
   TechnicianLookup,
   Zone,
@@ -109,6 +110,15 @@ export async function searchCustomers(
     offset: (page - 1) * CUSTOMERS_PAGE_SIZE,
   });
   return { ...result, page, pageSize: CUSTOMERS_PAGE_SIZE };
+}
+
+/** Active customers for the pickers of other modules' forms (payments, charges, statements). */
+export async function customerOptions(
+  deps: Pick<CustomerDeps, "customers">,
+  actor: Actor,
+): Promise<CustomerOption[]> {
+  assertCan(actor, "customers.view");
+  return deps.customers.activeOptions();
 }
 
 /** Everything known about a customer, for the customer page. Every role can look customers up. */

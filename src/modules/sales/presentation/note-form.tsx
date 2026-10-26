@@ -49,7 +49,7 @@ export function NoteForm({ options, today, draft }: Props) {
         propertyId: "",
         technicianId: "",
         paymentTerms: "credit",
-        exchangeRate: "",
+        exchangeRate: options.todayRate ? trimDecimalZeros(options.todayRate) : "",
         receiverName: "",
         receiverDocumentId: "",
         receiverRelationship: "",
@@ -81,7 +81,8 @@ export function NoteForm({ options, today, draft }: Props) {
     const chosen = options.customers.find((option) => option.id === id);
     form.setValue("propertyId", "");
     form.setValue("technicianId", chosen?.technicianId ?? "");
-    if (chosen?.fixedExchangeRate) form.setValue("exchangeRate", trimDecimalZeros(chosen.fixedExchangeRate));
+    const rate = chosen?.fixedExchangeRate ?? options.todayRate;
+    if (rate) form.setValue("exchangeRate", trimDecimalZeros(rate));
     if (chosen && !form.getValues("receiverName")) form.setValue("receiverName", chosen.name);
   }
 

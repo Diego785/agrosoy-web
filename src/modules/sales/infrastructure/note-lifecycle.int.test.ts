@@ -32,8 +32,14 @@ describe("confirming delivery notes", () => {
     const first = await draft(ids);
     const second = await draft(ids);
 
-    expect(await confirmNote(noteDeps(), technician, first, { paperNumber: "" })).toEqual({ number: 1250 });
-    expect(await confirmNote(noteDeps(), technician, second, { paperNumber: "" })).toEqual({ number: 1251 });
+    expect(await confirmNote(noteDeps(), technician, first, { paperNumber: "" })).toEqual({
+      number: 1250,
+      receiptNumber: null,
+    });
+    expect(await confirmNote(noteDeps(), technician, second, { paperNumber: "" })).toEqual({
+      number: 1251,
+      receiptNumber: null,
+    });
 
     expect(await getNote(noteDeps(), admin, first)).toMatchObject({
       status: "confirmed",
@@ -70,7 +76,7 @@ describe("confirming delivery notes", () => {
     expect(await ledger()).toEqual([]);
   });
 
-  it("leaves cash notes for the step that records their payment", async () => {
+  it("asks how a cash note was paid", async () => {
     const ids = await seedNoteFixtures();
     const id = await draft(ids, { paymentTerms: "cash" });
     await expect(confirmNote(noteDeps(), technician, id, { paperNumber: "" })).rejects.toMatchObject({

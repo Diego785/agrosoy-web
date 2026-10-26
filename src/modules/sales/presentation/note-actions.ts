@@ -2,12 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/modules/identity/presentation/current-user";
-import { drizzleLedgerRepository } from "@/modules/receivables/infrastructure/drizzle-ledger-repository";
-import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
-import { withTransaction, type DbExecutor } from "@/shared/infrastructure/db/client";
-import { drizzleDocumentCounter } from "@/shared/infrastructure/db/document-counters";
+import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
-import { todayInBolivia } from "@/shared/presentation/business-date";
 import { runAction } from "@/shared/presentation/run-action";
 import { confirmNote, setNextNoteNumber, voidNote } from "../application/note-lifecycle";
 import type {
@@ -17,20 +13,8 @@ import type {
   VoidNoteInput,
 } from "../application/note-schemas";
 import { createDraftNote, discardDraftNote, updateDraftNote } from "../application/note-use-cases";
-import { drizzleNoteRepository } from "../infrastructure/drizzle-note-repository";
-import { noteLookups } from "../infrastructure/note-lookups";
+import { noteDeps as deps } from "./note-deps";
 import { NOTES_PATH } from "./note-routes";
-
-function deps(executor: DbExecutor) {
-  return {
-    notes: drizzleNoteRepository(executor),
-    lookups: noteLookups(executor),
-    numbering: drizzleDocumentCounter(executor, "delivery_note"),
-    ledger: drizzleLedgerRepository(executor),
-    audit: drizzleAuditTrail(executor),
-    today: todayInBolivia,
-  };
-}
 
 export async function createDraftNoteAction(input: DraftNoteInput): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
@@ -65,7 +49,7 @@ export async function discardDraftNoteAction(noteId: string): Promise<ActionResu
 export async function confirmNoteAction(
   noteId: string,
   input: ConfirmNoteInput,
-): Promise<ActionResult<{ number: number }>> {
+): Promise<ActionResult<{ number: number; receiptNumber: number | null }>> {
   return runAction(async () => {
     const actor = await requireActor();
     const confirmed = await withTransaction((tx) => confirmNote(deps(tx), actor, noteId, input));

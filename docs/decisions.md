@@ -189,3 +189,15 @@ be unused, and the counter skips numbers already taken. Receipts get their own c
 **Why:** Agrosoy uses one paper pad today (open question in the glossary; if the types turn out to
 have separate pads, the counter gets one row per type). Numbering at confirmation means discarded
 drafts leave no gaps.
+
+## D20 · Payments are applied per campaign, oldest debt first by default
+
+**Decision:** a payment becomes one ledger credit per campaign it pays (`payment_allocations`).
+Administration may apply it to one note (recorded on the allocation, credited in the note's
+campaign) or to one campaign; otherwise campaigns that owe are paid oldest first. An overpayment
+stays as a credit in favor in the payment date's campaign. Cash notes create their payment while
+they are confirmed, in the same transaction, for exactly the note's total.
+
+**Why:** debt is followed per campaign (the statement and the spreadsheets are organized that way),
+and "oldest first" is how administration applies an unspecified payment today. Keeping the
+allocation rows makes every credit traceable to its receipt.

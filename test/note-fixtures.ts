@@ -8,6 +8,12 @@ import { addCustomerProperty, registerCustomer } from "@/modules/customers/appli
 import { drizzleCustomerRepository } from "@/modules/customers/infrastructure/drizzle-customer-repository";
 import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { identityTechnicianLookup } from "@/modules/customers/infrastructure/identity-technician-lookup";
+import { collectionLookups } from "@/modules/collections/infrastructure/collection-lookups";
+import {
+  drizzleChargeRepository,
+  drizzleDailyRateRepository,
+  drizzlePaymentRepository,
+} from "@/modules/collections/infrastructure/drizzle-collection-repositories";
 import { drizzleLedgerRepository } from "@/modules/receivables/infrastructure/drizzle-ledger-repository";
 import { drizzleNoteRepository } from "@/modules/sales/infrastructure/drizzle-note-repository";
 import { noteLookups } from "@/modules/sales/infrastructure/note-lookups";
@@ -24,6 +30,22 @@ export function noteDeps(today = "2026-11-02") {
     lookups: noteLookups(testDb),
     numbering: drizzleDocumentCounter(testDb, "delivery_note"),
     ledger: drizzleLedgerRepository(testDb),
+    payments: drizzlePaymentRepository(testDb),
+    receipts: drizzleDocumentCounter(testDb, "receipt"),
+    audit: audit(),
+    today: () => today,
+  };
+}
+
+/** Everything the collections use cases need, against the test database. */
+export function collectionDeps(today = "2026-11-02") {
+  return {
+    payments: drizzlePaymentRepository(testDb),
+    charges: drizzleChargeRepository(testDb),
+    rates: drizzleDailyRateRepository(testDb),
+    receipts: drizzleDocumentCounter(testDb, "receipt"),
+    ledger: drizzleLedgerRepository(testDb),
+    lookups: collectionLookups(testDb),
     audit: audit(),
     today: () => today,
   };

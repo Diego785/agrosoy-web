@@ -187,6 +187,19 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
       if (rows.length === 0) throw new DomainError("NOT_FOUND", { entity: "receiver", id: receiverId });
     },
 
+    async activeOptions() {
+      return executor
+        .select({
+          id: customers.id,
+          code: customers.code,
+          name: customers.name,
+          fixedExchangeRate: customers.fixedExchangeRate,
+        })
+        .from(customers)
+        .where(eq(customers.isActive, true))
+        .orderBy(asc(customers.comparisonName));
+    },
+
     async search(query) {
       const where = searchFilter(query);
       // `is not distinct from` is never null, so customers without a technician don't sort first.

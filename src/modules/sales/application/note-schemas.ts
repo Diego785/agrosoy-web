@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paymentMethodFields } from "@/modules/collections/application/collection-schemas";
 import { FREE_REASONS, PAYMENT_TERMS } from "../domain/delivery-note";
 
 // Shared by the note form and the use cases; the messages are shown next to the fields.
@@ -77,6 +78,7 @@ export type NoteLineInput = z.input<typeof noteLineSchema>;
 
 export const noteSearchSchema = z.object({
   status: z.enum(["draft", "confirmed", "voided"]).optional().catch(undefined),
+  customerId: z.uuid().optional().catch(undefined),
   page: z.coerce.number().int().min(1).catch(1),
 });
 
@@ -90,6 +92,19 @@ const noteNumber = (message: string) =>
 export const confirmNoteSchema = z.object({
   /** Empty: the system gives the next number. Filled: a paper note typed in later keeps its printed number. */
   paperNumber: z.union([z.literal(""), noteNumber("Escribe el número impreso, por ejemplo 1250.")]),
+  /** How a cash note was paid; its amount is the note's total. */
+  payment: z
+    .object(paymentMethodFields)
+    .superRefine((payment, context) => {
+      if (payment.method === "in_kind" && !payment.inKindDescription) {
+        context.addIssue({
+          code: "custom",
+          path: ["inKindDescription"],
+          message: "Describe qué entregó y su valor acordado.",
+        });
+      }
+    })
+    .optional(),
 });
 
 export const voidNoteSchema = z.object({

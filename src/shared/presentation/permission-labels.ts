@@ -23,6 +23,10 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
     label: "Anular boletas",
     description: "Anular boletas confirmadas y fijar desde qué número sigue la numeración.",
   },
+  "payments.manage": {
+    label: "Cobranzas",
+    description: "Registrar y anular pagos y cargos, y el tipo de cambio del día.",
+  },
   "imports.manage": {
     label: "Importar planillas",
     description: "Subir planillas de Excel y revisar sus observaciones.",

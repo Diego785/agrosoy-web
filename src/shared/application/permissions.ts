@@ -15,6 +15,7 @@ export const PERMISSIONS = [
   "notes.view",
   "notes.manage",
   "notes.void",
+  "payments.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

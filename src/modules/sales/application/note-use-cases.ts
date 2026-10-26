@@ -84,9 +84,10 @@ export async function listNotes(
   input: unknown,
 ): Promise<{ items: NoteListItem[]; total: number; page: number; pageSize: number }> {
   assertCan(actor, "notes.view");
-  const { status, page } = validateInput(noteSearchSchema, input);
+  const { status, customerId, page } = validateInput(noteSearchSchema, input);
   const result = await deps.notes.list({
     status,
+    customerId,
     limit: NOTES_PAGE_SIZE,
     offset: (page - 1) * NOTES_PAGE_SIZE,
   });

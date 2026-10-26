@@ -165,8 +165,11 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
       return row !== undefined;
     },
 
-    async list({ status, limit, offset }) {
-      const where = status ? eq(deliveryNotes.status, status) : undefined;
+    async list({ status, customerId, limit, offset }) {
+      const where = and(
+        status ? eq(deliveryNotes.status, status) : undefined,
+        customerId ? eq(deliveryNotes.customerId, customerId) : undefined,
+      );
       const totals = executor
         .select({
           noteId: deliveryNoteLines.noteId,

@@ -108,11 +108,17 @@ Rules:
 - **Payment:** date, customer, amount, currency (`USD` or `BOB`), exchange rate, USD equivalent,
   method (`cash`, `transfer`, `qr`, `in_kind` with description and agreed value), reference,
   receipt number.
-- **Allocation:** a payment is applied to a specific note, to a campaign, or by default to the
-  oldest debt first. Each allocation is a **credit** entry in that campaign.
+- **Allocation (D20):** a payment is applied to a specific note, to a campaign, or by default to
+  the oldest debt first (campaigns in order of their start). What is left after every campaign is
+  settled stays as a credit in favor in the campaign of the payment date. Each allocation is a
+  **credit** entry in that campaign.
+- **Receipt:** every payment gets the next receipt number (its own counter, D19).
+- **Cash note:** confirming it records its payment at once, in the currency paid, for exactly the
+  note's total (in bolivianos: total × the note's rate). Voiding the note voids that payment.
 - **Exchange rate:** suggested from the customer's agreement; administration records the day's
   rate when the agreement is `daily`.
-- **Charge:** an extra debit (for example interest) entered by administration with a reason.
+- **Charge:** an extra debit (for example interest) entered by administration with a reason, in an
+  open campaign. Payments and charges are voided with a reason, never deleted.
 - A payment in bolivianos stores both amounts: `usd = bob ÷ rate`, rounded half up to the cent.
 
 ## Receivables ledger and statement (M7)

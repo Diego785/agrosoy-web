@@ -2,8 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
+import { PAYMENT_METHODS, cashNoteAmount } from "@/modules/collections/domain/payment";
+import { CURRENCY_LABELS, METHOD_LABELS } from "@/modules/collections/presentation/collection-labels";
+import { ExchangeRate } from "@/shared/domain/exchange-rate";
+import { Money } from "@/shared/domain/money";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { formatMoney } from "@/shared/presentation/format";
 import {
@@ -19,45 +23,67 @@ import {
 import { Button } from "@/shared/presentation/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
 import type { ConfirmNoteInput, NextNoteNumberInput, VoidNoteInput } from "../application/note-schemas";
 import { confirmNoteAction, setNextNoteNumberAction, voidNoteAction } from "./note-actions";
 
 // The server validates everything; these forms only show its answers next to the fields.
 
-/** Confirming can also fail on the note's own date or payment terms, which aren't inputs here. */
-type ConfirmFormValues = ConfirmNoteInput & { noteDate?: string; paymentTerms?: string };
+/** Confirming can also fail on the note's own date, which isn't an input here. */
+type ConfirmFormValues = Required<ConfirmNoteInput> & { noteDate?: string };
 
 export function ConfirmNoteButton({
   noteId,
   total,
+  exchangeRate,
+  isCash,
   nextNumber,
 }: {
   noteId: string;
   /** US$ the customer will owe, as a decimal string. */
   total: string;
+  exchangeRate: string;
+  /** A cash note records its payment as it is confirmed. */
+  isCash: boolean;
   nextNumber: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPaper, setIsPaper] = useState(false);
   const [isWorking, startWorking] = useTransition();
-  const form = useForm<ConfirmFormValues>({ defaultValues: { paperNumber: "" } });
+  const form = useForm<ConfirmFormValues>({
+    defaultValues: {
+      paperNumber: "",
+      payment: { currency: "USD", method: "cash", reference: "", inKindDescription: "" },
+    },
+  });
   const { errors } = form.formState;
+  const [currency, method] = useWatch({
+    control: form.control,
+    name: ["payment.currency", "payment.method"],
+  });
+  const isPaidNow = isCash && Number(total) > 0;
 
   const submit = form.handleSubmit((values) =>
     startWorking(async () => {
-      const result = await confirmNoteAction(noteId, { paperNumber: isPaper ? values.paperNumber : "" });
+      const result = await confirmNoteAction(noteId, {
+        paperNumber: isPaper ? values.paperNumber : "",
+        payment: isPaidNow ? values.payment : undefined,
+      });
       if (!result.ok) {
         return applyActionError(form, result.error, { paperNumber: "Ya hay una boleta con ese número." });
       }
       setOpen(false);
-      toast.success(`Boleta N.º ${result.data.number} confirmada`);
+      toast.success(
+        result.data.receiptNumber
+          ? `Boleta N.º ${result.data.number} confirmada con el recibo N.º ${result.data.receiptNumber}`
+          : `Boleta N.º ${result.data.number} confirmada`,
+      );
       router.refresh();
     }),
   );
-  // Errors about the note itself (a closed campaign, cash terms) come back for fields not in this form.
-  const noteError = errors.noteDate ?? errors.paymentTerms ?? errors.root;
+  const noteError = errors.noteDate ?? errors.root;
 
   return (
     <>
@@ -70,11 +96,55 @@ export function ConfirmNoteButton({
             <AlertDialogHeader>
               <AlertDialogTitle>¿Confirmar la boleta?</AlertDialogTitle>
               <AlertDialogDescription>
-                {Number(total) > 0
-                  ? `Se carga US$ ${formatMoney(total)} a la deuda del cliente y la boleta ya no se puede editar; solo anular.`
-                  : "Solo tiene bonificaciones o muestras: no genera deuda. Ya no se podrá editar; solo anular."}
+                {isPaidNow
+                  ? `Es al contado: se registra el cobro de US$ ${formatMoney(total)} junto con la boleta. Ya no se podrá editar; solo anular.`
+                  : Number(total) > 0
+                    ? `Se carga US$ ${formatMoney(total)} a la deuda del cliente y la boleta ya no se puede editar; solo anular.`
+                    : "Solo tiene bonificaciones o muestras: no genera deuda. Ya no se podrá editar; solo anular."}
               </AlertDialogDescription>
             </AlertDialogHeader>
+
+            {isPaidNow && (
+              <fieldset className="flex flex-col gap-3 rounded-lg border p-3">
+                <legend className="px-1 text-sm font-medium">Cobro</legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="paymentCurrency">Pagó en</FieldLabel>
+                    <NativeSelect id="paymentCurrency" {...form.register("payment.currency")}>
+                      <NativeSelectOption value="USD">{CURRENCY_LABELS.USD}</NativeSelectOption>
+                      <NativeSelectOption value="BOB">{CURRENCY_LABELS.BOB}</NativeSelectOption>
+                    </NativeSelect>
+                    <FieldDescription>
+                      {currency === "BOB"
+                        ? `Bs ${formatMoney(cashNoteAmount(Money.parse(total), ExchangeRate.parse(exchangeRate), "BOB").toDecimalString())}`
+                        : `US$ ${formatMoney(total)}`}
+                    </FieldDescription>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="paymentMethod">Forma de pago</FieldLabel>
+                    <NativeSelect id="paymentMethod" {...form.register("payment.method")}>
+                      {PAYMENT_METHODS.map((option) => (
+                        <NativeSelectOption key={option} value={option}>
+                          {METHOD_LABELS[option]}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                    <FieldError errors={[errors.payment?.currency ?? errors.payment?.method]} />
+                  </Field>
+                </div>
+                {method === "in_kind" && (
+                  <Field data-invalid={!!errors.payment?.inKindDescription}>
+                    <FieldLabel htmlFor="paymentInKind">Qué entregó y valor acordado</FieldLabel>
+                    <Input id="paymentInKind" {...form.register("payment.inKindDescription")} />
+                    <FieldError errors={[errors.payment?.inKindDescription]} />
+                  </Field>
+                )}
+                <Field>
+                  <FieldLabel htmlFor="paymentReference">Referencia (opcional)</FieldLabel>
+                  <Input id="paymentReference" {...form.register("payment.reference")} />
+                </Field>
+              </fieldset>
+            )}
 
             <label className="flex items-center gap-2 text-sm">
               <input

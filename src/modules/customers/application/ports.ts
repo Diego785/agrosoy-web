@@ -12,6 +12,9 @@ export type CustomerListItem = {
   technicianName: string | null;
 };
 
+/** An active customer in a picker, with what a document for them needs. */
+export type CustomerOption = { id: string; code: number; name: string; fixedExchangeRate: string | null };
+
 export type CustomerFormData = {
   id: string;
   code: number;
@@ -56,6 +59,8 @@ export interface CustomerRepository {
   findForEdit(id: string): Promise<CustomerFormData | undefined>;
   findDetail(id: string): Promise<CustomerDetail | undefined>;
   search(query: CustomerQuery): Promise<{ items: CustomerListItem[]; total: number }>;
+  /** Active customers by name, for pickers. */
+  activeOptions(): Promise<CustomerOption[]>;
   /** NOT_FOUND when the customer doesn't exist. */
   setActive(id: string, active: boolean): Promise<void>;
   /** Closes the open portfolio assignment and, with a technician, opens a new one. */

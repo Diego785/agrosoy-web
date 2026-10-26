@@ -61,6 +61,7 @@ export interface NoteRepository {
   numberInUse(number: number): Promise<boolean>;
   list(query: {
     status?: NoteStatus;
+    customerId?: string;
     limit: number;
     offset: number;
   }): Promise<{ items: NoteListItem[]; total: number }>;

@@ -8,6 +8,7 @@ import {
   PackageIcon,
   ReceiptTextIcon,
   UsersIcon,
+  WalletIcon,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -22,6 +23,7 @@ type NavigationItem = { label: string; href: string; icon: LucideIcon; permissio
 const NAVIGATION: readonly NavigationItem[] = [
   { label: "Inicio", href: "/", icon: HomeIcon },
   { label: "Boletas", href: "/notes", icon: ClipboardListIcon, permission: "notes.view" },
+  { label: "Cobranzas", href: "/payments", icon: WalletIcon, permission: "payments.manage" },
   { label: "Clientes", href: "/customers", icon: ContactIcon, permission: "customers.view" },
   { label: "Productos", href: "/products", icon: PackageIcon, permission: "catalog.view" },
   { label: "Campañas", href: "/campaigns", icon: CalendarRangeIcon, permission: "catalog.view" },

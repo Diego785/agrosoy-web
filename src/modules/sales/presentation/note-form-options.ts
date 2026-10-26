@@ -1,6 +1,8 @@
 import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
+import { dailyRate } from "@/modules/collections/application/collection-use-cases";
+import { drizzleDailyRateRepository } from "@/modules/collections/infrastructure/drizzle-collection-repositories";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { listProducts, priceSheet } from "@/modules/catalog/application/catalog-use-cases";
 import { catalogDeps } from "@/modules/catalog/presentation/catalog-deps";
@@ -15,6 +17,7 @@ import { identityTechnicianLookup } from "@/modules/customers/infrastructure/ide
 import type { Actor } from "@/shared/application/actor";
 import { assertCan } from "@/shared/application/permissions";
 import { getDb } from "@/shared/infrastructure/db/client";
+import { todayInBolivia } from "@/shared/presentation/business-date";
 
 export type NoteFormOptions = Awaited<ReturnType<typeof loadNoteFormOptions>>;
 
@@ -88,5 +91,7 @@ export async function loadNoteFormOptions(actor: Actor) {
     campaigns: openCampaigns,
     technicians,
     prices,
+    /** Suggested for customers whose agreement is the day's rate. */
+    todayRate: await dailyRate({ rates: drizzleDailyRateRepository(db) }, actor, todayInBolivia()),
   };
 }
