@@ -1,0 +1,36 @@
+# One copy per environment on the VPS, e.g. /srv/agrosoy/staging and /srv/agrosoy/production,
+# each with its own .env (see .env.example next to this file and docs/deployment.md).
+name: agrosoy-${ENVIRONMENT:?set ENVIRONMENT in .env}
+
+services:
+  app:
+    image: ghcr.io/soluti0n-tech/agrosoy-web:${IMAGE_TAG:-main}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://agrosoy:${POSTGRES_PASSWORD:?}@db:5432/agrosoy
+    ports:
+      # Only reachable from the server itself; the reverse proxy publishes it with HTTPS.
+      - "127.0.0.1:${APP_PORT:?}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agrosoy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: agrosoy
+      TZ: America/La_Paz
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrosoy -d agrosoy"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:

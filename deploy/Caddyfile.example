@@ -1,0 +1,9 @@
+# Example Caddy site blocks; Caddy obtains and renews the HTTPS certificates itself.
+# Replace the host names once Agrosoy's subdomain is defined.
+staging.agrosoy.example.com {
+	reverse_proxy 127.0.0.1:3100
+}
+
+sistema.agrosoy.example.com {
+	reverse_proxy 127.0.0.1:3200
+}

@@ -5,6 +5,12 @@ up without re-reading the whole history.
 
 ## 2026-10-25
 
+- **0.7 · Deployment, part 1 (no server needed):** standalone Docker image that runs migrations
+  and then the server, `GET /api/health`, `deploy/` (compose per environment, `.env.example`,
+  Caddy example, `backup.sh` with 30-day rotation and optional off-server copy), CI job that
+  publishes the image to GHCR, and `docs/deployment.md`. Verified locally: migrations on start,
+  health 200 with the database up and 503 with it down, backup dump readable by `pg_restore`.
+  **Part 2 (pending, needs VPS access):** steps 1–7 of "First-time server setup".
 - **0.6 · Shared kernel** (`src/shared/domain`): `Money` (bigint cents), `Quantity` (bigint
   thousandths, `times(price)` for line totals), `ExchangeRate` (4 decimals, BOB↔USD), half-up
   rounding, `DomainError` codes, text cleaning and the name comparison key; `validateInput` in
