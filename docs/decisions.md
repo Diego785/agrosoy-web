@@ -75,9 +75,20 @@ succeed. A constraint is the only check that holds under concurrency.
 
 ## D8 · Authentication with Better Auth, sessions in Postgres
 
-**Decision:** Better Auth with email or username and password, sessions stored in our database,
-four roles (`admin`, `manager`, `sales_technician`, `warehouse_keeper`) and a permission matrix
-per role that administration can adjust. Sessions expire after inactivity.
+**Decision:** Better Auth 1.7 (username and admin plugins) with sessions in our database and
+four roles (`admin`, `manager`, `sales_technician`, `warehouse_keeper`).
+
+- No self sign-up. Administration creates accounts; the system generates a temporary password,
+  shown once, and the user must replace it at first sign-in (`mustChangePassword`).
+- Sign-in and sign-out go through `/api/auth` from the browser, so Better Auth's rate limiting
+  applies to password attempts. Everything else uses server actions.
+- Accounts are written by our own repository (user row plus a "credential" account with Better
+  Auth's scrypt hash) so the change and its audit entry share one transaction.
+- Users without email get a placeholder under the reserved `.invalid` domain, never shown.
+- Deactivating a user bans it and ends its sessions; nothing is deleted.
+- Sessions end after 8 hours without activity (extended every 30 minutes of use).
+- Business permissions live in `shared/application/permissions.ts`, a matrix per role in code
+  for now; making it editable from the users page is still part of M1.
 
 **Why:** no third-party identity provider to pay for or depend on; users are a handful of staff.
 

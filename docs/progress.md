@@ -5,6 +5,15 @@ up without re-reading the whole history.
 
 ## 2026-10-25
 
+- **0.8 · Authentication and users (M1, first part):** Better Auth with username sign-in, login page,
+  sign-out, `requireActor()` on every loader and action, proxy redirect without a session cookie,
+  navigation filtered by permission, users page (create with a temporary password, reset password,
+  deactivate and reactivate), forced password change at first sign-in, `pnpm users:first-admin`.
+  Tested end to end in the browser and inside the Docker image. Fixed on the way: a repeated
+  username was reported as a repeated email; after changing a password the re-render used the old
+  Cookie header and Better Auth cleared the new session (now read from `cookies()`); `next build`
+  failed without secrets; dev logs printed action arguments, including passwords (disabled).
+  **Still in M1:** editable permission matrix and the audit-log viewer.
 - **0.7 · Deployment, part 1 (no server needed):** standalone Docker image that runs migrations
   and then the server, `GET /api/health`, `deploy/` (compose per environment, `.env.example`,
   Caddy example, `backup.sh` with 30-day rotation and optional off-server copy), CI job that

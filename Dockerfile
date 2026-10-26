@@ -19,6 +19,11 @@ RUN pnpm build
 RUN pnpm exec esbuild scripts/migrate.ts --bundle --platform=node --format=esm --target=node22 \
     --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" \
     --outfile=dist/migrate.mjs
+# The first-admin script imports server modules, hence the react-server condition.
+RUN pnpm exec esbuild scripts/create-first-admin.ts --bundle --platform=node --format=esm --target=node22 \
+    --conditions=react-server --tsconfig=tsconfig.json \
+    --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" \
+    --outfile=dist/create-first-admin.mjs
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -32,6 +37,7 @@ COPY --from=build --chown=app:app /app/.next/standalone ./
 COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/drizzle ./drizzle
 COPY --from=build --chown=app:app /app/dist/migrate.mjs ./migrate.mjs
+COPY --from=build --chown=app:app /app/dist/create-first-admin.mjs ./create-first-admin.mjs
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

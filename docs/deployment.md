@@ -29,7 +29,9 @@ VPS  /srv/agrosoy/staging     docker compose pull ◀──┘
 3. **Registry access:** a GitHub token with `read:packages`, then
    `docker login ghcr.io -u <github-user>` on the server (the package is private).
 4. **Start:** `docker compose pull && docker compose up -d`, then
-   `curl -s http://127.0.0.1:3100/api/health`.
+   `curl -s http://127.0.0.1:3100/api/health`. Create the first administrator once:
+   `docker compose exec app node create-first-admin.mjs --name "…" --username …` and hand over
+   the temporary password it prints.
 5. **HTTPS:** add the site to the reverse proxy (`deploy/Caddyfile.example`) and point a DNS
    record at the server.
 6. **Backups:** make `backup.sh` executable, add the cron line from its header, configure an

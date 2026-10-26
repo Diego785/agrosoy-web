@@ -30,6 +30,7 @@ corepack pnpm test:integration  # use cases against the agrosoy_test database
 corepack pnpm db:up          # local Postgres 16 in Docker (port 5434)
 corepack pnpm db:generate    # SQL migration from schema changes; review it, then commit it
 corepack pnpm db:migrate     # apply pending migrations
+corepack pnpm users:first-admin --name "…" --username …  # first administrator of an empty database
 ```
 
 Stop a server you started by the PID listening on its port, never by process name.

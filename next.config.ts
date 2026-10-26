@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   // Self-contained server bundle for the Docker image (docs/decisions.md, D14).
   output: "standalone",
+  // Development logs print server action arguments, which include passwords.
+  logging: { serverFunctions: false },
   turbopack: {
     rules: {
       "*.css": {

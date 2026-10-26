@@ -19,10 +19,12 @@
     "db:down": "docker compose stop",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "users:first-admin": "tsx --conditions=react-server scripts/create-first-admin.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
+    "@hookform/resolvers": "^6.0.0",
     "better-auth": "^1.7.13",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
@@ -33,6 +35,7 @@
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-hook-form": "^7.91.0",
     "server-only": "^0.0.1",
     "shadcn": "^4.22.1",
     "sonner": "^2.0.8",

@@ -10,6 +10,7 @@ export const ERROR_CODES = [
   "NOT_FOUND",
   "DUPLICATE",
   "FORBIDDEN",
+  "INVALID_CREDENTIALS",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

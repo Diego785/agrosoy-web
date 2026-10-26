@@ -17,6 +17,7 @@ corepack pnpm install
 cp .env.example .env.local
 corepack pnpm db:up      # Postgres 16 in Docker on port 5434
 corepack pnpm db:migrate
+corepack pnpm users:first-admin --name "Your Name" --username you   # prints a temporary password
 corepack pnpm dev        # http://localhost:3000
 ```
 
