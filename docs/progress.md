@@ -5,6 +5,8 @@ up without re-reading the whole history.
 
 ## 2026-10-26
 
+- **Week 2 starts on branch `feature/week-2`** (developer's request); `main` stays as the week 1
+  demo version. CI now checks every branch and publishes the image only from `main`.
 - **M1 completed:** editable permission matrix (`/users/permissions`, stored as differences from
   the defaults, administration fixed, only changed roles saved and audited) and the audit-log
   viewer (`/audit`, newest first, with the user and the name of what changed). `Actor` now carries

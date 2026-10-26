@@ -14,7 +14,8 @@ Sales, accounts receivable and warehouse inventory system for Agrosoy (Bolivia).
 
 ## Working method
 
-- Follow the roadmap steps in order, committing straight to `main` (no branches or pull requests).
+- Follow the roadmap steps in order. Each week's work goes on a `feature/week-N` branch; `main`
+  keeps the version shown in the last demo and receives the branch once the developer approves it.
 - Each commit leaves `main` working: `corepack pnpm check` passes before committing.
 - End every session by adding an entry to `docs/progress.md`.
 
@@ -58,7 +59,8 @@ Stop a server you started by the PID listening on its port, never by process nam
 
 ## Git
 
-- Work directly on `main`; CI runs on every push and must stay green.
+- Work on the current `feature/week-N` branch; CI runs on every push to any branch and must stay
+  green. Only `main` publishes the Docker image.
 - Conventional commits (`feat(sales): …`, `fix(inventory): …`, `docs: …`, `chore: …`) with a body
   listing the main changes. Stage files by path, never `git add -A`.
 - **Never add `Co-Authored-By` or "Generated with" lines.** `.githooks/commit-msg` strips them anyway.

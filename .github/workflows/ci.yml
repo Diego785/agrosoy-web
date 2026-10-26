@@ -1,8 +1,8 @@
 name: CI
 
 on:
+  # Every branch is checked; only main publishes the image the VPS deploys.
   push:
-    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -40,6 +40,7 @@ jobs:
 
   image:
     # Publishes the image that the VPS pulls; tagged with the commit SHA (to pin or roll back) and "main".
+    if: github.ref == 'refs/heads/main'
     needs: check
     runs-on: ubuntu-latest
     permissions:
