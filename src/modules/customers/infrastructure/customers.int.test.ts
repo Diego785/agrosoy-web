@@ -45,7 +45,7 @@ async function user(name: string, role: Role): Promise<Actor> {
     newUserAccount({ name, username: name.toLowerCase().replace(/\W/g, ""), role }),
     "temporary-password",
   );
-  return { id, name, role };
+  return actorWithRole(role, id, name);
 }
 
 describe("customers", () => {
