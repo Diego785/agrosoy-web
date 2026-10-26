@@ -5,6 +5,10 @@ export function notePath(noteId: string): string {
   return `${NOTES_PATH}/${noteId}`;
 }
 
+export function notePdfPath(noteId: string): string {
+  return `${notePath(noteId)}/pdf`;
+}
+
 export function editNotePath(noteId: string): string {
   return `${notePath(noteId)}/edit`;
 }

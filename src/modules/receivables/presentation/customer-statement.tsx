@@ -1,12 +1,9 @@
 import Link from "next/link";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
-import { contentLabel } from "@/modules/catalog/presentation/catalog-labels";
-import { METHOD_LABELS, formatAmount } from "@/modules/collections/presentation/collection-labels";
 import { paymentPath } from "@/modules/collections/presentation/collection-routes";
 import { notePath } from "@/modules/sales/presentation/note-routes";
 import { Money } from "@/shared/domain/money";
 import { formatDate, formatMoney, formatQuantity, formatRate, formatUsd } from "@/shared/presentation/format";
-import { Badge } from "@/shared/presentation/ui/badge";
 import {
   Table,
   TableBody,
@@ -23,16 +20,7 @@ import type {
   StatementLineView,
 } from "../application/statement-view";
 import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
-
-const CREDIT_KINDS: ReadonlySet<StatementLineView["kind"]> = new Set(["payment", "return"]);
-const FREE_LABELS = { bonus: "Bonificación", sample: "Muestra" } as const;
-const VOIDED: Record<StatementLineView["kind"], string> = {
-  delivery: "Anulación de la boleta",
-  return: "Anulación de la devolución",
-  payment: "Anulación del pago",
-  charge: "Anulación del cargo",
-  other: "Anulación del ajuste",
-};
+import { CREDIT_KINDS, describeLine, documentLabel, withRunningBalance } from "./statement-text";
 
 /** One customer's movements with a running balance: deliveries and charges add, payments and returns subtract. */
 export function CustomerStatement({ statement }: { statement: CustomerStatementView }) {
@@ -124,61 +112,31 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
 }
 
 function DocumentCell({ line }: { line: StatementLineView }) {
-  if (line.receipt && line.document) {
+  const label = documentLabel(line);
+  if (!label) return <>—</>;
+  if (line.document?.type === "payment") {
     return (
       <Link href={paymentPath(line.document.id)} className="hover:underline">
-        Recibo {line.receipt.number}
+        {label}
       </Link>
     );
   }
-  if (line.noteNumber === null) return <>—</>;
   if (line.document?.type === "note") {
     return (
       <Link href={notePath(line.document.id)} className="hover:underline">
-        Boleta {line.noteNumber}
+        {label}
       </Link>
     );
   }
-  return <>{line.noteNumber}</>;
+  return <>{label}</>;
 }
 
 function Detail({ line }: { line: StatementLineView }) {
-  if (line.isReversal) return <>{VOIDED[line.kind]}</>;
-  if (line.receipt) {
-    return (
-      <>
-        Pago · {METHOD_LABELS[line.receipt.method]}
-        {line.receipt.currency === "BOB" && ` · ${formatAmount("BOB", line.receipt.amount)}`}
-        {line.observation && (
-          <span className="block text-xs text-muted-foreground">Ref.: {line.observation}</span>
-        )}
-      </>
-    );
-  }
-  if (line.kind === "charge") return <>Cargo: {line.description}</>;
-  if (!line.description && (line.kind === "payment" || line.kind === "return")) {
-    return (
-      <>
-        {line.kind === "payment"
-          ? "Pagos según el resumen de la planilla (sin fecha)"
-          : "Devoluciones según el resumen de la planilla (sin fecha)"}
-      </>
-    );
-  }
-  if (line.kind === "other" && !line.description) return <>Ajuste</>;
+  const { text, note } = describeLine(line);
   return (
     <>
-      {line.description}
-      {line.packaging && ` · ${contentLabel(line.packaging)}`}
-      {line.freeOfCharge && (
-        <Badge variant="outline" className="ml-2">
-          {FREE_LABELS[line.freeOfCharge]}
-        </Badge>
-      )}
-      {line.kind === "return" && <span className="ml-2 text-xs text-muted-foreground">devolución</span>}
-      {line.observation && (
-        <span className="block text-xs text-muted-foreground">Obs.: {line.observation}</span>
-      )}
+      {text}
+      {note && <span className="block text-xs text-muted-foreground">{note}</span>}
     </>
   );
 }
@@ -237,15 +195,4 @@ function CampaignBreakdown({ campaigns }: { campaigns: CampaignTotalsView[] }) {
       </Table>
     </section>
   );
-}
-
-function withRunningBalance(lines: StatementLineView[]): { line: StatementLineView; balance: string }[] {
-  const rows: { line: StatementLineView; balance: string }[] = [];
-  let balance = Money.zero();
-  for (const line of lines) {
-    const amount = Money.parse(line.amount);
-    balance = CREDIT_KINDS.has(line.kind) ? balance.subtract(amount) : balance.add(amount);
-    rows.push({ line, balance: balance.toDecimalString() });
-  }
-  return rows;
 }

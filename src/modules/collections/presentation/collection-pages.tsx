@@ -10,7 +10,6 @@ import { formatCustomerCode } from "@/modules/customers/domain/customer";
 import { customerDeps } from "@/modules/customers/presentation/customer-deps";
 import { customerPath } from "@/modules/customers/presentation/customer-routes";
 import { requireActor } from "@/modules/identity/presentation/current-user";
-import { PrintButton } from "@/modules/receivables/presentation/print-button";
 import { listNotes } from "@/modules/sales/application/note-use-cases";
 import { noteDeps } from "@/modules/sales/presentation/note-deps";
 import { notePath } from "@/modules/sales/presentation/note-routes";
@@ -19,6 +18,7 @@ import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import { formatDate, formatDateTime, formatMoney, formatRate } from "@/shared/presentation/format";
+import { PdfActions } from "@/shared/presentation/pdf-actions";
 import { Badge } from "@/shared/presentation/ui/badge";
 import {
   Table,
@@ -40,7 +40,7 @@ import { ChargeForm } from "./charge-form";
 import { DailyRateForm, VoidChargeButton, VoidPaymentButton } from "./collection-controls";
 import { collectionDeps } from "./collection-deps";
 import { METHOD_LABELS, formatAmount } from "./collection-labels";
-import { paymentPath } from "./collection-routes";
+import { paymentPath, receiptPdfPath } from "./collection-routes";
 import { PaymentForm } from "./payment-form";
 
 const deps = () => collectionDeps(getDb());
@@ -188,7 +188,7 @@ export async function PaymentDetail({ params }: { params: Promise<{ id: string }
           </p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <PrintButton />
+          <PdfActions href={receiptPdfPath(payment.id)} fileName={`recibo-${payment.receiptNumber}.pdf`} />
           {payment.status === "recorded" && !payment.settlesNote && (
             <VoidPaymentButton paymentId={payment.id} receiptNumber={payment.receiptNumber} />
           )}

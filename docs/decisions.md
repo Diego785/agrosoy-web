@@ -201,3 +201,14 @@ they are confirmed, in the same transaction, for exactly the note's total.
 **Why:** debt is followed per campaign (the statement and the spreadsheets are organized that way),
 and "oldest first" is how administration applies an unspecified payment today. Keeping the
 allocation rows makes every credit traceable to its receipt.
+
+## D21 · PDFs with @react-pdf/renderer (completes D12)
+
+**Decision:** notes, receipts and customer statements are PDFs drawn with `@react-pdf/renderer`
+in route handlers (`/notes/[id]/pdf`, `/payments/[id]/pdf`, `/statements/[customerId]/pdf`) that
+call the same use cases as the pages. The pages offer "PDF" and "Compartir": the latter hands the
+file to the phone's share sheet (WhatsApp included) where the browser supports sharing files.
+Text only, Helvetica, until Agrosoy provides its logo.
+
+**Why:** it renders in the Node server already in the Docker image, with no headless browser to
+install or keep patched on the VPS, and Next.js already treats it as an external server package.

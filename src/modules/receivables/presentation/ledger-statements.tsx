@@ -9,24 +9,17 @@ import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import { formatDate } from "@/shared/presentation/format";
+import { PdfActions } from "@/shared/presentation/pdf-actions";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
-import {
-  customerStatement,
-  portfolioStatement,
-  type StatementDeps,
-} from "../application/statement-use-cases";
-import { drizzleStatementReader } from "../infrastructure/drizzle-statement-reader";
+import { customerStatement, portfolioStatement } from "../application/statement-use-cases";
 import { CustomerStatement } from "./customer-statement";
 import { PortfolioStatement } from "./portfolio-statement";
-import { STATEMENTS_PATH, customerStatementPath } from "./statement-routes";
+import { statementDeps as deps } from "./statement-deps";
+import { STATEMENTS_PATH, customerStatementPath, customerStatementPdfPath } from "./statement-routes";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-const deps = (): StatementDeps => ({
-  statements: drizzleStatementReader(getDb()),
-  today: () => todayInBolivia(),
-});
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 /** All customers' debt from the ledger, filtered by campaign and technician. */
@@ -123,19 +116,25 @@ export async function LedgerCustomerStatement({
             {formatDate(todayInBolivia())}
           </p>
         </div>
-        <form action={`${STATEMENTS_PATH}/${statement.customerId}`} className="flex gap-2 print:hidden">
-          <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
-            <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
-            {statement.campaigns.map((option) => (
-              <NativeSelectOption key={option.id} value={option.id}>
-                {campaignLabel(option)}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <button type="submit" className={buttonVariants({ variant: "outline" })}>
-            Ver
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <form action={`${STATEMENTS_PATH}/${statement.customerId}`} className="flex gap-2 print:hidden">
+            <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
+              <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
+              {statement.campaigns.map((option) => (
+                <NativeSelectOption key={option.id} value={option.id}>
+                  {campaignLabel(option)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <button type="submit" className={buttonVariants({ variant: "outline" })}>
+              Ver
+            </button>
+          </form>
+          <PdfActions
+            href={customerStatementPdfPath(statement.customerId, campaign?.id)}
+            fileName={`estado-de-cuenta-${todayInBolivia()}.pdf`}
+          />
+        </div>
       </header>
       <CustomerStatement statement={statement} />
     </div>

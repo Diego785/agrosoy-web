@@ -6,6 +6,10 @@ export function customerStatementPath(customerId: string, campaignId?: string): 
   return `${STATEMENTS_PATH}/${customerId}${campaignId ? `?campaign=${campaignId}` : ""}`;
 }
 
+export function customerStatementPdfPath(customerId: string, campaignId?: string): string {
+  return `${STATEMENTS_PATH}/${customerId}/pdf${campaignId ? `?campaign=${campaignId}` : ""}`;
+}
+
 /** The portfolio of an imported sheet (spreadsheet preview). */
 export function previewPath(batchId: string): string {
   return `${STATEMENT_PREVIEWS_PATH}/${batchId}`;

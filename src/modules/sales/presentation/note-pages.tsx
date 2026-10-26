@@ -20,6 +20,7 @@ import {
   formatRate,
   trimDecimalZeros,
 } from "@/shared/presentation/format";
+import { PdfActions } from "@/shared/presentation/pdf-actions";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
@@ -40,7 +41,7 @@ import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecy
 import { NoteForm } from "./note-form";
 import { noteDeps } from "./note-deps";
 import { loadNoteFormOptions } from "./note-form-options";
-import { NOTES_PATH, editNotePath, notePath } from "./note-routes";
+import { NOTES_PATH, editNotePath, notePath, notePdfPath } from "./note-routes";
 
 const STATUS_LABELS: Record<NoteStatus, string> = {
   draft: "Borrador",
@@ -176,7 +177,13 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
             <DiscardDraftButton noteId={note.id} />
           </div>
         )}
-        {canVoid && note.number !== null && <VoidNoteButton noteId={note.id} number={note.number} />}
+        <div className="flex gap-2">
+          <PdfActions
+            href={notePdfPath(note.id)}
+            fileName={note.number ? `boleta-${note.number}.pdf` : "boleta-borrador.pdf"}
+          />
+          {canVoid && note.number !== null && <VoidNoteButton noteId={note.id} number={note.number} />}
+        </div>
       </header>
 
       {note.voided && (
