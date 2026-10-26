@@ -1,7 +1,7 @@
 # Roadmap
 
-Six one-week sprints, aligned with the schedule in the proposal. Week 1 starts when the
-contract is signed; the dates below assume Monday 26 October 2026 and move with the signature.
+Six one-week sprints, aligned with the schedule in the proposal. The contract is signed and week 1
+starts on Monday 26 October 2026.
 
 ## How each week works
 

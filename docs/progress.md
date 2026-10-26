@@ -3,6 +3,12 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-10-26
+
+- Contract signed; the schedule in the roadmap holds (week 1: 26–30 October). The staging server
+  (0.7 part 2) is postponed at the developer's request; work continues with the spreadsheet import
+  and the account-statement preview.
+
 ## 2026-10-25
 
 - **0.9 · Customers (M2, first part), the reference module:** register and edit customers with an
