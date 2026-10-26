@@ -3,8 +3,11 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import type { Actor } from "@/shared/application/actor";
+import { effectivePermissions } from "@/shared/application/permissions";
 import { isRole } from "@/shared/domain/role";
+import { getDb } from "@/shared/infrastructure/db/client";
 import { getAuth } from "../infrastructure/auth";
+import { drizzlePermissionSettings } from "../infrastructure/drizzle-permission-settings";
 import { CHANGE_PASSWORD_PATH, LOGIN_PATH } from "./identity-routes";
 
 export type CurrentUser = {
@@ -20,8 +23,15 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const requestHeaders = await currentRequestHeaders();
   const session = await getAuth().api.getSession({ headers: requestHeaders });
   if (!session || session.user.banned || !isRole(session.user.role)) return null;
+  // Read on every request, so a change to the permission matrix applies from the next click.
+  const overrides = await drizzlePermissionSettings(getDb()).overrides();
   return {
-    actor: { id: session.user.id, name: session.user.name, role: session.user.role },
+    actor: {
+      id: session.user.id,
+      name: session.user.name,
+      role: session.user.role,
+      permissions: effectivePermissions(session.user.role, overrides),
+    },
     username: session.user.displayUsername ?? session.user.username ?? "",
     mustChangePassword: session.user.mustChangePassword === true,
   };

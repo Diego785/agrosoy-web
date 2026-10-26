@@ -1,0 +1,16 @@
+import type { Permission } from "@/shared/application/permissions";
+
+export const PERMISSION_LABELS: Record<Permission, { label: string; description: string }> = {
+  "users.manage": {
+    label: "Usuarios y permisos",
+    description: "Crear usuarios, restablecer contraseñas y ajustar permisos.",
+  },
+  "audit.view": { label: "Registro de cambios", description: "Ver quién hizo cada cambio y cuándo." },
+  "customers.view": { label: "Ver clientes", description: "Buscar clientes y ver sus datos." },
+  "customers.manage": { label: "Editar clientes", description: "Registrar y editar clientes y zonas." },
+  "statements.view": { label: "Estados de cuenta", description: "Ver la deuda de cualquier cliente." },
+  "imports.manage": {
+    label: "Importar planillas",
+    description: "Subir planillas de Excel y revisar sus observaciones.",
+  },
+};

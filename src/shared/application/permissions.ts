@@ -5,6 +5,7 @@ import type { Actor } from "./actor";
 /** "<module>.<capability>". Each module adds its own as it is built. */
 export const PERMISSIONS = [
   "users.manage",
+  "audit.view",
   "customers.view",
   "customers.manage",
   "statements.view",
@@ -13,21 +14,43 @@ export const PERMISSIONS = [
 
 export type Permission = (typeof PERMISSIONS)[number];
 
+export function isPermission(value: unknown): value is Permission {
+  return typeof value === "string" && (PERMISSIONS as readonly string[]).includes(value);
+}
+
 /**
- * Default permissions per role. Administration and management see and manage everything
- * (discovery meeting); the matrix becomes editable from the users module later in M1.
+ * What each role can do until administration adjusts it. Administration and management see and
+ * manage everything (discovery meeting). New permissions get their default here, so roles that
+ * were adjusted earlier still receive them.
  */
-const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  admin: ["users.manage", "customers.view", "customers.manage", "statements.view", "imports.manage"],
-  manager: ["users.manage", "customers.view", "customers.manage", "statements.view", "imports.manage"],
+export const DEFAULT_ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
+  admin: PERMISSIONS,
+  manager: PERMISSIONS,
   // Technicians can look up any customer and statement, also outside their portfolio (proposal, M7).
   sales_technician: ["customers.view", "statements.view"],
   // Warehouse keepers need the customer on delivery notes.
   warehouse_keeper: ["customers.view"],
 };
 
+/** Administration always keeps every permission, so nobody can lock the system without an administrator. */
+export const FIXED_ROLE: Role = "admin";
+
+/** An adjustment saved by administration: this role does (granted) or doesn't have this permission. */
+export type PermissionOverride = { role: Role; permission: Permission; granted: boolean };
+
+export function effectivePermissions(role: Role, overrides: readonly PermissionOverride[]): Permission[] {
+  if (role === FIXED_ROLE) return [...PERMISSIONS];
+  const granted = new Set(DEFAULT_ROLE_PERMISSIONS[role]);
+  for (const override of overrides) {
+    if (override.role !== role) continue;
+    if (override.granted) granted.add(override.permission);
+    else granted.delete(override.permission);
+  }
+  return PERMISSIONS.filter((permission) => granted.has(permission));
+}
+
 export function can(actor: Actor, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[actor.role].includes(permission);
+  return actor.permissions.includes(permission);
 }
 
 /** Use cases call this first; hiding a button in the UI is never the only check (D3). */

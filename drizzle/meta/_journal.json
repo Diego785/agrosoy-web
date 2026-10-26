@@ -29,6 +29,13 @@
       "when": 1793032277321,
       "tag": "0003_spreadsheet_import",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793033501034,
+      "tag": "0004_permissions_and_audit_ids",
+      "breakpoints": true
     }
   ]
 }

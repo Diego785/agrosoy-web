@@ -1,3 +1,4 @@
+import type { PermissionOverride } from "@/shared/application/permissions";
 import type { Role } from "@/shared/domain/role";
 import type { NewUserAccount } from "../domain/user-account";
 
@@ -33,4 +34,26 @@ export interface PasswordGenerator {
 export interface OwnCredentials {
   /** Throws DomainError "INVALID_CREDENTIALS" when `currentPassword` is wrong. */
   changePassword(currentPassword: string, newPassword: string): Promise<void>;
+}
+
+/** Adjustments administration made to the default permissions of each role. */
+export interface PermissionSettings {
+  overrides(): Promise<PermissionOverride[]>;
+  /** Replaces every adjustment of `role` with `overrides`. */
+  saveRole(role: Role, overrides: PermissionOverride[], updatedBy: string): Promise<void>;
+}
+
+export type AuditLogEntry = {
+  id: string;
+  occurredAt: Date;
+  actorName: string | null;
+  action: string;
+  entityType: string;
+  /** A readable name for what changed (customer, user, sheet…), when one is known. */
+  entityLabel: string | null;
+};
+
+/** Read side of the audit log, newest first. */
+export interface AuditLogReader {
+  page(query: { limit: number; offset: number }): Promise<{ items: AuditLogEntry[]; total: number }>;
 }

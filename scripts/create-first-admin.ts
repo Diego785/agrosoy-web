@@ -11,6 +11,7 @@ import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import { randomPasswordGenerator } from "@/modules/identity/infrastructure/random-password-generator";
 import type { Actor } from "@/shared/application/actor";
+import { effectivePermissions } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import { createDatabase } from "@/shared/infrastructure/db/client";
@@ -18,7 +19,12 @@ import { createDatabase } from "@/shared/infrastructure/db/client";
 config({ path: ".env.local", quiet: true });
 
 /** Recorded in the audit log as the author of the first account. */
-const INSTALLER: Actor = { id: "00000000-0000-0000-0000-000000000000", name: "Instalación", role: "admin" };
+const INSTALLER: Actor = {
+  id: "00000000-0000-0000-0000-000000000000",
+  name: "Instalación",
+  role: "admin",
+  permissions: effectivePermissions("admin", []),
+};
 
 async function main() {
   const { values } = parseArgs({

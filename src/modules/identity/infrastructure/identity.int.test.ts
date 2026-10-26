@@ -119,7 +119,7 @@ describe("user administration", () => {
 
   it("does not let users deactivate themselves", async () => {
     const { id } = await create({ name: "Liz", username: "liz", role: "admin" });
-    const liz: Actor = { id, name: "Liz", role: "admin" };
+    const liz = actorWithRole("admin", id, "Liz");
     await expect(
       inTransaction((deps) => setUserActive(deps, liz, { userId: id }, false)),
     ).rejects.toMatchObject({
@@ -148,7 +148,7 @@ describe("changing your own password", () => {
   async function signedInUser() {
     const { id, temporaryPassword } = await create({ name: "Liz", username: "liz", role: "admin" });
     const { cookie } = await signIn("liz", temporaryPassword);
-    const actor: Actor = { id, name: "Liz", role: "admin" };
+    const actor = actorWithRole("admin", id, "Liz");
     const change = (input: object) =>
       inTransaction((deps) =>
         changeOwnPassword({ ...deps, credentials: betterAuthOwnCredentials(auth, cookie) }, actor, input),

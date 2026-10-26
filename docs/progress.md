@@ -5,6 +5,15 @@ up without re-reading the whole history.
 
 ## 2026-10-26
 
+- **M1 completed:** editable permission matrix (`/users/permissions`, stored as differences from
+  the defaults, administration fixed, only changed roles saved and audited) and the audit-log
+  viewer (`/audit`, newest first, with the user and the name of what changed). `Actor` now carries
+  its effective permissions; `audit_log.entity_id` became text so settings (roles) can be audited.
+  Tested in the browser: granting "Importar planillas" to technicians shows the menu entry to them
+  on their next request.
+- **Week 1 status:** everything planned is done except the staging server (postponed). Next, by the
+  roadmap: week 2 (M2 rest, M3 products and prices, M4 campaigns, import into real customers and
+  products, delivery-note draft).
 - **Spreadsheet import and statement preview (week 1):** import page for technicians' workbooks
   (`migration` module: header-based sheet reader, recomputed totals, findings in Spanish), and
   account statements by customer and per technician sheet (`receivables` view components meant to

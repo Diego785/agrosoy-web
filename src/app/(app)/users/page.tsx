@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { NEW_USER_PATH } from "@/modules/identity/presentation/identity-routes";
+import { NEW_USER_PATH, PERMISSIONS_PATH } from "@/modules/identity/presentation/identity-routes";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
 import { UsersTable, UsersTableSkeleton } from "@/modules/identity/presentation/users-table";
 import { PageHeader } from "@/shared/presentation/app-shell";
@@ -18,9 +18,14 @@ export default function UsersPage() {
         actions={
           <Suspense>
             <RequirePermission permission="users.manage" fallback={null}>
-              <Link href={NEW_USER_PATH} className={buttonVariants()}>
-                Crear usuario
-              </Link>
+              <div className="flex gap-2">
+                <Link href={PERMISSIONS_PATH} className={buttonVariants({ variant: "outline" })}>
+                  Permisos
+                </Link>
+                <Link href={NEW_USER_PATH} className={buttonVariants()}>
+                  Crear usuario
+                </Link>
+              </div>
             </RequirePermission>
           </Suspense>
         }

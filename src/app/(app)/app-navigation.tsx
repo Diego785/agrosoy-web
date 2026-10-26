@@ -1,6 +1,7 @@
 import {
   ContactIcon,
   FileSpreadsheetIcon,
+  HistoryIcon,
   HomeIcon,
   ReceiptTextIcon,
   UsersIcon,
@@ -21,6 +22,7 @@ const NAVIGATION: readonly NavigationItem[] = [
   { label: "Estados de cuenta", href: "/statements", icon: ReceiptTextIcon, permission: "statements.view" },
   { label: "Importar planillas", href: "/imports", icon: FileSpreadsheetIcon, permission: "imports.manage" },
   { label: "Usuarios", href: "/users", icon: UsersIcon, permission: "users.manage" },
+  { label: "Registro de cambios", href: "/audit", icon: HistoryIcon, permission: "audit.view" },
 ];
 
 export async function AppNavigation() {

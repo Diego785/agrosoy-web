@@ -87,8 +87,10 @@ four roles (`admin`, `manager`, `sales_technician`, `warehouse_keeper`).
 - Users without email get a placeholder under the reserved `.invalid` domain, never shown.
 - Deactivating a user bans it and ends its sessions; nothing is deleted.
 - Sessions end after 8 hours without activity (extended every 30 minutes of use).
-- Business permissions live in `shared/application/permissions.ts`, a matrix per role in code
-  for now; making it editable from the users page is still part of M1.
+- Business permissions live in `shared/application/permissions.ts` as defaults per role.
+  Administration adjusts them on the permissions page; only the differences are stored
+  (`role_permission_overrides`), so new permissions arrive with their default. The `admin` role
+  always keeps every permission. Each request loads the effective permissions into the `Actor`.
 
 **Why:** no third-party identity provider to pay for or depend on; users are a handful of staff.
 
