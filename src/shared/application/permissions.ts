@@ -10,6 +10,8 @@ export const PERMISSIONS = [
   "customers.manage",
   "statements.view",
   "imports.manage",
+  "catalog.view",
+  "catalog.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -27,9 +29,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   admin: PERMISSIONS,
   manager: PERMISSIONS,
   // Technicians can look up any customer and statement, also outside their portfolio (proposal, M7).
-  sales_technician: ["customers.view", "statements.view"],
-  // Warehouse keepers need the customer on delivery notes.
-  warehouse_keeper: ["customers.view"],
+  sales_technician: ["customers.view", "statements.view", "catalog.view"],
+  // Warehouse keepers need customers and products on delivery notes.
+  warehouse_keeper: ["customers.view", "catalog.view"],
 };
 
 /** Administration always keeps every permission, so nobody can lock the system without an administrator. */

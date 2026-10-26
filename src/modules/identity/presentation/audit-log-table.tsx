@@ -29,6 +29,8 @@ const ACTION_LABELS: Record<string, string> = {
   "customers.update": "Editó al cliente",
   "customers.create_zone": "Agregó la zona",
   "migration.import_sheet": "Importó la hoja",
+  "campaigns.create": "Creó la campaña",
+  "campaigns.update": "Editó la campaña",
 };
 
 export async function AuditLogTable({
