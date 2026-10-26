@@ -20,20 +20,20 @@ inventory code. Terms follow the [glossary](glossary.md); the reasons behind the
 
 ## Modules
 
-| # | Module | Code folder | Owns |
-|---|---|---|---|
-| M1 | Users, roles and audit | `identity`, `shared/audit` | users, sessions, role permissions, audit log |
-| M2 | Customers and portfolio | `customers` | customers, zones, properties, authorized receivers, technician assignments |
-| M3 | Products and prices | `catalog` | products, presentations, lots, reference prices |
-| M4 | Campaigns | `campaigns` | campaigns and their closing summary |
-| M5 | Delivery notes | `sales` | delivery, return and campaign-transfer notes, numbering, PDF |
-| M6 | Collections | `collections` | payments, allocations, charges, receipts |
-| M7 | Account statement | `receivables` | the customer ledger and statements |
-| M8 | Inventory | `inventory` | warehouses, stock movements, stock balances, transfers, counts |
-| M9 | Purchasing | `purchasing` | suppliers, purchases |
-| M10 | Travel allowances | `travel-allowances` | advances and expenses per technician |
-| M11 | Reports and notifications | `reporting`, `notifications` | read models, exports, alerts |
-| M12 | Migration | `scripts/migration` | spreadsheet import and reconciliation |
+| #   | Module                    | Code folder                  | Owns                                                                       |
+| --- | ------------------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| M1  | Users, roles and audit    | `identity`, `shared/audit`   | users, sessions, role permissions, audit log                               |
+| M2  | Customers and portfolio   | `customers`                  | customers, zones, properties, authorized receivers, technician assignments |
+| M3  | Products and prices       | `catalog`                    | products, presentations, lots, reference prices                            |
+| M4  | Campaigns                 | `campaigns`                  | campaigns and their closing summary                                        |
+| M5  | Delivery notes            | `sales`                      | delivery, return and campaign-transfer notes, numbering, PDF               |
+| M6  | Collections               | `collections`                | payments, allocations, charges, receipts                                   |
+| M7  | Account statement         | `receivables`                | the customer ledger and statements                                         |
+| M8  | Inventory                 | `inventory`                  | warehouses, stock movements, stock balances, transfers, counts             |
+| M9  | Purchasing                | `purchasing`                 | suppliers, purchases                                                       |
+| M10 | Travel allowances         | `travel-allowances`          | advances and expenses per technician                                       |
+| M11 | Reports and notifications | `reporting`, `notifications` | read models, exports, alerts                                               |
+| M12 | Migration                 | `scripts/migration`          | spreadsheet import and reconciliation                                      |
 
 Modules talk to each other only through their `application` layer (use cases and ports), never
 by reaching into another module's tables. M5 is the main orchestrator: confirming a note calls
@@ -84,14 +84,14 @@ A note has a header and lines.
 
 ### What confirming a note does
 
-| Note type | Stock (M8) | Customer ledger (M7) |
-|---|---|---|
-| Delivery, credit | − quantity from warehouse + lot | **debit** total, in the note's campaign |
-| Delivery, cash | − quantity from warehouse + lot | **debit** total and **credit** the payment recorded in the same step |
-| Delivery, free-of-charge line | − quantity | nothing for that line |
-| Return (against an original note) | + quantity to the warehouse | **credit** quantity × the original line's price |
-| Campaign transfer | nothing (the product stays with the customer) | **credit** in the old campaign at the old price, **debit** in the new campaign at the new price |
-| Void of any of the above | the exact reverse movements | the exact reverse entries |
+| Note type                         | Stock (M8)                                    | Customer ledger (M7)                                                                            |
+| --------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Delivery, credit                  | − quantity from warehouse + lot               | **debit** total, in the note's campaign                                                         |
+| Delivery, cash                    | − quantity from warehouse + lot               | **debit** total and **credit** the payment recorded in the same step                            |
+| Delivery, free-of-charge line     | − quantity                                    | nothing for that line                                                                           |
+| Return (against an original note) | + quantity to the warehouse                   | **credit** quantity × the original line's price                                                 |
+| Campaign transfer                 | nothing (the product stays with the customer) | **credit** in the old campaign at the old price, **debit** in the new campaign at the new price |
+| Void of any of the above          | the exact reverse movements                   | the exact reverse entries                                                                       |
 
 Rules:
 
@@ -115,13 +115,13 @@ Rules:
 
 The **ledger** is an append-only table of entries:
 
-| Field | Meaning |
-|---|---|
-| customer, campaign | whose debt and in which season |
-| date | business date of the operation (Bolivia time) |
-| kind | `delivery`, `return`, `payment`, `charge`, `campaign_transfer_out`, `campaign_transfer_in`, `opening_balance`, `reversal` |
-| amount (USD) | positive = debit (they owe more), negative = credit (they owe less) |
-| source | the document that produced it (note, payment, charge, migration batch) |
+| Field              | Meaning                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| customer, campaign | whose debt and in which season                                                                                            |
+| date               | business date of the operation (Bolivia time)                                                                             |
+| kind               | `delivery`, `return`, `payment`, `charge`, `campaign_transfer_out`, `campaign_transfer_in`, `opening_balance`, `reversal` |
+| amount (USD)       | positive = debit (they owe more), negative = credit (they owe less)                                                       |
+| source             | the document that produced it (note, payment, charge, migration batch)                                                    |
 
 - **Balance** of a customer = sum of amounts; per campaign = sum filtered by campaign.
 - The **statement** keeps the columns Agrosoy uses today: deliveries, payments, returns, balance,
@@ -165,15 +165,15 @@ minimum, transfers unconfirmed for 3 days, customers with debt older than 90 day
 
 ## Storage conventions
 
-| Kind of value | Postgres type | TypeScript |
-|---|---|---|
-| Money (USD or BOB) | `numeric(14,2)` | `Money` (integer cents) |
-| Quantity | `numeric(12,3)` | `Quantity` (integer thousandths) |
-| Exchange rate | `numeric(10,4)` | `ExchangeRate` |
-| Business date | `date` | ISO string `YYYY-MM-DD`, Bolivia time |
-| Moment something happened | `timestamptz` | `Date` |
-| Identifier | `uuid` | `string` |
-| Human document number | `integer` with a unique constraint | `number` |
+| Kind of value             | Postgres type                      | TypeScript                            |
+| ------------------------- | ---------------------------------- | ------------------------------------- |
+| Money (USD or BOB)        | `numeric(14,2)`                    | `Money` (integer cents)               |
+| Quantity                  | `numeric(12,3)`                    | `Quantity` (integer thousandths)      |
+| Exchange rate             | `numeric(10,4)`                    | `ExchangeRate`                        |
+| Business date             | `date`                             | ISO string `YYYY-MM-DD`, Bolivia time |
+| Moment something happened | `timestamptz`                      | `Date`                                |
+| Identifier                | `uuid`                             | `string`                              |
+| Human document number     | `integer` with a unique constraint | `number`                              |
 
 Column names are `snake_case` in the database and `camelCase` in TypeScript (Drizzle maps them).
 

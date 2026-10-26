@@ -19,9 +19,9 @@ corepack pnpm dev        # http://localhost:3000
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `corepack pnpm dev` | Development server |
-| `corepack pnpm build` | Production build |
+| Command               | What it does                |
+| --------------------- | --------------------------- |
+| `corepack pnpm dev`   | Development server          |
+| `corepack pnpm build` | Production build            |
 | `corepack pnpm start` | Serves the production build |
-| `corepack pnpm lint` | ESLint |
+| `corepack pnpm lint`  | ESLint                      |

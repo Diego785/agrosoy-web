@@ -18,12 +18,12 @@ services later.
 
 **Decision:** every module has four layers, and dependencies only point inward:
 
-| Layer | Contains | May import |
-|---|---|---|
-| `domain` | entities, value objects, business rules; pure TypeScript | `shared/domain` only |
-| `application` | use cases, input schemas (Zod), ports (repository interfaces), permissions | `domain`, `shared/application` |
-| `infrastructure` | Drizzle tables, repository implementations, PDF and email adapters | everything above |
-| `presentation` | pages' components, server actions, data loaders | everything above |
+| Layer            | Contains                                                                   | May import                     |
+| ---------------- | -------------------------------------------------------------------------- | ------------------------------ |
+| `domain`         | entities, value objects, business rules; pure TypeScript                   | `shared/domain` only           |
+| `application`    | use cases, input schemas (Zod), ports (repository interfaces), permissions | `domain`, `shared/application` |
+| `infrastructure` | Drizzle tables, repository implementations, PDF and email adapters         | everything above               |
+| `presentation`   | pages' components, server actions, data loaders                            | everything above               |
 
 ESLint enforces the first two rows (`no-restricted-imports`).
 

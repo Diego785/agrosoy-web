@@ -1,0 +1,20 @@
+#!/bin/sh
+# Removes AI co-author trailers and "Generated with Claude Code" lines, so every
+# commit credits only its human author. Enabled by `corepack pnpm install` (prepare script),
+# or by hand with: git config core.hooksPath .githooks
+msg_file="$1"
+tmp_file="$msg_file.tmp"
+
+awk '
+  { lower = tolower($0) }
+  lower ~ /^co-authored-by:.*(claude|anthropic)/ { next }
+  lower ~ /generated with \[?claude code\]?/ { next }
+  # Keep a single blank line where a removed line sat between two blank ones.
+  /^[[:space:]]*$/ && count > 0 && lines[count] ~ /^[[:space:]]*$/ { next }
+  { lines[++count] = $0 }
+  END {
+    # Drop the blank lines the removed trailers leave at the end.
+    while (count > 0 && lines[count] ~ /^[[:space:]]*$/) count--
+    for (i = 1; i <= count; i++) print lines[i]
+  }
+' "$msg_file" > "$tmp_file" && mv "$tmp_file" "$msg_file"

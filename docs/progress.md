@@ -5,6 +5,9 @@ up without re-reading the whole history.
 
 ## 2026-10-25
 
+- **0.4 · Tooling** (branch `chore/tooling`): stricter TypeScript (`noUncheckedIndexedAccess`), ESLint
+  layer rules, Prettier with the Tailwind plugin, Vitest (unit project), `pnpm check`, GitHub Actions CI,
+  `.githooks/commit-msg` that strips AI co-author lines, `CLAUDE.md` with the working rules.
 - **0.3 · Design docs** (branch `docs/domain-model`): glossary, domain model, decisions D1–D16 and
   the roadmap. Open questions for Agrosoy are listed at the end of the glossary.
 - **0.2 · Repository:** Next.js 16.4 base in the private repo `SOLUTI0N-TECH/agrosoy-web`.
