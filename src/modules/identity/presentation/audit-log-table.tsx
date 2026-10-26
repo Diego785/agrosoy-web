@@ -35,6 +35,8 @@ const ACTION_LABELS: Record<string, string> = {
   "customers.add_receiver": "Agregó una persona autorizada a",
   "customers.remove_receiver": "Quitó una persona autorizada de",
   "migration.import_sheet": "Importó la hoja",
+  "migration.convert_customers": "Pasó al sistema los clientes de la hoja",
+  "migration.convert_products": "Pasó al sistema los productos de la hoja",
   "campaigns.create": "Creó la campaña",
   "campaigns.update": "Editó la campaña",
   "catalog.create_product": "Creó el producto",
