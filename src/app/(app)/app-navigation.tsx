@@ -1,4 +1,11 @@
-import { ContactIcon, HomeIcon, UsersIcon, type LucideIcon } from "lucide-react";
+import {
+  ContactIcon,
+  FileSpreadsheetIcon,
+  HomeIcon,
+  ReceiptTextIcon,
+  UsersIcon,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { getCurrentUser, requireActor } from "@/modules/identity/presentation/current-user";
 import { UserMenu } from "@/modules/identity/presentation/user-menu";
@@ -11,6 +18,8 @@ type NavigationItem = { label: string; href: string; icon: LucideIcon; permissio
 const NAVIGATION: readonly NavigationItem[] = [
   { label: "Inicio", href: "/", icon: HomeIcon },
   { label: "Clientes", href: "/customers", icon: ContactIcon, permission: "customers.view" },
+  { label: "Estados de cuenta", href: "/statements", icon: ReceiptTextIcon, permission: "statements.view" },
+  { label: "Importar planillas", href: "/imports", icon: FileSpreadsheetIcon, permission: "imports.manage" },
   { label: "Usuarios", href: "/users", icon: UsersIcon, permission: "users.manage" },
 ];
 

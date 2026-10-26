@@ -154,3 +154,14 @@ Spanish (Bolivia). Business dates and reports in `America/La_Paz`.
 (`pnpm check` passes locally, CI on every push). No branches or pull requests while one developer
 works on the project. Conventional commit messages. Commits are authored by the developer only: no `Co-Authored-By`
 or tool attribution lines.
+
+## D17 · Imported spreadsheets live apart from the system's records
+
+**Decision:** an uploaded spreadsheet is stored as an import batch (`import_batches` and its
+lines, summary rows and findings), never as delivery notes, payments or ledger entries. Importing
+the same sheet and campaign again replaces its batch. Conversion into real records is a separate,
+reviewed step of M12.
+
+**Why:** the spreadsheets have known inconsistencies (missing exchange rates, formulas that skip
+rows, reused note numbers). Keeping them apart lets Agrosoy review and correct them, and lets the
+statement preview show real figures in week 1 without polluting the ledger that M5–M7 will build.

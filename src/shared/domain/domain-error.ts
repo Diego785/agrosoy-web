@@ -11,6 +11,7 @@ export const ERROR_CODES = [
   "DUPLICATE",
   "FORBIDDEN",
   "INVALID_CREDENTIALS",
+  "INVALID_FILE",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

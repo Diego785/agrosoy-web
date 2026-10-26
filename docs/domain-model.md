@@ -33,7 +33,7 @@ inventory code. Terms follow the [glossary](glossary.md); the reasons behind the
 | M9  | Purchasing                | `purchasing`                 | suppliers, purchases                                                       |
 | M10 | Travel allowances         | `travel-allowances`          | advances and expenses per technician                                       |
 | M11 | Reports and notifications | `reporting`, `notifications` | read models, exports, alerts                                               |
-| M12 | Migration                 | `scripts/migration`          | spreadsheet import and reconciliation                                      |
+| M12 | Migration                 | `migration`                  | spreadsheet import, review findings, statement preview                     |
 
 Modules change each other's data only through their `application` layer (use cases and ports),
 never by writing another module's tables. Read models may join across modules (the customer list
@@ -182,6 +182,23 @@ minimum, transfers unconfirmed for 3 days, customers with debt older than 90 day
 Column names are `snake_case` in the database and `camelCase` in TypeScript (Drizzle maps them).
 
 ## Migration (M12)
+
+**Import (built in week 1).** An administrator uploads a technician's workbook on the import page.
+Each sheet with a sales table becomes an _import batch_ (D17):
+
+- The sales table, the returns table ("DEVOLUCIONES") and the per-customer summary (Entrega,
+  Pago, Dev., Deuda) are found by their header text, so other technicians' sheets with shifted
+  columns read the same way.
+- Line totals are recomputed as quantity × price; the sheet's own totals are only compared.
+- Payments come from the summary's "Pago" column and have no date. Summary names are matched to
+  the sales lines even when shortened ("ANDRES KAORU" → "Andres Kaoru Matsudo").
+- Findings for administration: missing exchange rates, zero prices, a "Total" formula that leaves
+  rows out, a note number reused on different dates, customers missing from the summary, summary
+  totals that differ from the lines, rounded or unreadable values.
+- The account-statement preview reads these batches and renders with the same components the
+  ledger-based statement (M7) will use.
+
+**Conversion (weeks 2–3, after Agrosoy answers the open questions):**
 
 - Customers and products are normalized and receive codes.
 - Spreadsheet sales rows become confirmed notes marked `imported`, with their original numbers,

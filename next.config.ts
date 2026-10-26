@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Development logs print server action arguments, which include passwords.
   logging: { serverFunctions: false },
+  // Spreadsheet uploads go through a server action; the use case allows up to 5 MB.
+  experimental: { serverActions: { bodySizeLimit: "6mb" } },
   turbopack: {
     rules: {
       "*.css": {

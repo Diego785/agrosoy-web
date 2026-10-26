@@ -10,6 +10,7 @@ const MESSAGES: Record<ActionError["code"], string> = {
   DUPLICATE: "Ya existe un registro con esos datos.",
   FORBIDDEN: "Tu usuario no tiene permiso para hacer esto.",
   INVALID_CREDENTIALS: "La contraseña actual no es correcta.",
+  INVALID_FILE: "No se pudo leer el archivo. Sube una planilla de Excel (.xlsx) de hasta 5 MB.",
   UNEXPECTED: "Algo salió mal. Intenta de nuevo y, si se repite, avisa a SolutionTech.",
 };
 

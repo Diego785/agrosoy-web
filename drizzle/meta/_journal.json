@@ -22,6 +22,13 @@
       "when": 1792985377249,
       "tag": "0002_customers",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793032277321,
+      "tag": "0003_spreadsheet_import",
+      "breakpoints": true
     }
   ]
 }

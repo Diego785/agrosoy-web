@@ -5,6 +5,12 @@ up without re-reading the whole history.
 
 ## 2026-10-26
 
+- **Spreadsheet import and statement preview (week 1):** import page for technicians' workbooks
+  (`migration` module: header-based sheet reader, recomputed totals, findings in Spanish), and
+  account statements by customer and per technician sheet (`receivables` view components meant to
+  be reused by M7), with print/PDF from the browser. Verified with the real `ventas.xlsx`: 48 lines,
+  15 customers, US$ 34.238,89 sold, US$ 2.306,89 collected, US$ 31.932,00 owed (6,7 % collected;
+  the sheet's own formula says 32.318,89 because it skips two rows), 35 findings.
 - Contract signed; the schedule in the roadmap holds (week 1: 26–30 October). The staging server
   (0.7 part 2) is postponed at the developer's request; work continues with the spreadsheet import
   and the account-statement preview.

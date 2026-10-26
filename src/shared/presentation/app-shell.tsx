@@ -15,12 +15,14 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-svh flex-1 flex-col">
-      <header className="flex h-14 items-center justify-between gap-4 border-b px-4 md:px-6">
+      <header className="flex h-14 items-center justify-between gap-4 border-b px-4 md:px-6 print:hidden">
         <span className="text-lg font-semibold tracking-tight">Agrosoy</span>
         {userMenu}
       </header>
       <div className="flex flex-1 flex-col md:flex-row">
-        <aside className="border-b md:w-56 md:shrink-0 md:border-r md:border-b-0">{navigation}</aside>
+        <aside className="border-b md:w-56 md:shrink-0 md:border-r md:border-b-0 print:hidden">
+          {navigation}
+        </aside>
         <main className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-8">{children}</main>
       </div>
     </div>

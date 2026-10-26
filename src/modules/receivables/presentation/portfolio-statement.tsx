@@ -1,0 +1,92 @@
+import Link from "next/link";
+import { Money } from "@/shared/domain/money";
+import { formatMoney, formatPerMille, formatUsd } from "@/shared/presentation/format";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/shared/presentation/ui/table";
+import type { PortfolioStatementView } from "../application/statement-view";
+import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
+
+/** The summary Agrosoy keeps next to each sheet: Cliente, Entrega, Pago, Dev., Deuda and status. */
+export function PortfolioStatement({
+  statement,
+  customerHref,
+}: {
+  statement: PortfolioStatementView;
+  customerHref: (customerKey: string) => string;
+}) {
+  const { totals } = statement;
+  const owing = statement.customers.filter((customer) => customer.totals.status === "owing").length;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <SourceNotice source={statement.source} />
+      <Figures>
+        <Figure label="Ventas" value={formatUsd(totals.delivered)} />
+        <Figure label="Cobrado" value={formatUsd(totals.paid)} />
+        <Figure label="Deuda total" value={formatUsd(totals.balance)} emphasis />
+        <Figure
+          label="Cobrado de las ventas"
+          value={statement.collectedPerMille === null ? "—" : formatPerMille(statement.collectedPerMille)}
+        />
+      </Figures>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Cliente</TableHead>
+            <TableHead className="text-right">Entrega</TableHead>
+            <TableHead className="text-right">Pago</TableHead>
+            <TableHead className="text-right">Dev.</TableHead>
+            <TableHead className="text-right">Deuda</TableHead>
+            <TableHead>Estado</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {statement.customers.map((customer) => (
+            <TableRow key={customer.key}>
+              <TableCell className="font-medium">
+                <Link href={customerHref(customer.key)} className="hover:underline">
+                  {customer.name}
+                </Link>
+              </TableCell>
+              <Amount value={customer.totals.delivered} />
+              <Amount value={customer.totals.paid} />
+              <Amount value={customer.totals.returned} />
+              <Amount value={customer.totals.balance} strong />
+              <TableCell>
+                <StatusBadge status={customer.totals.status} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell>
+              Total · {statement.customers.length} clientes, {owing} con deuda
+            </TableCell>
+            <Amount value={totals.delivered} />
+            <Amount value={totals.paid} />
+            <Amount value={totals.returned} />
+            <Amount value={totals.balance} strong />
+            <TableCell />
+          </TableRow>
+        </TableFooter>
+      </Table>
+    </div>
+  );
+}
+
+function Amount({ value, strong = false }: { value: string; strong?: boolean }) {
+  return (
+    <TableCell className={`text-right tabular-nums ${strong ? "font-semibold" : ""}`}>
+      {Money.parse(value).isZero() ? <span className="text-muted-foreground">—</span> : formatMoney(value)}
+    </TableCell>
+  );
+}
