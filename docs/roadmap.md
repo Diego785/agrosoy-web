@@ -38,7 +38,7 @@ travel-allowance module move first.
 | 0.3  | Glossary, domain model, decisions, roadmap                                        | Done    |
 | 0.4  | Tooling: strict TypeScript, ESLint layer rules, Prettier, Vitest, CI, commit hook | Done    |
 | 0.5  | Local Postgres in Docker, Drizzle, migrations, audit log                          | Done    |
-| 0.6  | Shared kernel: `Money`, `Quantity`, `ExchangeRate`, errors, text normalization    | Pending |
+| 0.6  | Shared kernel: `Money`, `Quantity`, `ExchangeRate`, errors, text normalization    | Done    |
 | 0.7  | Staging on the VPS: Docker image, Caddy, backups, deploy from CI                  | Pending |
 | 0.8  | Authentication and roles with Better Auth (M1)                                    | Pending |
 | 0.9  | Customers as the reference module for the rest                                    | Pending |

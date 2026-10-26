@@ -5,6 +5,10 @@ up without re-reading the whole history.
 
 ## 2026-10-25
 
+- **0.6 · Shared kernel** (`src/shared/domain`): `Money` (bigint cents), `Quantity` (bigint
+  thousandths, `times(price)` for line totals), `ExchangeRate` (4 decimals, BOB↔USD), half-up
+  rounding, `DomainError` codes, text cleaning and the name comparison key; `validateInput` in
+  `shared/application`. 37 unit tests.
 - **Workflow change:** no branches or pull requests; steps are committed to `main` in order.
 - **0.5 · Database:** Postgres 16 in Docker (`pnpm db:up`, port 5434) with an `agrosoy_test`
   database, Drizzle client with `getDb()` and `withTransaction()`, SQL migrations in `drizzle/`
