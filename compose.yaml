@@ -1,0 +1,26 @@
+# Local development database. Staging and production use deploy/ (step 0.7).
+name: agrosoy
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agrosoy
+      POSTGRES_PASSWORD: agrosoy
+      POSTGRES_DB: agrosoy
+      TZ: America/La_Paz
+    ports:
+      # 5434 because other local projects already use 5432, 5433 and 5440.
+      - "5434:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrosoy -d agrosoy"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:

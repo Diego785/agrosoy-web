@@ -139,7 +139,7 @@ Spanish (Bolivia). Business dates and reports in `America/La_Paz`.
 
 ## D16 · Git workflow
 
-**Decision:** `main` is always deployable. Each task gets a short-lived branch
-(`feature/…`, `fix/…`, `docs/…`, `chore/…`) and a pull request that passes CI before merging.
-Conventional commit messages. Commits are authored by the developer only: no `Co-Authored-By`
+**Decision:** commits go straight to `main`, in roadmap order, and each one leaves it working
+(`pnpm check` passes locally, CI on every push). No branches or pull requests while one developer
+works on the project. Conventional commit messages. Commits are authored by the developer only: no `Co-Authored-By`
 or tool attribution lines.

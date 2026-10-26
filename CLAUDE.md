@@ -14,9 +14,8 @@ Sales, accounts receivable and warehouse inventory system for Agrosoy (Bolivia).
 
 ## Working method
 
-- One task per session: propose a short plan (files, tables, rules, tests), wait for the
-  developer's approval, then implement on a branch and open a pull request.
-- Don't start the next roadmap step without approval.
+- Follow the roadmap steps in order, committing straight to `main` (no branches or pull requests).
+- Each commit leaves `main` working: `corepack pnpm check` passes before committing.
 - End every session by adding an entry to `docs/progress.md`.
 
 ## Commands (Windows: pnpm comes through Corepack)
@@ -27,6 +26,10 @@ corepack pnpm dev            # http://localhost:3000
 corepack pnpm check          # typecheck + lint + format check + all tests (what CI runs)
 corepack pnpm test           # unit tests only
 corepack pnpm format         # Prettier
+corepack pnpm test:integration  # use cases against the agrosoy_test database
+corepack pnpm db:up          # local Postgres 16 in Docker (port 5434)
+corepack pnpm db:generate    # SQL migration from schema changes; review it, then commit it
+corepack pnpm db:migrate     # apply pending migrations
 ```
 
 Stop a server you started by the PID listening on its port, never by process name.
@@ -54,7 +57,7 @@ Stop a server you started by the PID listening on its port, never by process nam
 
 ## Git
 
-- Branches `feature/…`, `fix/…`, `docs/…`, `chore/…`; pull request into `main`; CI must pass.
+- Work directly on `main`; CI runs on every push and must stay green.
 - Conventional commits (`feat(sales): …`, `fix(inventory): …`, `docs: …`, `chore: …`) with a body
   listing the main changes. Stage files by path, never `git add -A`.
 - **Never add `Co-Authored-By` or "Generated with" lines.** `.githooks/commit-msg` strips them anyway.

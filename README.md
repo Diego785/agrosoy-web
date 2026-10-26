@@ -14,6 +14,9 @@ The user interface is in Spanish (Bolivia); code, docs and commits are in Englis
 
 ```bash
 corepack pnpm install
+cp .env.example .env.local
+corepack pnpm db:up      # Postgres 16 in Docker on port 5434
+corepack pnpm db:migrate
 corepack pnpm dev        # http://localhost:3000
 ```
 

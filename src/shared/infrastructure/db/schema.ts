@@ -1,0 +1,2 @@
+// Single entry point for drizzle-kit and the query builder: every module re-exports its tables here.
+export * from "@/shared/infrastructure/audit/audit-log.table";

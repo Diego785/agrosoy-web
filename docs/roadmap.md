@@ -5,12 +5,12 @@ contract is signed; the dates below assume Monday 26 October 2026 and move with 
 
 ## How each week works
 
-| When               | What                                                                                       |
-| ------------------ | ------------------------------------------------------------------------------------------ |
-| Monday             | Planning (30 min): pick the demo goal and the issues for the week.                         |
-| Monday to Thursday | One issue per working session: plan → approval → branch → code and tests → review → merge. |
-| Thursday afternoon | Freeze, full check, deploy to staging.                                                     |
-| Friday             | 30-minute demo to Agrosoy on staging. Feedback becomes issues for next Monday.             |
+| When               | What                                                                           |
+| ------------------ | ------------------------------------------------------------------------------ |
+| Monday             | Planning (30 min): pick the demo goal and the issues for the week.             |
+| Monday to Thursday | One task per working session, committed to `main` once `pnpm check` passes.    |
+| Thursday afternoon | Freeze, full check, deploy to staging.                                         |
+| Friday             | 30-minute demo to Agrosoy on staging. Feedback becomes issues for next Monday. |
 
 An issue is **done** when its rules have tests, CI passes, it works on staging and
 [progress](progress.md) mentions it.
@@ -31,14 +31,14 @@ travel-allowance module move first.
 
 ## Foundation steps (week 1)
 
-| Step | Content                                                                           | Status    |
-| ---- | --------------------------------------------------------------------------------- | --------- |
-| 0.1  | Remove the first exploratory scaffold                                             | Done      |
-| 0.2  | Repository and Next.js base                                                       | Done      |
-| 0.3  | Glossary, domain model, decisions, roadmap                                        | In review |
-| 0.4  | Tooling: strict TypeScript, ESLint layer rules, Prettier, Vitest, CI, commit hook | In review |
-| 0.5  | Local Postgres in Docker, Drizzle, migrations, audit log                          | Pending   |
-| 0.6  | Shared kernel: `Money`, `Quantity`, `ExchangeRate`, errors, text normalization    | Pending   |
-| 0.7  | Staging on the VPS: Docker image, Caddy, backups, deploy from CI                  | Pending   |
-| 0.8  | Authentication and roles with Better Auth (M1)                                    | Pending   |
-| 0.9  | Customers as the reference module for the rest                                    | Pending   |
+| Step | Content                                                                           | Status  |
+| ---- | --------------------------------------------------------------------------------- | ------- |
+| 0.1  | Remove the first exploratory scaffold                                             | Done    |
+| 0.2  | Repository and Next.js base                                                       | Done    |
+| 0.3  | Glossary, domain model, decisions, roadmap                                        | Done    |
+| 0.4  | Tooling: strict TypeScript, ESLint layer rules, Prettier, Vitest, CI, commit hook | Done    |
+| 0.5  | Local Postgres in Docker, Drizzle, migrations, audit log                          | Done    |
+| 0.6  | Shared kernel: `Money`, `Quantity`, `ExchangeRate`, errors, text normalization    | Pending |
+| 0.7  | Staging on the VPS: Docker image, Caddy, backups, deploy from CI                  | Pending |
+| 0.8  | Authentication and roles with Better Auth (M1)                                    | Pending |
+| 0.9  | Customers as the reference module for the rest                                    | Pending |
