@@ -1,0 +1,27 @@
+# Agrosoy Web
+
+Sales, accounts receivable and warehouse inventory system for Agrosoy, an agricultural
+inputs distributor in Bolivia. Built by SolutionTech.
+
+The user interface is in Spanish (Bolivia); code, docs and commits are in English.
+
+## Requirements
+
+- Node.js 22 or later
+- pnpm 10.18 through Corepack (`corepack pnpm …`; pnpm does not need to be installed globally)
+
+## Getting started
+
+```bash
+corepack pnpm install
+corepack pnpm dev        # http://localhost:3000
+```
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `corepack pnpm dev` | Development server |
+| `corepack pnpm build` | Production build |
+| `corepack pnpm start` | Serves the production build |
+| `corepack pnpm lint` | ESLint |

@@ -1,0 +1,3 @@
+# Store text files with LF so builds on the Linux VPS and in Docker match local ones.
+* text=auto eol=lf
+*.ico binary
