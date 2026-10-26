@@ -1,13 +1,19 @@
 import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
 import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { DomainError } from "@/shared/domain/domain-error";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
+import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
 import type { NoteRepository } from "../application/note-ports";
 import { lineTotal, type DraftNote } from "../domain/delivery-note";
 import { deliveryNoteLines, deliveryNotes } from "./notes.tables";
+
+const NOTE_NUMBER_KEY = "delivery_notes_number_unique";
+const confirmer = alias(users, "confirmer");
+const voider = alias(users, "voider");
 
 export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
   async function insertLines(noteId: string, note: DraftNote) {
@@ -62,12 +68,16 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           propertyName: customerProperties.name,
           campaign: { id: campaigns.id, season: campaigns.season, year: campaigns.year },
           technicianName: users.name,
+          confirmerName: confirmer.name,
+          voiderName: voider.name,
         })
         .from(deliveryNotes)
         .innerJoin(customers, eq(customers.id, deliveryNotes.customerId))
         .innerJoin(campaigns, eq(campaigns.id, deliveryNotes.campaignId))
         .leftJoin(customerProperties, eq(customerProperties.id, deliveryNotes.propertyId))
         .leftJoin(users, eq(users.id, deliveryNotes.technicianId))
+        .leftJoin(confirmer, sql`${confirmer.id}::text = ${deliveryNotes.confirmedBy}`)
+        .leftJoin(voider, sql`${voider.id}::text = ${deliveryNotes.voidedBy}`)
         .where(eq(deliveryNotes.id, id));
       if (!row) return undefined;
 
@@ -114,7 +124,45 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         taxInvoiceNumber: note.taxInvoiceNumber,
         lines,
         createdAt: note.createdAt,
+        confirmed: note.confirmedAt ? { at: note.confirmedAt, byName: row.confirmerName } : null,
+        voided:
+          note.voidedAt && note.voidReason
+            ? { at: note.voidedAt, byName: row.voiderName, reason: note.voidReason }
+            : null,
       };
+    },
+
+    async markConfirmed(id, number, actorId) {
+      try {
+        const updated = await executor
+          .update(deliveryNotes)
+          .set({ status: "confirmed", number, confirmedAt: new Date(), confirmedBy: actorId })
+          .where(and(eq(deliveryNotes.id, id), eq(deliveryNotes.status, "draft")))
+          .returning({ id: deliveryNotes.id });
+        if (updated.length === 0) throw new DomainError("INVALID_STATE", { entity: "delivery_note", id });
+      } catch (error) {
+        if (violatedUniqueConstraint(error) === NOTE_NUMBER_KEY) {
+          throw new DomainError("DUPLICATE", { field: "paperNumber" });
+        }
+        throw error;
+      }
+    },
+
+    async markVoided(id, reason, actorId) {
+      const updated = await executor
+        .update(deliveryNotes)
+        .set({ status: "voided", voidReason: reason, voidedAt: new Date(), voidedBy: actorId })
+        .where(and(eq(deliveryNotes.id, id), eq(deliveryNotes.status, "confirmed")))
+        .returning({ id: deliveryNotes.id });
+      if (updated.length === 0) throw new DomainError("INVALID_STATE", { entity: "delivery_note", id });
+    },
+
+    async numberInUse(number) {
+      const [row] = await executor
+        .select({ id: deliveryNotes.id })
+        .from(deliveryNotes)
+        .where(eq(deliveryNotes.number, number));
+      return row !== undefined;
     },
 
     async list({ status, limit, offset }) {

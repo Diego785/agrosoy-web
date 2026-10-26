@@ -10,7 +10,7 @@ Sales, accounts receivable and warehouse inventory system for Agrosoy (Bolivia).
 - `docs/progress.md`: where the last session stopped.
 - `docs/domain-model.md`: business rules for notes, collections, the ledger and inventory.
 - `docs/glossary.md`: the English name for every Spanish business term. Use it; don't invent synonyms.
-- `docs/decisions.md`: why things are built this way (D1–D17). Add a decision instead of quietly deviating.
+- `docs/decisions.md`: why things are built this way (D1–D19). Add a decision instead of quietly deviating.
 
 ## Working method
 

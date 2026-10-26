@@ -9,6 +9,8 @@ export const ERROR_CODES = [
   "VALIDATION_FAILED",
   "NOT_FOUND",
   "DUPLICATE",
+  /** The record moved on (a draft was confirmed, a note voided) since the user loaded it. */
+  "INVALID_STATE",
   "FORBIDDEN",
   "INVALID_CREDENTIALS",
   "INVALID_FILE",

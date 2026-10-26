@@ -79,3 +79,31 @@ export const noteSearchSchema = z.object({
   status: z.enum(["draft", "confirmed", "voided"]).optional().catch(undefined),
   page: z.coerce.number().int().min(1).catch(1),
 });
+
+const noteNumber = (message: string) =>
+  z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d{0,8}$/, { error: message })
+    .transform(Number);
+
+export const confirmNoteSchema = z.object({
+  /** Empty: the system gives the next number. Filled: a paper note typed in later keeps its printed number. */
+  paperNumber: z.union([z.literal(""), noteNumber("Escribe el número impreso, por ejemplo 1250.")]),
+});
+
+export const voidNoteSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(5, { error: "Explica por qué se anula." })
+    .max(500, { error: "Admite hasta 500 caracteres." }),
+});
+
+export const nextNoteNumberSchema = z.object({
+  nextNumber: noteNumber("Escribe un número entero mayor que 0."),
+});
+
+export type ConfirmNoteInput = z.input<typeof confirmNoteSchema>;
+export type VoidNoteInput = z.input<typeof voidNoteSchema>;
+export type NextNoteNumberInput = z.input<typeof nextNoteNumberSchema>;

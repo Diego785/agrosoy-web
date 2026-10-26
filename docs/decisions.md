@@ -168,3 +168,24 @@ reviewed step of M12.
 **Why:** the spreadsheets have known inconsistencies (missing exchange rates, formulas that skip
 rows, reused note numbers). Keeping them apart lets Agrosoy review and correct them, and lets the
 statement preview show real figures in week 1 without polluting the ledger that M5–M7 will build.
+
+## D18 · Notes are confirmed before inventory exists
+
+**Decision:** in week 3, confirming a delivery note gives its number and posts the ledger, but takes
+no stock. When inventory (M8) arrives in week 4, the same confirm use case also writes the stock
+movements in its transaction, and warehouse and lot become required on new notes.
+
+**Why:** the week 3 milestone is notes, collections and statements with real data; inventory is
+week 4. Go-live stock comes from a physical count (`opening` movements), so notes confirmed before
+then never needed a stock movement.
+
+## D19 · One number sequence for notes, given on confirmation
+
+**Decision:** delivery, return and campaign-transfer notes share one gapless counter
+(`document_counters`, row-locked while a number is taken). Drafts have no number. Administration
+sets where numbering continues; paper notes typed in later keep their printed number, which must
+be unused, and the counter skips numbers already taken. Receipts get their own counter.
+
+**Why:** Agrosoy uses one paper pad today (open question in the glossary; if the types turn out to
+have separate pads, the counter gets one row per type). Numbering at confirmation means discarded
+drafts leave no gaps.

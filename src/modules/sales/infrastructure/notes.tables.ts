@@ -1,4 +1,5 @@
-import { date, index, integer, numeric, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { check, date, index, integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations } from "@/modules/catalog/infrastructure/catalog.tables";
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -6,8 +7,8 @@ import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { id, timestamps } from "@/shared/infrastructure/db/columns";
 
 /**
- * Delivery notes ("boletas", M5). Week 2 stores drafts; confirming (number, ledger, stock) and the
- * return and campaign-transfer types arrive in week 3 on these same tables.
+ * Delivery notes ("boletas", M5): drafts are edited freely; confirming gives the number and posts
+ * the debt; a confirmed note is only voided, with a reason (D6).
  */
 export const deliveryNotes = pgTable(
   "delivery_notes",
@@ -38,9 +39,25 @@ export const deliveryNotes = pgTable(
     observations: text(),
     taxInvoiceNumber: text(),
     createdBy: text().notNull(),
+    confirmedAt: timestamp({ withTimezone: true }),
+    confirmedBy: text(),
+    voidedAt: timestamp({ withTimezone: true }),
+    voidedBy: text(),
+    voidReason: text(),
     ...timestamps,
   },
-  (table) => [index().on(table.customerId), index().on(table.status, table.noteDate)],
+  (table) => [
+    index().on(table.customerId),
+    index().on(table.status, table.noteDate),
+    check(
+      "delivery_notes_confirmed_have_number",
+      sql`${table.status} = 'draft' or ${table.number} is not null`,
+    ),
+    check(
+      "delivery_notes_voided_have_reason",
+      sql`${table.status} <> 'voided' or ${table.voidReason} is not null`,
+    ),
+  ],
 );
 
 export const deliveryNoteLines = pgTable(

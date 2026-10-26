@@ -82,9 +82,9 @@ A note has a header and lines.
 - **Line:** presentation, lot, quantity, unit price in USD, line total, and a free-of-charge flag
   with its reason (`bonus` or `sample`, price 0).
 - **States:** `draft` → `confirmed` → `voided` (with reason). Only drafts can be edited.
-- **Numbering:** one gapless counter that continues the paper pad. Paper notes typed in later keep
-  their printed number; the system rejects a number that already exists. (Whether the three types
-  share the counter is still to confirm; see the glossary.)
+- **Numbering (D19):** one gapless counter, shared by the three types, given on confirmation.
+  Administration sets where it continues (the pad in use). Paper notes typed in later keep their
+  printed number; the counter skips numbers already taken and a repeated number is rejected.
 
 ### What confirming a note does
 
@@ -119,13 +119,14 @@ Rules:
 
 The **ledger** is an append-only table of entries:
 
-| Field              | Meaning                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| customer, campaign | whose debt and in which season                                                                                            |
-| date               | business date of the operation (Bolivia time)                                                                             |
-| kind               | `delivery`, `return`, `payment`, `charge`, `campaign_transfer_out`, `campaign_transfer_in`, `opening_balance`, `reversal` |
-| amount (USD)       | positive = debit (they owe more), negative = credit (they owe less)                                                       |
-| source             | the document that produced it (note, payment, charge, migration batch)                                                    |
+| Field              | Meaning                                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| customer, campaign | whose debt and in which season                                                                                         |
+| date               | business date of the operation (Bolivia time)                                                                          |
+| kind               | `delivery`, `return`, `payment`, `charge`, `campaign_transfer_out`, `campaign_transfer_in`, `opening_balance`          |
+| amount (USD)       | positive = debit (they owe more), negative = credit (they owe less)                                                    |
+| source             | the document that produced it (note, payment, charge, migration batch)                                                 |
+| reverses           | on the entries a void writes: the entry they cancel. They keep its kind, so a voided delivery nets out of "deliveries" |
 
 - **Balance** of a customer = sum of amounts; per campaign = sum filtered by campaign.
 - The **statement** keeps the columns Agrosoy uses today: deliveries, payments, returns, balance,

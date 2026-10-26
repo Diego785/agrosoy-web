@@ -14,7 +14,7 @@ export default function NotesPage({ searchParams }: PageProps<"/notes">) {
     <>
       <PageHeader
         title="Boletas"
-        description="Entregas a clientes. Por ahora se guardan como borrador; la confirmación llega la próxima semana."
+        description="Entregas a clientes. Al confirmarlas reciben su número y se cargan a la deuda del cliente."
         actions={
           <Suspense>
             <RequirePermission permission="notes.manage" fallback={null}>

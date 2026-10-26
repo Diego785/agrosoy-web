@@ -15,7 +15,14 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
     description: "Productos, presentaciones, precios de referencia y campañas.",
   },
   "notes.view": { label: "Ver boletas", description: "Buscar boletas y ver su detalle." },
-  "notes.manage": { label: "Registrar boletas", description: "Crear y editar borradores de boletas." },
+  "notes.manage": {
+    label: "Registrar boletas",
+    description: "Crear, editar y confirmar boletas.",
+  },
+  "notes.void": {
+    label: "Anular boletas",
+    description: "Anular boletas confirmadas y fijar desde qué número sigue la numeración.",
+  },
   "imports.manage": {
     label: "Importar planillas",
     description: "Subir planillas de Excel y revisar sus observaciones.",

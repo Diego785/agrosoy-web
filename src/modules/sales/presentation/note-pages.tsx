@@ -11,9 +11,11 @@ import { isDomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { getDb } from "@/shared/infrastructure/db/client";
+import { drizzleDocumentCounter } from "@/shared/infrastructure/db/document-counters";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import {
   formatDate,
+  formatDateTime,
   formatMoney,
   formatQuantity,
   formatRate,
@@ -31,10 +33,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/presentation/ui/table";
-import type { NoteStatus, NoteView } from "../application/note-ports";
+import type { NoteStatus } from "../application/note-ports";
+import { nextNoteNumber } from "../application/note-lifecycle";
 import { getNote, listNotes } from "../application/note-use-cases";
 import { drizzleNoteRepository } from "../infrastructure/drizzle-note-repository";
 import { DiscardDraftButton } from "./discard-draft-button";
+import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecycle-forms";
 import { NoteForm } from "./note-form";
 import { loadNoteFormOptions } from "./note-form-options";
 import { NOTES_PATH, editNotePath, notePath } from "./note-routes";
@@ -46,7 +50,10 @@ const STATUS_LABELS: Record<NoteStatus, string> = {
 };
 const FREE_LABELS = { bonus: "Bonificación", sample: "Muestra" } as const;
 
-const notesDeps = () => ({ notes: drizzleNoteRepository(getDb()) });
+const notesDeps = () => ({
+  notes: drizzleNoteRepository(getDb()),
+  numbering: drizzleDocumentCounter(getDb(), "delivery_note"),
+});
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 export async function NotesTable({
@@ -61,9 +68,15 @@ export async function NotesTable({
     status: status || undefined,
     page: first(params.page),
   });
+  const nextNumber = await nextNoteNumber(notesDeps(), actor);
 
   return (
     <div className="flex flex-col gap-4">
+      {can(actor, "notes.void") ? (
+        <NextNumberForm nextNumber={nextNumber} />
+      ) : (
+        <p className="text-sm text-muted-foreground">La próxima boleta será la N.º {nextNumber}.</p>
+      )}
       <form action={NOTES_PATH} className="flex gap-2">
         <NativeSelect name="status" defaultValue={status} aria-label="Estado">
           <NativeSelectOption value="">Todas</NativeSelectOption>
@@ -116,7 +129,7 @@ export async function NotesTable({
   );
 }
 
-async function loadNote(params: Promise<{ id: string }>): Promise<{ note: NoteView; canEdit: boolean }> {
+async function loadNote(params: Promise<{ id: string }>) {
   const { id } = await params;
   const actor = await requireActor();
   const note = await getNote(notesDeps(), actor, id).catch((error: unknown) => {
@@ -124,13 +137,19 @@ async function loadNote(params: Promise<{ id: string }>): Promise<{ note: NoteVi
       notFound();
     throw error;
   });
-  return { note, canEdit: note.status === "draft" && can(actor, "notes.manage") };
+  return {
+    note,
+    canEdit: note.status === "draft" && can(actor, "notes.manage"),
+    canVoid: note.status === "confirmed" && can(actor, "notes.void"),
+    actor,
+  };
 }
 
 export async function NoteDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { note, canEdit } = await loadNote(params);
+  const { note, canEdit, canVoid, actor } = await loadNote(params);
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
   const bob = ExchangeRate.parse(note.exchangeRate).toBob(total);
+  const nextNumber = canEdit ? await nextNoteNumber(notesDeps(), actor) : null;
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
@@ -146,15 +165,27 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
             </Badge>
           </p>
         </div>
-        {canEdit && (
+        {canEdit && nextNumber !== null && (
           <div className="flex gap-2">
+            <ConfirmNoteButton noteId={note.id} total={total.toDecimalString()} nextNumber={nextNumber} />
             <Link href={editNotePath(note.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Editar borrador
+              Editar
             </Link>
             <DiscardDraftButton noteId={note.id} />
           </div>
         )}
+        {canVoid && note.number !== null && <VoidNoteButton noteId={note.id} number={note.number} />}
       </header>
+
+      {note.voided && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+          <p className="font-medium">
+            Anulada el {formatDateTime(note.voided.at)}
+            {note.voided.byName && ` por ${note.voided.byName}`}
+          </p>
+          <p className="mt-1 text-muted-foreground">Motivo: {note.voided.reason}</p>
+        </div>
+      )}
 
       <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
         <Item label="Cliente">
@@ -173,6 +204,12 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
           {note.receiver.documentId && ` · CI ${note.receiver.documentId}`}
         </Item>
         <Item label="Observaciones">{note.observations}</Item>
+        {note.confirmed && (
+          <Item label="Confirmada">
+            {formatDateTime(note.confirmed.at)}
+            {note.confirmed.byName && ` por ${note.confirmed.byName}`}
+          </Item>
+        )}
       </dl>
 
       <Table>

@@ -46,6 +46,9 @@ const ACTION_LABELS: Record<string, string> = {
   "sales.create_draft": "Creó un borrador de boleta",
   "sales.update_draft": "Editó un borrador de boleta",
   "sales.discard_draft": "Descartó un borrador de boleta",
+  "sales.confirm": "Confirmó la boleta N.º",
+  "sales.void": "Anuló la boleta N.º",
+  "sales.set_next_number": "Fijó la numeración de boletas desde el N.º",
 };
 
 export async function AuditLogTable({

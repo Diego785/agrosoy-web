@@ -82,4 +82,4 @@ tables and docs, and the Spanish column in the user interface.
 | MP, SV, Agrosoil       | "Observación" column of the sales spreadsheet | What does each mean? SV rows have price 0 (free of charge?). Is Agrosoil another company? |
 | "El caso de intereses" | Meeting, 04:16                                | Do they charge late-payment interest, and how?                                            |
 | Closing a consignment  | Meeting, 04:33                                | What closes a consigned delivery: payment, a confirmation, or the end of the campaign?    |
-| Note numbering         | Paper pad                                     | Do delivery, return and transfer notes share one number sequence?                         |
+| Note numbering         | Paper pad                                     | Do delivery, return and transfer notes share one number sequence? (Built shared, D19.)    |

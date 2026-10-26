@@ -22,12 +22,14 @@ export function drizzleAuditLogReader(executor: DbExecutor): AuditLogReader {
             action: auditLog.action,
             entityType: auditLog.entityType,
             // Customers and users are looked up (a customer's payload may name a property or a
-            // receiver); other records name themselves in their payload; settings use their id.
+            // receiver); other records name themselves in their payload, documents by their
+            // number; settings use their id.
             entityLabel: sql<string | null>`coalesce(
               ${targetCustomer.name},
               ${auditLog.payload} ->> 'name',
               ${auditLog.payload} ->> 'sheetName',
               ${targetUser.name},
+              ${auditLog.payload} ->> 'number',
               case when ${auditLog.entityType} = 'role' then ${auditLog.entityId} end
             )`,
           })

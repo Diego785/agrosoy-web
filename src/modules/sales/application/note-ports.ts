@@ -32,6 +32,9 @@ export type NoteView = {
   taxInvoiceNumber: string | null;
   lines: NoteLineView[];
   createdAt: Date;
+  /** byName is null when the user no longer exists (imports run by scripts). */
+  confirmed: { at: Date; byName: string | null } | null;
+  voided: { at: Date; byName: string | null; reason: string } | null;
 };
 
 export type NoteListItem = {
@@ -51,6 +54,11 @@ export interface NoteRepository {
   /** Drafts can be discarded; confirmed notes are only voided (D6). NOT_FOUND otherwise. */
   deleteDraft(id: string): Promise<void>;
   findById(id: string): Promise<NoteView | undefined>;
+  /** Draft → confirmed with its number. INVALID_STATE if it isn't a draft; DUPLICATE if the number is taken. */
+  markConfirmed(id: string, number: number, actorId: string): Promise<void>;
+  /** Confirmed → voided. INVALID_STATE if it isn't confirmed. */
+  markVoided(id: string, reason: string, actorId: string): Promise<void>;
+  numberInUse(number: number): Promise<boolean>;
   list(query: {
     status?: NoteStatus;
     limit: number;
