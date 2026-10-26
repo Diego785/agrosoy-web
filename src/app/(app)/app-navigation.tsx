@@ -4,6 +4,7 @@ import {
   FileSpreadsheetIcon,
   HistoryIcon,
   HomeIcon,
+  PackageIcon,
   ReceiptTextIcon,
   UsersIcon,
   type LucideIcon,
@@ -20,6 +21,7 @@ type NavigationItem = { label: string; href: string; icon: LucideIcon; permissio
 const NAVIGATION: readonly NavigationItem[] = [
   { label: "Inicio", href: "/", icon: HomeIcon },
   { label: "Clientes", href: "/customers", icon: ContactIcon, permission: "customers.view" },
+  { label: "Productos", href: "/products", icon: PackageIcon, permission: "catalog.view" },
   { label: "Campañas", href: "/campaigns", icon: CalendarRangeIcon, permission: "catalog.view" },
   { label: "Estados de cuenta", href: "/statements", icon: ReceiptTextIcon, permission: "statements.view" },
   { label: "Importar planillas", href: "/imports", icon: FileSpreadsheetIcon, permission: "imports.manage" },
