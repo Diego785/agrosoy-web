@@ -35,14 +35,18 @@ inventory code. Terms follow the [glossary](glossary.md); the reasons behind the
 | M11 | Reports and notifications | `reporting`, `notifications` | read models, exports, alerts                                               |
 | M12 | Migration                 | `scripts/migration`          | spreadsheet import and reconciliation                                      |
 
-Modules talk to each other only through their `application` layer (use cases and ports), never
-by reaching into another module's tables. M5 is the main orchestrator: confirming a note calls
+Modules change each other's data only through their `application` layer (use cases and ports),
+never by writing another module's tables. Read models may join across modules (the customer list
+shows the technician's name) and foreign keys may point across them. M5 is the main orchestrator: confirming a note calls
 inventory (M8) and receivables (M7) inside one transaction.
 
 ## Customers (M2)
 
-- **Customer:** automatic `code`, name, NIT or CI, phone, zone, properties, assigned technician,
-  exchange-rate agreement (`fixed` with its rate, or `daily`), active flag.
+- **Customer:** automatic `code` (a number shown as 0042; searching "42" also finds it), name,
+  NIT or CI, phone, zone, properties, assigned technician, exchange-rate agreement (`fixed` with
+  its rate, or `daily`; a database check keeps the two consistent), active flag.
+- Administration and management edit customers; every role can look them up, and technicians see
+  their own portfolio first.
 - Names are unique after normalization (case, accents and spacing ignored; ñ kept), so the
   spreadsheet's "Proan K Rapid" / "Proan k rapid" kind of duplicate can't happen. Namesakes are
   told apart in the name itself.

@@ -1,4 +1,4 @@
-import { HomeIcon, UsersIcon, type LucideIcon } from "lucide-react";
+import { ContactIcon, HomeIcon, UsersIcon, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { getCurrentUser, requireActor } from "@/modules/identity/presentation/current-user";
 import { UserMenu } from "@/modules/identity/presentation/user-menu";
@@ -10,6 +10,7 @@ type NavigationItem = { label: string; href: string; icon: LucideIcon; permissio
 /** Only modules that already work are listed; each appears as it is delivered. */
 const NAVIGATION: readonly NavigationItem[] = [
   { label: "Inicio", href: "/", icon: HomeIcon },
+  { label: "Clientes", href: "/customers", icon: ContactIcon, permission: "customers.view" },
   { label: "Usuarios", href: "/users", icon: UsersIcon, permission: "users.manage" },
 ];
 
@@ -36,7 +37,7 @@ export async function AppNavigation() {
 export function AppNavigationSkeleton() {
   return (
     <div className="flex gap-2 p-2 md:flex-col md:p-3" aria-hidden>
-      {[0, 1].map((item) => (
+      {[0, 1, 2].map((item) => (
         <div key={item} className="h-9 w-28 animate-pulse rounded-md bg-muted md:w-full" />
       ))}
     </div>

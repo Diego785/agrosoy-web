@@ -41,4 +41,4 @@ travel-allowance module move first.
 | 0.6  | Shared kernel: `Money`, `Quantity`, `ExchangeRate`, errors, text normalization    | Done                        |
 | 0.7  | Staging on the VPS: Docker image, Caddy, backups, deploy from CI                  | Image ready; server pending |
 | 0.8  | Authentication and roles with Better Auth (M1)                                    | Done                        |
-| 0.9  | Customers as the reference module for the rest                                    | Pending                     |
+| 0.9  | Customers as the reference module for the rest                                    | Done                        |

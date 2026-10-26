@@ -3,7 +3,7 @@ import type { Role } from "@/shared/domain/role";
 import type { Actor } from "./actor";
 
 /** "<module>.<capability>". Each module adds its own as it is built. */
-export const PERMISSIONS = ["users.manage"] as const;
+export const PERMISSIONS = ["users.manage", "customers.view", "customers.manage"] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -12,10 +12,12 @@ export type Permission = (typeof PERMISSIONS)[number];
  * (discovery meeting); the matrix becomes editable from the users module later in M1.
  */
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  admin: ["users.manage"],
-  manager: ["users.manage"],
-  sales_technician: [],
-  warehouse_keeper: [],
+  admin: ["users.manage", "customers.view", "customers.manage"],
+  manager: ["users.manage", "customers.view", "customers.manage"],
+  // Every technician can look up any customer, also outside their portfolio (proposal, M7).
+  sales_technician: ["customers.view"],
+  // Warehouse keepers need the customer on delivery notes.
+  warehouse_keeper: ["customers.view"],
 };
 
 export function can(actor: Actor, permission: Permission): boolean {

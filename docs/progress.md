@@ -5,6 +5,14 @@ up without re-reading the whole history.
 
 ## 2026-10-25
 
+- **0.9 · Customers (M2, first part), the reference module:** register and edit customers with an
+  automatic code, NIT/CI, phone, zone, technician and exchange-rate agreement; zones page; search
+  by name, code or NIT/CI with a zone filter and pagination; technicians see their portfolio first
+  and have read-only access. Tested in the browser as administrator and as technician. Fixed on
+  the way: customers without a technician sorted before the technician's own (NULL ordering).
+  **Next in M2 (week 2):** properties, authorized receivers, portfolio history, deactivation.
+- **Next steps:** 0.7 part 2 (staging on the VPS, needs access), the account-statement preview
+  with spreadsheet data, and the rest of M1 (editable permissions, audit-log viewer).
 - **0.8 · Authentication and users (M1, first part):** Better Auth with username sign-in, login page,
   sign-out, `requireActor()` on every loader and action, proxy redirect without a session cookie,
   navigation filtered by permission, users page (create with a temporary password, reset password,
