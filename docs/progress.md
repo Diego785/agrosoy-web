@@ -3,6 +3,39 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-10-26 (week 3, branch `feature/week-3`)
+
+Branched from `feature/week-2` (not merged into `main` yet). Everything planned for week 3 is
+built, each part tested in integration tests and in the browser:
+
+- **Ledger and confirmation (M5, M7):** append-only customer ledger (a trigger rejects UPDATE and
+  DELETE); confirming a note gives the next number (row-locked counter, D19) or keeps a paper
+  note's printed number and debits its total; voiding (`notes.void`) reverses it on the void date.
+  Notes are confirmed without stock until inventory exists (D18).
+- **Collections (M6):** payments in US$ or Bs with their rate, receipt numbers, applied to a note,
+  a campaign or the oldest debt first, overpayments kept as credit (D20); cash notes are confirmed
+  with their payment; charges; the day's exchange rate, prefilled in notes and payments
+  (`payments.manage`, "Cobranzas").
+- **Account statement (M7):** portfolio and customer statements from the ledger with the
+  spreadsheet's columns, per-campaign totals and aging (FIFO, 30/60/90/+90 days); spreadsheet
+  previews moved to `/statements/preview`.
+- **PDFs (D21):** delivery notes, receipts and customer statements with `@react-pdf/renderer`,
+  with a "Compartir" button for the phone's share sheet.
+- **Returns and campaign transfers (M5):** against the lines of a confirmed delivery note, up to
+  what is left of each line; returns credit the original price, transfers move the debt to the
+  new campaign at the new price.
+- **Migration of sales and payments (M12, D22):** imported notes keep the sheet's numbers; the
+  summary's payments go in on a cut-off date; reconciliation per customer; undo. With the real
+  `ventas.xlsx` the 15 customers reconcile exactly (US$ 31.932,00) once all its products exist.
+- Tests: 200 (unit and integration). CI runs on the branch.
+
+**Next:** week 4 — warehouses, lots, kardex, transfers and counts (M8): confirming a note will
+also take stock (D18), and lots arrive in note lines. Before go-live: Agrosoy's answers on note
+numbering, MP/SV/Agrosoil and interest; the staging server; campaign closing (M4).
+
+**Known debt:** a few repositories run queries in parallel (`Promise.all`) on one transaction's
+client, which `pg` warns will stop working in pg 9; sequence them when touching that code.
+
 ## 2026-10-26 (week 2, branch `feature/week-2`)
 
 - **Everything planned for week 2 is built** (ahead of the 2–6 Nov schedule), on its own branch
