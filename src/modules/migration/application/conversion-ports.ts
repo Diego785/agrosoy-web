@@ -18,7 +18,7 @@ export type ExistingProduct = {
   id: string;
   name: string;
   /** Content as stored ("20.000") and unit. */
-  presentations: { content: string; unit: PresentationSpec["unit"] }[];
+  presentations: { id: string; content: string; unit: PresentationSpec["unit"] }[];
 };
 
 export interface ProductRegistry {
@@ -33,4 +33,8 @@ export interface ProductRegistry {
 
 export interface TechnicianOptions {
   listActive(): Promise<{ id: string; name: string }[]>;
+}
+
+export interface CampaignLookup {
+  find(id: string): Promise<{ id: string; status: "open" | "closed" } | undefined>;
 }

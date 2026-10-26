@@ -212,3 +212,18 @@ Text only, Helvetica, until Agrosoy provides its logo.
 
 **Why:** it renders in the Node server already in the Docker image, with no headless browser to
 install or keep patched on the VPS, and Next.js already treats it as an external server package.
+
+## D22 · Spreadsheet sales become imported notes; undated payments become ledger entries
+
+**Decision:** converting a sheet's sales creates confirmed delivery notes marked `imported`, with
+the sheet's note number in `sheet_number` (the system's `number` stays empty), and posts their
+debt. The summary's payments and returns, which have no document and no date, are posted as
+ledger entries whose source is the import batch, dated on a cut-off date administration chooses.
+No payment records or receipts are invented. A converted sheet can't be re-imported until the
+conversion is undone, which voids the notes and reverses the entries.
+
+**Why:** the sheets reuse note numbers on different dates and their pads overlap the numbering
+the system continues (D19), so imported numbers can't share the unique column. Inventing dates,
+payment methods or receipt numbers would put false facts in the ledger; a dated cut-off entry is
+honest and still reconciles to the cent. Undo keeps the ledger append-only (D6) while letting
+administration fix a sheet and convert it again before go-live.

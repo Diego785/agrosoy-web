@@ -10,7 +10,7 @@ Sales, accounts receivable and warehouse inventory system for Agrosoy (Bolivia).
 - `docs/progress.md`: where the last session stopped.
 - `docs/domain-model.md`: business rules for notes, collections, the ledger and inventory.
 - `docs/glossary.md`: the English name for every Spanish business term. Use it; don't invent synonyms.
-- `docs/decisions.md`: why things are built this way (D1–D21). Add a decision instead of quietly deviating.
+- `docs/decisions.md`: why things are built this way (D1–D22). Add a decision instead of quietly deviating.
 
 ## Working method
 
@@ -34,7 +34,8 @@ corepack pnpm db:migrate     # apply pending migrations
 corepack pnpm users:first-admin --name "…" --username …  # first administrator of an empty database
 ```
 
-Stop a server you started by the PID listening on its port, never by process name.
+Stop a server you started by the PID listening on its port, never by process name. Don't run
+`next build` while `next dev` is running: the shared `.next` folder makes the dev page reload in a loop.
 
 ## Language
 

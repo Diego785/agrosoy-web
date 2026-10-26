@@ -27,6 +27,8 @@ export function describeLine(line: StatementLineView): { text: string; note: str
     };
   }
   if (line.kind === "charge") return { text: `Cargo: ${line.description}`, note: null };
+  if (line.fromSheet && line.kind === "payment") return { text: "Pagos según la planilla", note: null };
+  if (line.fromSheet && line.kind === "return") return { text: "Devoluciones según la planilla", note: null };
   if (line.transfer === "out") return { text: "Pasa a la nueva campaña", note: null };
   if (line.transfer === "in") return { text: "Viene de la campaña anterior", note: null };
   if (!line.description && line.kind === "payment") {

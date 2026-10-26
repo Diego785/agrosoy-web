@@ -60,3 +60,19 @@ export function draftNote(input: DraftNote): DraftNote {
   }
   return input;
 }
+
+/**
+ * A sale brought in from a spreadsheet (M12): already confirmed, with the sheet's number (which
+ * may repeat) and its lines as written, a zero price included, since nothing says why.
+ */
+export type ImportedNote = {
+  importBatchId: string;
+  sheetNumber: number | null;
+  noteDate: string;
+  customerId: string;
+  campaignId: string;
+  exchangeRate: ExchangeRate;
+  receiverName: string;
+  observations: string | null;
+  lines: { presentationId: string; quantity: Quantity; unitPrice: Money; total: Money }[];
+};

@@ -6,7 +6,8 @@ import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
 import { convertCustomers, convertProducts } from "../application/conversion";
-import { conversionDeps } from "../infrastructure/conversion-adapters";
+import { convertSales, undoSalesConversion, type SkippedRow } from "../application/sales-conversion";
+import { conversionDeps, salesConversionDeps } from "../infrastructure/conversion-adapters";
 
 export async function convertCustomersAction(
   batchId: string,
@@ -30,6 +31,34 @@ export async function convertProductsAction(
     const actor = await requireActor();
     const result = await withTransaction((tx) =>
       convertProducts(conversionDeps(tx, actor), actor, { batchId, decisions }),
+    );
+    revalidatePath("/", "layout");
+    return result;
+  });
+}
+
+export async function convertSalesAction(input: {
+  batchId: string;
+  campaignId: string;
+  cutoffDate: string;
+  defaultExchangeRate: string;
+}): Promise<ActionResult<{ notes: number; entries: number; skipped: SkippedRow[] }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => convertSales(salesConversionDeps(tx, actor), actor, input));
+    revalidatePath("/", "layout");
+    return result;
+  });
+}
+
+export async function undoSalesConversionAction(input: {
+  batchId: string;
+  reason: string;
+}): Promise<ActionResult<{ voidedNotes: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) =>
+      undoSalesConversion(salesConversionDeps(tx, actor), actor, input),
     );
     revalidatePath("/", "layout");
     return result;

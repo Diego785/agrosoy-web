@@ -1,6 +1,6 @@
 import type { ContentUnit, SaleUnit } from "@/modules/catalog/domain/product";
 import type { Season } from "@/modules/campaigns/domain/campaign";
-import type { DraftNote, FreeReason, PaymentTerms } from "../domain/delivery-note";
+import type { DraftNote, FreeReason, ImportedNote, PaymentTerms } from "../domain/delivery-note";
 import type { FollowUpNote, NoteType, OriginalLine } from "../domain/follow-up";
 
 export type NoteStatus = "draft" | "confirmed" | "voided";
@@ -23,6 +23,8 @@ export type NoteView = {
   type: NoteType;
   status: NoteStatus;
   number: number | null;
+  /** Brought in from a spreadsheet, with the number the sheet gave it. */
+  imported: { sheetNumber: number | null } | null;
   /** Returns and transfers: the delivery note they act on. */
   original: { id: string; number: number | null; campaign: { season: Season; year: number } } | null;
   noteDate: string;
@@ -79,6 +81,9 @@ export interface NoteRepository {
   followUps(noteId: string): Promise<FollowUpItem[]>;
   /** Saves a return or transfer as confirmed, with its number. DUPLICATE if the number is taken. */
   insertFollowUp(note: FollowUpNote, number: number, actorId: string): Promise<{ id: string }>;
+  insertImported(note: ImportedNote, actorId: string): Promise<{ id: string }>;
+  /** Confirmed notes brought in from one import batch. */
+  importedFrom(batchId: string): Promise<{ id: string }[]>;
   list(query: {
     status?: NoteStatus;
     customerId?: string;

@@ -10,7 +10,7 @@ import { Quantity } from "@/shared/domain/quantity";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
 import type { NoteRepository } from "../application/note-ports";
-import { lineTotal, type DraftNote } from "../domain/delivery-note";
+import { lineTotal, type DraftNote, type ImportedNote } from "../domain/delivery-note";
 import { deliveryNoteLines, deliveryNotes } from "./notes.tables";
 
 const NOTE_NUMBER_KEY = "delivery_notes_number_unique";
@@ -124,6 +124,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         type: note.type,
         status: note.status,
         number: note.number,
+        imported: note.imported ? { sheetNumber: note.sheetNumber } : null,
         original:
           note.originalNoteId && row.originalCampaign
             ? { id: note.originalNoteId, number: row.originalNumber, campaign: row.originalCampaign }
@@ -274,6 +275,48 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
       return row;
     },
 
+    async insertImported(note: ImportedNote, actorId) {
+      const [row] = await executor
+        .insert(deliveryNotes)
+        .values({
+          status: "confirmed",
+          type: "delivery",
+          imported: true,
+          importBatchId: note.importBatchId,
+          sheetNumber: note.sheetNumber,
+          noteDate: note.noteDate,
+          customerId: note.customerId,
+          campaignId: note.campaignId,
+          paymentTerms: "credit",
+          exchangeRate: note.exchangeRate.toDecimalString(),
+          receiverName: note.receiverName,
+          observations: note.observations,
+          createdBy: actorId,
+          confirmedAt: new Date(),
+          confirmedBy: actorId,
+        })
+        .returning({ id: deliveryNotes.id });
+      if (!row) throw new Error("Insert returned no note");
+      await executor.insert(deliveryNoteLines).values(
+        note.lines.map((line, position) => ({
+          noteId: row.id,
+          position,
+          presentationId: line.presentationId,
+          quantity: line.quantity.toDecimalString(),
+          unitPrice: line.unitPrice.toDecimalString(),
+          total: line.total.toDecimalString(),
+        })),
+      );
+      return row;
+    },
+
+    async importedFrom(batchId) {
+      return executor
+        .select({ id: deliveryNotes.id })
+        .from(deliveryNotes)
+        .where(and(eq(deliveryNotes.importBatchId, batchId), eq(deliveryNotes.status, "confirmed")));
+    },
+
     async list({ status, customerId, limit, offset }) {
       const where = and(
         status ? eq(deliveryNotes.status, status) : undefined,
@@ -293,7 +336,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
             id: deliveryNotes.id,
             type: deliveryNotes.type,
             status: deliveryNotes.status,
-            number: deliveryNotes.number,
+            number: sql<number | null>`coalesce(${deliveryNotes.number}, ${deliveryNotes.sheetNumber})`,
             noteDate: deliveryNotes.noteDate,
             customerName: customers.name,
             paymentTerms: deliveryNotes.paymentTerms,

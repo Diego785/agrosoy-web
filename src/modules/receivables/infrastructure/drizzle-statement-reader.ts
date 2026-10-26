@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
 import { charges, payments } from "@/modules/collections/infrastructure/collections.tables";
@@ -72,7 +72,8 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
         executor
           .select({
             id: deliveryNotes.id,
-            number: deliveryNotes.number,
+            // Imported notes show the number the spreadsheet gave them.
+            number: sql<number | null>`coalesce(${deliveryNotes.number}, ${deliveryNotes.sheetNumber})`,
             exchangeRate: deliveryNotes.exchangeRate,
             observations: deliveryNotes.observations,
           })

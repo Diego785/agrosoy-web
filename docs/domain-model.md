@@ -216,16 +216,27 @@ Each sheet with a sales table becomes an _import batch_ (D17):
 - The account-statement preview reads these batches and renders with the same components the
   ledger-based statement (M7) will use.
 
-**Conversion (weeks 2–3, after Agrosoy answers the open questions):**
+**Conversion (weeks 2–3), on the "Pasar al sistema" page of each sheet, in three steps:**
 
-- Customers and products are normalized and receive codes.
-- Spreadsheet sales rows become confirmed notes marked `imported`, with their original numbers,
-  and spreadsheet payments become payments, so statements show real dated detail. Imported
-  notes post ledger entries but **no** stock movements.
+1. Customers are registered (with the technician the sheet's name suggests).
+2. Products and presentations are created once administration chooses their line and how they
+   are charged.
+3. Sales and payments (D22): each sale (customer + written number + date) becomes a confirmed
+   delivery note marked imported, keeping the sheet's number apart from the system's numbering;
+   the returns table (or the summary's "Dev.") and the summary's payments become ledger entries
+   of the import batch, dated on a cut-off date chosen by administration because the sheet
+   doesn't date them. Everything goes to the campaign chosen for the sheet. Rows whose customer
+   or product isn't in the system are skipped and listed, never guessed. Imported notes post
+   ledger entries but **no** stock movements, and can later take returns and transfers.
+
+- Converting sales is undone by voiding the imported notes and reversing the batch's entries;
+  only then can the sheet be imported again.
+- The reconciliation compares, per customer, the debt the sheet computes (lines recomputed,
+  payments and returns from the summary) with what the conversion recorded, and lists the skipped
+  rows. With the real `ventas.xlsx` and all products converted, the 15 customers match exactly
+  (US$ 31.932,00). The sheet's own "Total" formula leaves out its last two rows (US$ 1.920), which
+  the review page reports as a finding.
 - When a campaign's detail can't be reconstructed, the customer gets one `opening_balance` entry
-  for it instead.
+  for it instead (not built yet; no sheet has needed it).
 - Stock starts from a physical count per warehouse and lot (`opening` movements), not from the
   spreadsheets.
-- a reconciliation report compares each customer's debt with the spreadsheet. The current sales
-  sheet's total formula leaves out its last two rows (US$ 1.920), so differences are expected and
-  must be explained to administration before go-live.

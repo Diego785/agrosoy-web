@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   date,
   index,
@@ -35,6 +36,11 @@ export const deliveryNotes = pgTable(
     number: integer().unique(),
     /** Returns and campaign transfers: the delivery note they act on. */
     originalNoteId: uuid().references((): AnyPgColumn => deliveryNotes.id),
+    /** Notes brought in from a spreadsheet (M12): confirmed without a system number. */
+    imported: boolean().notNull().default(false),
+    importBatchId: uuid(),
+    /** The number written in the spreadsheet, which may repeat; never the system's numbering. */
+    sheetNumber: integer(),
     noteDate: date({ mode: "string" }).notNull(),
     customerId: uuid()
       .notNull()
@@ -69,8 +75,9 @@ export const deliveryNotes = pgTable(
     ),
     check(
       "delivery_notes_confirmed_have_number",
-      sql`${table.status} = 'draft' or ${table.number} is not null`,
+      sql`${table.status} = 'draft' or ${table.number} is not null or ${table.imported}`,
     ),
+    index().on(table.importBatchId),
     check(
       "delivery_notes_voided_have_reason",
       sql`${table.status} <> 'voided' or ${table.voidReason} is not null`,

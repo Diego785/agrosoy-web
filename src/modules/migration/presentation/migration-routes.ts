@@ -7,3 +7,7 @@ export function importReviewPath(batchId: string): string {
 export function importConversionPath(batchId: string): string {
   return `${importReviewPath(batchId)}/convert`;
 }
+
+export function reconciliationPath(batchId: string): string {
+  return `${importReviewPath(batchId)}/reconciliation`;
+}

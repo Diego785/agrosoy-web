@@ -20,7 +20,7 @@ export function ImportForm() {
       setError(undefined);
       const result = await importWorkbookAction(data);
       if (!result.ok) {
-        setError(errorMessage(result.error));
+        setError(result.error.fieldErrors?.file?.[0] ?? errorMessage(result.error));
         return;
       }
       const { sheets, skippedSheets } = result.data;

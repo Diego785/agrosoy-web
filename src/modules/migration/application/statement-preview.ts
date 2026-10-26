@@ -36,7 +36,7 @@ export async function portfolioStatementFromImport(
   const customers = customerNames(lines, summary).map(([key, name]) => ({
     key,
     name,
-    totals: totalsFor(key, lines, summary),
+    totals: sheetTotalsFor(key, lines, summary),
   }));
   customers.sort((a, b) => a.name.localeCompare(b.name, "es"));
   const totals = addTotals(customers.map((customer) => customer.totals));
@@ -72,11 +72,16 @@ export async function customerStatementFromImport(
     source: sourceOf(batch),
     customerName: name,
     lines: statementLines(lines, summary),
-    totals: totalsView(totalsFor(customerKey, lines, summary)),
+    totals: totalsView(sheetTotalsFor(customerKey, lines, summary)),
   };
 }
 
-function totalsFor(key: string, lines: StoredLine[], summary: StoredSummaryRow[]): StatementTotals {
+/** A customer's columns as the sheet computes them: lines recomputed, payments from the summary. */
+export function sheetTotalsFor(
+  key: string,
+  lines: StoredLine[],
+  summary: StoredSummaryRow[],
+): StatementTotals {
   const own = lines.filter((line) => line.customerKey === key);
   const ownSummary = summary.filter((row) => row.customerKey === key);
   const returnLines = own.filter((line) => line.kind === "return");

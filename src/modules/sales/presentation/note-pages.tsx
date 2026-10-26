@@ -174,7 +174,12 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">
-            {TYPE_TITLES[note.type]} {note.number ? `N.º ${note.number}` : "(borrador)"}
+            {TYPE_TITLES[note.type]}{" "}
+            {note.imported
+              ? `N.º ${note.imported.sheetNumber ?? "—"} (de planilla)`
+              : note.number
+                ? `N.º ${note.number}`
+                : "(borrador)"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {formatDate(note.noteDate)} · Campaña {campaignLabel(note.campaign)} ·{" "}

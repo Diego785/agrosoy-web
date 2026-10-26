@@ -126,6 +126,7 @@ export async function customerStatement(
       observation: null,
       receipt: null,
       transfer: null,
+      fromSheet: entry.source.type === "import_batch",
     } satisfies Partial<StatementLineView>;
 
     if (entry.source.type === "delivery_note") {
