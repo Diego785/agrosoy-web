@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  date,
+  index,
+  integer,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations } from "@/modules/catalog/infrastructure/catalog.tables";
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -22,6 +33,8 @@ export const deliveryNotes = pgTable(
       .default("delivery"),
     /** Assigned on confirmation, continuing the paper pad; unique once set. */
     number: integer().unique(),
+    /** Returns and campaign transfers: the delivery note they act on. */
+    originalNoteId: uuid().references((): AnyPgColumn => deliveryNotes.id),
     noteDate: date({ mode: "string" }).notNull(),
     customerId: uuid()
       .notNull()
@@ -49,6 +62,11 @@ export const deliveryNotes = pgTable(
   (table) => [
     index().on(table.customerId),
     index().on(table.status, table.noteDate),
+    index().on(table.originalNoteId),
+    check(
+      "delivery_notes_follow_ups_have_original",
+      sql`(${table.type} = 'delivery') = (${table.originalNoteId} is null)`,
+    ),
     check(
       "delivery_notes_confirmed_have_number",
       sql`${table.status} = 'draft' or ${table.number} is not null`,
@@ -75,6 +93,8 @@ export const deliveryNoteLines = pgTable(
     unitPrice: numeric({ precision: 14, scale: 2 }).notNull(),
     freeOfCharge: text({ enum: ["bonus", "sample"] }),
     total: numeric({ precision: 14, scale: 2 }).notNull(),
+    /** Returns and campaign transfers: the delivered line they give back or move. */
+    originalLineId: uuid().references((): AnyPgColumn => deliveryNoteLines.id),
   },
-  (table) => [index().on(table.noteId)],
+  (table) => [index().on(table.noteId), index().on(table.originalLineId)],
 );

@@ -125,6 +125,7 @@ export async function customerStatement(
       exchangeRate: null,
       observation: null,
       receipt: null,
+      transfer: null,
     } satisfies Partial<StatementLineView>;
 
     if (entry.source.type === "delivery_note") {
@@ -135,14 +136,19 @@ export async function customerStatement(
         exchangeRate: note?.exchangeRate ?? null,
         document,
       };
-      // A voided note shows as one line that cancels it; a confirmed one shows its products.
-      if (isReversal || !note || entry.kind !== "delivery") {
+      if (entry.kind === "campaign_transfer_out" || entry.kind === "campaign_transfer_in") {
+        const transfer = entry.kind === "campaign_transfer_out" ? "out" : "in";
+        return [{ ...base, ...noteFields, kind: "other", amount: signed(entry), transfer }];
+      }
+      // A voided note shows as one line that cancels it; deliveries and returns show their products.
+      if (isReversal || !note || (entry.kind !== "delivery" && entry.kind !== "return")) {
         return [{ ...base, ...noteFields, kind: kindOf(entry), amount: signed(entry) }];
       }
+      const kind = entry.kind;
       return note.lines.map((line, index) => ({
         ...base,
         ...noteFields,
-        kind: "delivery",
+        kind,
         description: line.productName,
         packaging: { content: line.content, unit: line.unit },
         quantity: line.quantity,

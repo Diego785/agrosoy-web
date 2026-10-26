@@ -126,6 +126,12 @@ export async function voidNote(
   const { reason } = validateInput(voidNoteSchema, input);
   const note = await existingNote(deps.notes, id);
   if (note.status !== "confirmed") throw new DomainError("INVALID_STATE", { status: note.status });
+  // Their credits would stay after the delivery is cancelled, so they go first.
+  if ((await deps.notes.followUps(id)).some((followUp) => followUp.status === "confirmed")) {
+    throw new DomainError("VALIDATION_FAILED", {
+      fieldErrors: { reason: ["Tiene devoluciones o traspasos confirmados; anúlalos primero."] },
+    });
+  }
 
   await deps.notes.markVoided(id, reason, actor.id);
   await reverseInLedger(deps.ledger, { type: "delivery_note", id }, deps.today(), actor.id);

@@ -5,11 +5,14 @@ import { requireActor } from "@/modules/identity/presentation/current-user";
 import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
+import { registerReturn, registerTransfer } from "../application/note-follow-ups";
 import { confirmNote, setNextNoteNumber, voidNote } from "../application/note-lifecycle";
 import type {
   ConfirmNoteInput,
   DraftNoteInput,
   NextNoteNumberInput,
+  ReturnInput,
+  TransferInput,
   VoidNoteInput,
 } from "../application/note-schemas";
 import { createDraftNote, discardDraftNote, updateDraftNote } from "../application/note-use-cases";
@@ -73,5 +76,29 @@ export async function setNextNoteNumberAction(input: NextNoteNumberInput): Promi
     await withTransaction((tx) => setNextNoteNumber(deps(tx), actor, input));
     revalidatePath(NOTES_PATH);
     return null;
+  });
+}
+
+export async function registerReturnAction(
+  noteId: string,
+  input: ReturnInput,
+): Promise<ActionResult<{ id: string; number: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const registered = await withTransaction((tx) => registerReturn(deps(tx), actor, noteId, input));
+    revalidatePath("/", "layout");
+    return registered;
+  });
+}
+
+export async function registerTransferAction(
+  noteId: string,
+  input: TransferInput,
+): Promise<ActionResult<{ id: string; number: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const registered = await withTransaction((tx) => registerTransfer(deps(tx), actor, noteId, input));
+    revalidatePath("/", "layout");
+    return registered;
   });
 }

@@ -100,8 +100,15 @@ A note has a header and lines.
 Rules:
 
 - A delivery cannot take more than the warehouse + lot has, and warns when the lot is expired.
-- A return cannot exceed what that note delivered minus what was already returned.
-- A campaign transfer cannot exceed the customer's consigned quantity in the old campaign.
+- Returns and campaign transfers are made against the lines of one confirmed delivery note and
+  are saved already confirmed (with their number, or the printed one). Each line can be returned
+  or transferred only up to what is left of it: delivered minus what confirmed returns and
+  transfers already took. This is the customer's consigned quantity of that delivery.
+- A return is credited in the original note's campaign, dated the day of the return.
+- A transfer is dated in the new campaign (a different, open one); it credits the old campaign at
+  the delivered price and charges the new one at the new price (suggested from the new
+  campaign's reference prices). Free lines owe nothing, so they are not transferred.
+- A delivery note with confirmed returns or transfers is voided only after them.
 
 ## Collections (M6)
 

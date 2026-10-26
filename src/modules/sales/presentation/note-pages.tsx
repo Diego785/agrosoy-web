@@ -34,6 +34,8 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import type { NoteStatus } from "../application/note-ports";
+import { listFollowUps } from "../application/note-follow-ups";
+import type { NoteType } from "../domain/follow-up";
 import { nextNoteNumber } from "../application/note-lifecycle";
 import { getNote, listNotes } from "../application/note-use-cases";
 import { DiscardDraftButton } from "./discard-draft-button";
@@ -41,7 +43,14 @@ import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecy
 import { NoteForm } from "./note-form";
 import { noteDeps } from "./note-deps";
 import { loadNoteFormOptions } from "./note-form-options";
-import { NOTES_PATH, editNotePath, notePath, notePdfPath } from "./note-routes";
+import {
+  NOTES_PATH,
+  editNotePath,
+  notePath,
+  notePdfPath,
+  returnNotePath,
+  transferNotePath,
+} from "./note-routes";
 
 const STATUS_LABELS: Record<NoteStatus, string> = {
   draft: "Borrador",
@@ -49,6 +58,11 @@ const STATUS_LABELS: Record<NoteStatus, string> = {
   voided: "Anulada",
 };
 const FREE_LABELS = { bonus: "Bonificación", sample: "Muestra" } as const;
+export const TYPE_TITLES: Record<NoteType, string> = {
+  delivery: "Boleta de entrega",
+  return: "Devolución",
+  campaign_transfer: "Traspaso de campaña",
+};
 
 const notesDeps = () => noteDeps(getDb());
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
@@ -106,6 +120,9 @@ export async function NotesTable({
                   <Link href={notePath(note.id)} className="font-medium hover:underline">
                     {note.number ?? "Sin número"}
                   </Link>
+                  {note.type !== "delivery" && (
+                    <span className="ml-2 text-xs text-muted-foreground">{TYPE_TITLES[note.type]}</span>
+                  )}
                 </TableCell>
                 <TableCell className="tabular-nums">{formatDate(note.noteDate)}</TableCell>
                 <TableCell>{note.customerName}</TableCell>
@@ -147,13 +164,17 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
   const bob = ExchangeRate.parse(note.exchangeRate).toBob(total);
   const nextNumber = canEdit ? await nextNoteNumber(notesDeps(), actor) : null;
+  const isDelivery = note.type === "delivery";
+  const followUps =
+    isDelivery && note.status !== "draft" ? await listFollowUps(notesDeps(), actor, note.id) : [];
+  const canFollowUp = isDelivery && note.status === "confirmed" && can(actor, "notes.manage");
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">
-            Boleta de entrega {note.number ? `N.º ${note.number}` : "(borrador)"}
+            {TYPE_TITLES[note.type]} {note.number ? `N.º ${note.number}` : "(borrador)"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {formatDate(note.noteDate)} · Campaña {campaignLabel(note.campaign)} ·{" "}
@@ -161,6 +182,15 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               {STATUS_LABELS[note.status]}
             </Badge>
           </p>
+          {note.original && (
+            <p className="mt-1 text-sm">
+              Sobre la{" "}
+              <Link href={notePath(note.original.id)} className="font-medium hover:underline">
+                boleta N.º {note.original.number}
+              </Link>{" "}
+              de la campaña {campaignLabel(note.original.campaign)}
+            </p>
+          )}
         </div>
         {canEdit && nextNumber !== null && (
           <div className="flex gap-2">
@@ -177,7 +207,23 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
             <DiscardDraftButton noteId={note.id} />
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {canFollowUp && (
+            <>
+              <Link
+                href={returnNotePath(note.id)}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Devolución
+              </Link>
+              <Link
+                href={transferNotePath(note.id)}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Pasar de campaña
+              </Link>
+            </>
+          )}
           <PdfActions
             href={notePdfPath(note.id)}
             fileName={note.number ? `boleta-${note.number}.pdf` : "boleta-borrador.pdf"}
@@ -204,10 +250,10 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
         </Item>
         <Item label="Propiedad">{note.property?.name}</Item>
         <Item label="Técnico de venta">{note.technician?.name}</Item>
-        <Item label="Pago">{note.paymentTerms === "cash" ? "Contado" : "Crédito"}</Item>
+        {isDelivery && <Item label="Pago">{note.paymentTerms === "cash" ? "Contado" : "Crédito"}</Item>}
         <Item label="Tipo de cambio">{formatRate(note.exchangeRate)} Bs por US$</Item>
-        <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>
-        <Item label="Recibe">
+        {isDelivery && <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>}
+        <Item label={note.type === "return" ? "Devuelve" : "Recibe"}>
           {note.receiver.name}
           {note.receiver.relationship && ` (${note.receiver.relationship})`}
           {note.receiver.documentId && ` · CI ${note.receiver.documentId}`}
@@ -258,6 +304,23 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
           </TableRow>
         </TableFooter>
       </Table>
+
+      {followUps.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium">Devoluciones y traspasos</h3>
+          <ul className="flex flex-col gap-1 text-sm">
+            {followUps.map((followUp) => (
+              <li key={followUp.id}>
+                <Link href={notePath(followUp.id)} className="hover:underline">
+                  {TYPE_TITLES[followUp.type]} N.º {followUp.number}
+                </Link>{" "}
+                · {formatDate(followUp.noteDate)}
+                {followUp.status === "voided" && " · anulada"}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

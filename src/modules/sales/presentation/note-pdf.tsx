@@ -15,6 +15,11 @@ import { getNote } from "../application/note-use-cases";
 import { noteDeps } from "./note-deps";
 
 const FREE_LABELS = { bonus: "bonificación", sample: "muestra" } as const;
+const PDF_TITLES = {
+  delivery: "BOLETA DE ENTREGA",
+  return: "DEVOLUCIÓN",
+  campaign_transfer: "TRASPASO DE CAMPAÑA",
+} as const;
 
 /** The delivery note as printed and signed: products, totals and who received them. */
 export function NotePdf({ note }: { note: NoteView }) {
@@ -30,10 +35,15 @@ export function NotePdf({ note }: { note: NoteView }) {
 
   return (
     <PdfPage
-      title={note.number ? `BOLETA DE ENTREGA N.º ${note.number}` : "BOLETA DE ENTREGA"}
+      title={`${PDF_TITLES[note.type]}${note.number ? ` N.º ${note.number}` : ""}`}
       subtitle={`${formatDate(note.noteDate)} · Campaña ${campaignLabel(note.campaign)}`}
       stamp={note.status === "voided" ? "ANULADA" : note.status === "draft" ? "BORRADOR (SIN VALIDEZ)" : null}
     >
+      {note.original && (
+        <Text style={{ marginBottom: 8 }}>
+          Sobre la boleta N.º {note.original.number} de la campaña {campaignLabel(note.original.campaign)}
+        </Text>
+      )}
       <PdfFields
         items={[
           ["Cliente", `${formatCustomerCode(note.customer.code)} · ${note.customer.name}`],
@@ -77,11 +87,11 @@ export function NotePdf({ note }: { note: NoteView }) {
       )}
       <View style={pdfStyles.signatures}>
         <View style={pdfStyles.signature}>
-          <Text>Entregué conforme</Text>
+          <Text>{note.type === "return" ? "Recibí conforme" : "Entregué conforme"}</Text>
           <Text style={pdfStyles.muted}>{note.technician?.name ?? "Agrosoy"}</Text>
         </View>
         <View style={pdfStyles.signature}>
-          <Text>Recibí conforme</Text>
+          <Text>{note.type === "return" ? "Devolví conforme" : "Recibí conforme"}</Text>
           <Text style={pdfStyles.muted}>{receiver}</Text>
         </View>
       </View>

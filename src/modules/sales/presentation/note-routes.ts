@@ -12,3 +12,11 @@ export function notePdfPath(noteId: string): string {
 export function editNotePath(noteId: string): string {
   return `${notePath(noteId)}/edit`;
 }
+
+export function returnNotePath(noteId: string): string {
+  return `${notePath(noteId)}/return`;
+}
+
+export function transferNotePath(noteId: string): string {
+  return `${notePath(noteId)}/transfer`;
+}

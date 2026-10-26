@@ -57,6 +57,8 @@ export type StatementLineView = {
   receipt: { number: number; method: PaymentMethod; currency: Currency; amount: string } | null;
   /** The entry a void wrote to cancel a document. */
   isReversal: boolean;
+  /** Campaign transfers: the credit in the old campaign ("out") or the charge in the new one ("in"). */
+  transfer: "out" | "in" | null;
   document: { type: "note" | "payment" | "charge"; id: string } | null;
 };
 
@@ -111,6 +113,7 @@ export function plainLine(
     observation: null,
     receipt: null,
     isReversal: false,
+    transfer: null,
     document: null,
     ...line,
   };

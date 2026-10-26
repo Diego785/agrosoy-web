@@ -122,3 +122,64 @@ export const nextNoteNumberSchema = z.object({
 export type ConfirmNoteInput = z.input<typeof confirmNoteSchema>;
 export type VoidNoteInput = z.input<typeof voidNoteSchema>;
 export type NextNoteNumberInput = z.input<typeof nextNoteNumberSchema>;
+
+/** Empty counts as zero: a follow-up form lists every line and the user fills the ones that apply. */
+const optionalDecimal = (decimals: number, message: string) =>
+  z
+    .string()
+    .trim()
+    .transform((value) => (value === "" ? "0" : value.replace(",", ".")))
+    .pipe(z.string().regex(new RegExp(`^\\d+(\\.\\d{1,${decimals}})?$`), { error: message }));
+
+const paperNumberField = z.union([z.literal(""), noteNumber("Escribe el número impreso, por ejemplo 1250.")]);
+
+export const returnSchema = z.object({
+  noteDate: z.iso.date({ error: "Elige la fecha." }),
+  /** Who brought the product back. */
+  receiverName: z
+    .string()
+    .trim()
+    .min(2, { error: "Escribe quién devuelve." })
+    .max(120, { error: "Admite hasta 120 caracteres." }),
+  observations: optionalText(500),
+  paperNumber: paperNumberField,
+  lines: z
+    .array(
+      z.object({
+        originalLineId: z.uuid(),
+        quantity: optionalDecimal(3, "Escribe la cantidad, por ejemplo 20 o 2.5."),
+      }),
+    )
+    .min(1),
+});
+
+export const transferSchema = z
+  .object({
+    noteDate: z.iso.date({ error: "Elige la fecha." }),
+    exchangeRate: decimal(4, "Escribe el tipo de cambio, por ejemplo 6.96."),
+    observations: optionalText(500),
+    paperNumber: paperNumberField,
+    lines: z
+      .array(
+        z.object({
+          originalLineId: z.uuid(),
+          quantity: optionalDecimal(3, "Escribe la cantidad, por ejemplo 20 o 2.5."),
+          unitPrice: optionalDecimal(2, "Escribe el precio, por ejemplo 9.50."),
+        }),
+      )
+      .min(1),
+  })
+  .superRefine((transfer, context) => {
+    transfer.lines.forEach((line, index) => {
+      if (Number(line.quantity) > 0 && Number(line.unitPrice) === 0) {
+        context.addIssue({
+          code: "custom",
+          path: ["lines", index, "unitPrice"],
+          message: "Escribe el precio en la nueva campaña.",
+        });
+      }
+    });
+  });
+
+export type ReturnInput = z.input<typeof returnSchema>;
+export type TransferInput = z.input<typeof transferSchema>;
