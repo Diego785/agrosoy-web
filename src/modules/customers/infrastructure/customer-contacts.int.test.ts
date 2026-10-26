@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { actorWithRole } from "@test/actors";
 import { testDb } from "@test/test-database";
 import { newUserAccount } from "@/modules/identity/domain/user-account";
+import { drizzleAuditLogReader } from "@/modules/identity/infrastructure/drizzle-audit-log-reader";
 import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import {
@@ -86,6 +87,9 @@ describe("customer page", () => {
     expect(detail.receivers).toMatchObject([
       { name: "Juan Pérez", documentId: "123456SC", relationship: "Hijo" },
     ]);
+    // The change log names the customer, not the property or the person added.
+    const { items } = await drizzleAuditLogReader(testDb).page({ limit: 2, offset: 0 });
+    expect(items.map((item) => item.entityLabel)).toEqual(["Agro Sur", "Agro Sur"]);
 
     await removeCustomerProperty(deps(), admin, id, propertyId);
     await removeAuthorizedReceiver(deps(), admin, id, detail.receivers[0]!.id);

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatMoney, formatPerMille, formatQuantity, formatRate, formatUsd } from "./format";
+import {
+  formatDate,
+  formatMoney,
+  formatPerMille,
+  formatQuantity,
+  formatRate,
+  formatUsd,
+  trimDecimalZeros,
+} from "./format";
 
 describe("Bolivian display formats", () => {
   it("formats money with dot thousands and comma decimals, exactly", () => {
@@ -18,5 +26,12 @@ describe("Bolivian display formats", () => {
   it("formats dates and percentages", () => {
     expect(formatDate("2026-04-30")).toBe("30/04/2026");
     expect(formatPerMille(67)).toBe("6,7 %");
+  });
+
+  it("trims decimal zeros only after the point", () => {
+    expect(trimDecimalZeros("6.9600")).toBe("6.96");
+    expect(trimDecimalZeros("200.000")).toBe("200");
+    expect(trimDecimalZeros("100")).toBe("100");
+    expect(trimDecimalZeros("10.500")).toBe("10.5");
   });
 });

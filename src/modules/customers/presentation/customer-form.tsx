@@ -7,6 +7,7 @@ import { useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { applyActionError } from "@/shared/presentation/form-errors";
+import { trimDecimalZeros } from "@/shared/presentation/format";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
@@ -157,7 +158,7 @@ function initialValues(customer: CustomerFormData | undefined): CustomerInput {
     technicianId: customer?.technicianId ?? "",
     exchangeRateKind: customer?.exchangeRateKind ?? "daily",
     // "6.9600" from the database reads better as "6.96".
-    fixedExchangeRate: customer?.fixedExchangeRate?.replace(/\.?0+$/, "") ?? "",
+    fixedExchangeRate: customer?.fixedExchangeRate ? trimDecimalZeros(customer.fixedExchangeRate) : "",
     notes: customer?.notes ?? "",
   };
 }

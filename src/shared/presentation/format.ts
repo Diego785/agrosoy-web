@@ -57,3 +57,8 @@ const dateTime = new Intl.DateTimeFormat("es-BO", {
 export function formatDateTime(moment: Date): string {
   return dateTime.format(moment);
 }
+
+/** "6.9600" → "6.96", "200.000" → "200", "100" stays "100": for prefilling inputs. */
+export function trimDecimalZeros(value: string): string {
+  return value.includes(".") ? value.replace(/0+$/, "").replace(/\.$/, "") : value;
+}
