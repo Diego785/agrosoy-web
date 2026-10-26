@@ -7,11 +7,12 @@ import {
   numeric,
   pgTable,
   text,
+  timestamp,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { users } from "@/modules/identity/infrastructure/auth.tables";
-import { id, timestamps } from "@/shared/infrastructure/db/columns";
+import { createdAt, id, timestamps } from "@/shared/infrastructure/db/columns";
 
 export const ZONE_NAME_KEY = "zones_comparison_name_key";
 export const CUSTOMER_NAME_KEY = "customers_comparison_name_key";
@@ -58,5 +59,59 @@ export const customers = pgTable(
       "customers_fixed_rate_check",
       sql`(${table.exchangeRateKind} = 'fixed') = (${table.fixedExchangeRate} is not null)`,
     ),
+  ],
+);
+
+const customerId = () =>
+  uuid()
+    .notNull()
+    .references(() => customers.id);
+
+/** Farms or estates of a customer. Deactivated, never deleted: notes may point at them. */
+export const customerProperties = pgTable(
+  "customer_properties",
+  {
+    id: id(),
+    customerId: customerId(),
+    name: text().notNull(),
+    location: text(),
+    isActive: boolean().notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [index().on(table.customerId)],
+);
+
+/** People who may receive product for a customer, with their CI and position or kinship. */
+export const authorizedReceivers = pgTable(
+  "authorized_receivers",
+  {
+    id: id(),
+    customerId: customerId(),
+    name: text().notNull(),
+    documentId: text(),
+    relationship: text().notNull(),
+    isActive: boolean().notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [index().on(table.customerId)],
+);
+
+/** Portfolio history: which technician had the customer and when. At most one open per customer. */
+export const technicianAssignments = pgTable(
+  "technician_assignments",
+  {
+    id: id(),
+    customerId: customerId(),
+    technicianId: uuid()
+      .notNull()
+      .references(() => users.id),
+    startsAt: createdAt(),
+    endsAt: timestamp({ withTimezone: true }),
+  },
+  (table) => [
+    index().on(table.customerId),
+    uniqueIndex("technician_assignments_open_key")
+      .on(table.customerId)
+      .where(sql`${table.endsAt} is null`),
   ],
 );

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { requireActor } from "@/modules/identity/presentation/current-user";
-import { can } from "@/shared/application/permissions";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { Input } from "@/shared/presentation/ui/input";
@@ -16,7 +15,7 @@ import {
 import { listZones, searchCustomers } from "../application/customer-use-cases";
 import { formatCustomerCode } from "../domain/customer";
 import { customerDeps } from "./customer-deps";
-import { CUSTOMERS_PATH, editCustomerPath } from "./customer-routes";
+import { CUSTOMERS_PATH, customerPath } from "./customer-routes";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -26,12 +25,12 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
   const deps = customerDeps(getDb());
   const text = firstValue(params.q)?.trim() ?? "";
   const zoneId = firstValue(params.zone) || undefined;
+  const status = firstValue(params.status) === "inactive" ? "inactive" : "active";
 
   const [{ items, total, page, pageSize }, zones] = await Promise.all([
-    searchCustomers(deps, actor, { text, zoneId, page: firstValue(params.page) }),
+    searchCustomers(deps, actor, { text, zoneId, status, page: firstValue(params.page) }),
     listZones(deps, actor),
   ]);
-  const canEdit = can(actor, "customers.manage");
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -55,6 +54,10 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
             ))}
           </NativeSelect>
         )}
+        <NativeSelect name="status" defaultValue={status} aria-label="Estado">
+          <NativeSelectOption value="active">Activos</NativeSelectOption>
+          <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
+        </NativeSelect>
         <button type="submit" className={buttonVariants({ variant: "outline" })}>
           Buscar
         </button>
@@ -85,13 +88,9 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
                   {formatCustomerCode(customer.code)}
                 </TableCell>
                 <TableCell className="font-medium">
-                  {canEdit ? (
-                    <Link href={editCustomerPath(customer.id)} className="hover:underline">
-                      {customer.name}
-                    </Link>
-                  ) : (
-                    customer.name
-                  )}
+                  <Link href={customerPath(customer.id)} className="hover:underline">
+                    {customer.name}
+                  </Link>
                 </TableCell>
                 <TableCell>{customer.taxId ?? "—"}</TableCell>
                 <TableCell>{customer.zoneName ?? "—"}</TableCell>
@@ -107,12 +106,14 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
         <span>{total === 1 ? "1 cliente" : `${total.toLocaleString("es-BO")} clientes`}</span>
         {lastPage > 1 && (
           <nav className="flex items-center gap-2" aria-label="Páginas">
-            {page > 1 && <PageLink params={{ q: text, zone: zoneId }} page={page - 1} label="Anterior" />}
+            {page > 1 && (
+              <PageLink params={{ q: text, zone: zoneId, status }} page={page - 1} label="Anterior" />
+            )}
             <span>
               Página {page} de {lastPage}
             </span>
             {page < lastPage && (
-              <PageLink params={{ q: text, zone: zoneId }} page={page + 1} label="Siguiente" />
+              <PageLink params={{ q: text, zone: zoneId, status }} page={page + 1} label="Siguiente" />
             )}
           </nav>
         )}
@@ -126,13 +127,14 @@ function PageLink({
   page,
   label,
 }: {
-  params: { q: string; zone?: string };
+  params: { q: string; zone?: string; status: string };
   page: number;
   label: string;
 }) {
   const query = new URLSearchParams({
     ...(params.q && { q: params.q }),
     ...(params.zone && { zone: params.zone }),
+    ...(params.status === "inactive" && { status: params.status }),
     page: String(page),
   });
   return (

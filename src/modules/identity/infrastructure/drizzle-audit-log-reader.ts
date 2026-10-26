@@ -3,10 +3,12 @@ import { alias } from "drizzle-orm/pg-core";
 import { auditLog } from "@/shared/infrastructure/audit/audit-log.table";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import type { AuditLogReader } from "../application/ports";
+import { customers } from "@/modules/customers/infrastructure/customers.tables";
 import { users } from "./auth.tables";
 
 const actorUser = alias(users, "actor_user");
 const targetUser = alias(users, "target_user");
+const targetCustomer = alias(customers, "target_customer");
 
 export function drizzleAuditLogReader(executor: DbExecutor): AuditLogReader {
   return {
@@ -24,6 +26,7 @@ export function drizzleAuditLogReader(executor: DbExecutor): AuditLogReader {
               ${auditLog.payload} ->> 'name',
               ${auditLog.payload} ->> 'sheetName',
               ${targetUser.name},
+              ${targetCustomer.name},
               case when ${auditLog.entityType} = 'role' then ${auditLog.entityId} end
             )`,
           })
@@ -32,6 +35,10 @@ export function drizzleAuditLogReader(executor: DbExecutor): AuditLogReader {
           .leftJoin(
             targetUser,
             sql`${auditLog.entityType} = 'user' and ${targetUser.id}::text = ${auditLog.entityId}`,
+          )
+          .leftJoin(
+            targetCustomer,
+            sql`${auditLog.entityType} = 'customer' and ${targetCustomer.id}::text = ${auditLog.entityId}`,
           )
           .orderBy(desc(auditLog.occurredAt))
           .limit(limit)
