@@ -112,6 +112,15 @@ export async function searchCustomers(
   return { ...result, page, pageSize: CUSTOMERS_PAGE_SIZE };
 }
 
+/** Active sales technicians, to filter portfolios. */
+export async function technicianOptions(
+  deps: Pick<CustomerDeps, "technicians">,
+  actor: Actor,
+): Promise<{ id: string; name: string }[]> {
+  assertCan(actor, "customers.view");
+  return deps.technicians.listActive();
+}
+
 /** Active customers for the pickers of other modules' forms (payments, charges, statements). */
 export async function customerOptions(
   deps: Pick<CustomerDeps, "customers">,

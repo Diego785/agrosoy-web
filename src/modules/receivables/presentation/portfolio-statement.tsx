@@ -23,6 +23,8 @@ export function PortfolioStatement({
 }) {
   const { totals } = statement;
   const owing = statement.customers.filter((customer) => customer.totals.status === "owing").length;
+  const hasOther = !Money.parse(totals.other).isZero();
+  const hasAging = statement.customers.some((customer) => customer.over90 !== null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,7 +46,9 @@ export function PortfolioStatement({
             <TableHead className="text-right">Entrega</TableHead>
             <TableHead className="text-right">Pago</TableHead>
             <TableHead className="text-right">Dev.</TableHead>
+            {hasOther && <TableHead className="text-right">Otros</TableHead>}
             <TableHead className="text-right">Deuda</TableHead>
+            {hasAging && <TableHead className="text-right">Más de 90 días</TableHead>}
             <TableHead>Estado</TableHead>
           </TableRow>
         </TableHeader>
@@ -59,7 +63,9 @@ export function PortfolioStatement({
               <Amount value={customer.totals.delivered} />
               <Amount value={customer.totals.paid} />
               <Amount value={customer.totals.returned} />
+              {hasOther && <Amount value={customer.totals.other} />}
               <Amount value={customer.totals.balance} strong />
+              {hasAging && <Amount value={customer.over90 ?? "0"} />}
               <TableCell>
                 <StatusBadge status={customer.totals.status} />
               </TableCell>
@@ -74,7 +80,15 @@ export function PortfolioStatement({
             <Amount value={totals.delivered} />
             <Amount value={totals.paid} />
             <Amount value={totals.returned} />
+            {hasOther && <Amount value={totals.other} />}
             <Amount value={totals.balance} strong />
+            {hasAging && (
+              <Amount
+                value={Money.sum(
+                  statement.customers.map((customer) => Money.parse(customer.over90 ?? "0")),
+                ).toDecimalString()}
+              />
+            )}
             <TableCell />
           </TableRow>
         </TableFooter>

@@ -136,10 +136,14 @@ The **ledger** is an append-only table of entries:
 
 - **Balance** of a customer = sum of amounts; per campaign = sum filtered by campaign.
 - The **statement** keeps the columns Agrosoy uses today: deliveries, payments, returns, balance,
-  and status `settled` (balance 0) or `owing`, per campaign and in total, plus the dated detail
-  and the consigned product.
+  and status `settled` (balance 0 or in favor) or `owing`, per campaign and in total, plus the
+  dated detail (each note line, receipt and charge) and the consigned product. Charges, opening
+  balances and campaign transfers add an "others" column only when there are any. Voided
+  documents stay in the detail with their cancelling line and net out of their own column.
 - **Aging** pairs credits with the oldest debits (first in, first out) and reports the age of
-  what is still unpaid.
+  what is still unpaid in buckets of 30, 60, 90 and more than 90 days; voided documents and their
+  reversals are left out of the pairing. The portfolio shows each customer's debt older than 90
+  days. Technicians open the portfolio on their own customers and can switch to everyone's.
 - Every technician can see any statement; only administration writes payments and charges.
 
 ## Inventory (M8)

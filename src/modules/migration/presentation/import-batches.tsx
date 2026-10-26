@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireActor } from "@/modules/identity/presentation/current-user";
-import { statementPath } from "@/modules/receivables/presentation/statement-routes";
+import { previewPath } from "@/modules/receivables/presentation/statement-routes";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { formatCount, formatDateTime } from "@/shared/presentation/format";
 import { Badge } from "@/shared/presentation/ui/badge";
@@ -66,7 +66,7 @@ export async function ImportBatches() {
             </TableCell>
             <TableCell>
               <div className="flex flex-col gap-1 text-sm font-medium">
-                <Link href={statementPath(batch.id)} className="hover:underline">
+                <Link href={previewPath(batch.id)} className="hover:underline">
                   Estado de cuenta
                 </Link>
                 <Link href={importConversionPath(batch.id)} className="hover:underline">

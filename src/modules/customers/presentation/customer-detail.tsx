@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { customerStatementPath } from "@/modules/receivables/presentation/statement-routes";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { can } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
@@ -44,17 +45,27 @@ export async function CustomerDetail({ params }: { params: Promise<{ id: string 
             )}
           </p>
         </div>
-        {canEdit && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {can(actor, "statements.view") && (
+            <Link
+              href={customerStatementPath(customer.id)}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Estado de cuenta
+            </Link>
+          )}
+          {canEdit && (
             <Link
               href={editCustomerPath(customer.id)}
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Editar datos
             </Link>
+          )}
+          {canEdit && (
             <CustomerStatusButton customerId={customer.id} name={customer.name} active={customer.isActive} />
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
       <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">

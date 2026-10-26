@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { CustomerStatement } from "@/modules/receivables/presentation/customer-statement";
 import { PortfolioStatement } from "@/modules/receivables/presentation/portfolio-statement";
-import { customerStatementPath, statementPath } from "@/modules/receivables/presentation/statement-routes";
+import { customerPreviewPath, previewPath } from "@/modules/receivables/presentation/statement-routes";
 import { can } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
@@ -34,7 +34,7 @@ export async function StatementSources() {
     <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {batches.map((batch) => (
         <li key={batch.id}>
-          <Link href={statementPath(batch.id)} className="block rounded-lg border p-4 hover:bg-muted/50">
+          <Link href={previewPath(batch.id)} className="block rounded-lg border p-4 hover:bg-muted/50">
             <span className="block font-medium">{batch.sheetName}</span>
             <span className="block text-sm text-muted-foreground">
               {batch.campaignLabel ?? "Sin campaña"}
@@ -58,7 +58,7 @@ export async function PortfolioStatementPreview({ params }: { params: Promise<{ 
   return (
     <PortfolioStatement
       statement={statement}
-      customerHref={(customerKey) => customerStatementPath(batchId, customerKey)}
+      customerHref={(customerKey) => customerPreviewPath(batchId, customerKey)}
     />
   );
 }
@@ -80,7 +80,7 @@ export async function CustomerStatementPreview({
     <>
       <h2 className="-mt-2 text-xl font-semibold">{statement.customerName}</h2>
       <CustomerStatement statement={statement} />
-      <Link href={statementPath(batchId)} className="text-sm font-medium hover:underline print:hidden">
+      <Link href={previewPath(batchId)} className="text-sm font-medium hover:underline print:hidden">
         ← Volver a todos los clientes
       </Link>
     </>

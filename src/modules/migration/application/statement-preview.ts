@@ -3,6 +3,7 @@ import { assertCan } from "@/shared/application/permissions";
 import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
 import {
+  plainLine,
   totalsView,
   type CustomerStatementView,
   type PortfolioStatementView,
@@ -42,7 +43,11 @@ export async function portfolioStatementFromImport(
 
   return {
     source: sourceOf(batch),
-    customers: customers.map((customer) => ({ ...customer, totals: totalsView(customer.totals) })),
+    customers: customers.map((customer) => ({
+      ...customer,
+      totals: totalsView(customer.totals),
+      over90: null,
+    })),
     totals: totalsView(totals),
     collectedPerMille: collectedPerMille(totals),
   };
@@ -88,17 +93,19 @@ function totalsFor(key: string, lines: StoredLine[], summary: StoredSummaryRow[]
 function statementLines(lines: StoredLine[], summary: StoredSummaryRow[]): StatementLineView[] {
   const dated: StatementLineView[] = [...lines]
     .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999") || a.row - b.row)
-    .map((line) => ({
-      kind: line.kind,
-      date: line.date,
-      noteNumber: line.noteNumber,
-      description: line.product,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice,
-      amount: line.total,
-      exchangeRate: line.exchangeRate,
-      observation: line.observation,
-    }));
+    .map((line) =>
+      plainLine({
+        kind: line.kind,
+        date: line.date,
+        noteNumber: line.noteNumber,
+        description: line.product,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        amount: line.total,
+        exchangeRate: line.exchangeRate,
+        observation: line.observation,
+      }),
+    );
 
   const undated: StatementLineView[] = [];
   const hasReturnLines = lines.some((line) => line.kind === "return");
@@ -111,17 +118,7 @@ function statementLines(lines: StoredLine[], summary: StoredSummaryRow[]): State
 }
 
 function undatedLine(kind: "return" | "payment", amount: string): StatementLineView {
-  return {
-    kind,
-    date: null,
-    noteNumber: null,
-    description: "",
-    quantity: null,
-    unitPrice: null,
-    amount,
-    exchangeRate: null,
-    observation: null,
-  };
+  return plainLine({ kind, date: null, noteNumber: null, description: "", amount });
 }
 
 /** Every customer that appears in the lines or in the summary, with the name as first written. */

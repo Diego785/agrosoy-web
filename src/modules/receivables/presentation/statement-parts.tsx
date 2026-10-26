@@ -16,6 +16,7 @@ export function StatusBadge({ status }: { status: StatementTotalsView["status"] 
 }
 
 export function SourceNotice({ source }: { source: StatementSource }) {
+  if (!source.label && !source.isPreview) return null;
   return (
     <p className="text-sm text-muted-foreground">
       {source.label}

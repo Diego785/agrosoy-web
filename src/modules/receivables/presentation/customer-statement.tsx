@@ -1,5 +1,12 @@
+import Link from "next/link";
+import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
+import { contentLabel } from "@/modules/catalog/presentation/catalog-labels";
+import { METHOD_LABELS, formatAmount } from "@/modules/collections/presentation/collection-labels";
+import { paymentPath } from "@/modules/collections/presentation/collection-routes";
+import { notePath } from "@/modules/sales/presentation/note-routes";
 import { Money } from "@/shared/domain/money";
 import { formatDate, formatMoney, formatQuantity, formatRate, formatUsd } from "@/shared/presentation/format";
+import { Badge } from "@/shared/presentation/ui/badge";
 import {
   Table,
   TableBody,
@@ -9,18 +16,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/presentation/ui/table";
-import type { CustomerStatementView, StatementLineView } from "../application/statement-view";
+import type {
+  AgingView,
+  CampaignTotalsView,
+  CustomerStatementView,
+  StatementLineView,
+} from "../application/statement-view";
 import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
 
-const UNDATED: Record<Exclude<StatementLineView["kind"], "delivery">, string> = {
-  payment: "Pagos según el resumen de la planilla (sin fecha)",
-  return: "Devoluciones según el resumen de la planilla (sin fecha)",
+const CREDIT_KINDS: ReadonlySet<StatementLineView["kind"]> = new Set(["payment", "return"]);
+const FREE_LABELS = { bonus: "Bonificación", sample: "Muestra" } as const;
+const VOIDED: Record<StatementLineView["kind"], string> = {
+  delivery: "Anulación de la boleta",
+  return: "Anulación de la devolución",
+  payment: "Anulación del pago",
+  charge: "Anulación del cargo",
+  other: "Anulación del ajuste",
 };
 
-/** One customer's movements with a running balance: deliveries add to the debt, payments and returns lower it. */
+/** One customer's movements with a running balance: deliveries and charges add, payments and returns subtract. */
 export function CustomerStatement({ statement }: { statement: CustomerStatementView }) {
   const { totals } = statement;
   const rows = withRunningBalance(statement.lines);
+  const hasOther = !Money.parse(totals.other).isZero();
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,71 +47,195 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
         <Figure label="Entregas" value={formatUsd(totals.delivered)} />
         <Figure label="Pagos" value={formatUsd(totals.paid)} />
         <Figure label="Devoluciones" value={formatUsd(totals.returned)} />
+        {hasOther && <Figure label="Cargos y otros" value={formatUsd(totals.other)} />}
         <Figure label="Deuda" value={formatUsd(totals.balance)} emphasis={totals.status === "owing"} />
       </Figures>
 
+      {statement.aging && totals.status === "owing" && <AgingFigures aging={statement.aging} />}
+      {statement.byCampaign && statement.byCampaign.length > 1 && (
+        <CampaignBreakdown campaigns={statement.byCampaign} />
+      )}
+
+      {rows.length === 0 ? (
+        <p className="py-6 text-sm text-muted-foreground">Sin movimientos.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Documento</TableHead>
+              <TableHead>Detalle</TableHead>
+              <TableHead className="text-right">Cant.</TableHead>
+              <TableHead className="text-right">Precio</TableHead>
+              <TableHead className="text-right">T/C</TableHead>
+              <TableHead className="text-right">Entrega / cargo</TableHead>
+              <TableHead className="text-right">Pago / dev.</TableHead>
+              <TableHead className="text-right">Saldo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map(({ line, balance: running }, index) => (
+              <TableRow key={index} className={line.isReversal ? "text-muted-foreground" : ""}>
+                <TableCell className="tabular-nums">{line.date ? formatDate(line.date) : "—"}</TableCell>
+                <TableCell className="tabular-nums">
+                  <DocumentCell line={line} />
+                </TableCell>
+                <TableCell className="whitespace-normal">
+                  <Detail line={line} />
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {line.quantity ? formatQuantity(line.quantity) : ""}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {line.unitPrice ? formatMoney(line.unitPrice) : ""}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {line.exchangeRate ? formatRate(line.exchangeRate) : ""}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {CREDIT_KINDS.has(line.kind) ? "" : formatMoney(line.amount)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {CREDIT_KINDS.has(line.kind) ? formatMoney(line.amount) : ""}
+                </TableCell>
+                <TableCell className="text-right font-medium tabular-nums">{formatMoney(running)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={6}>Total</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatMoney(Money.parse(totals.delivered).add(Money.parse(totals.other)).toDecimalString())}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatMoney(Money.parse(totals.paid).add(Money.parse(totals.returned)).toDecimalString())}
+              </TableCell>
+              <TableCell className="text-right font-semibold tabular-nums">
+                <span className="mr-2">{formatMoney(totals.balance)}</span>
+                <StatusBadge status={totals.status} />
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+      )}
+    </div>
+  );
+}
+
+function DocumentCell({ line }: { line: StatementLineView }) {
+  if (line.receipt && line.document) {
+    return (
+      <Link href={paymentPath(line.document.id)} className="hover:underline">
+        Recibo {line.receipt.number}
+      </Link>
+    );
+  }
+  if (line.noteNumber === null) return <>—</>;
+  if (line.document?.type === "note") {
+    return (
+      <Link href={notePath(line.document.id)} className="hover:underline">
+        Boleta {line.noteNumber}
+      </Link>
+    );
+  }
+  return <>{line.noteNumber}</>;
+}
+
+function Detail({ line }: { line: StatementLineView }) {
+  if (line.isReversal) return <>{VOIDED[line.kind]}</>;
+  if (line.receipt) {
+    return (
+      <>
+        Pago · {METHOD_LABELS[line.receipt.method]}
+        {line.receipt.currency === "BOB" && ` · ${formatAmount("BOB", line.receipt.amount)}`}
+        {line.observation && (
+          <span className="block text-xs text-muted-foreground">Ref.: {line.observation}</span>
+        )}
+      </>
+    );
+  }
+  if (line.kind === "charge") return <>Cargo: {line.description}</>;
+  if (!line.description && (line.kind === "payment" || line.kind === "return")) {
+    return (
+      <>
+        {line.kind === "payment"
+          ? "Pagos según el resumen de la planilla (sin fecha)"
+          : "Devoluciones según el resumen de la planilla (sin fecha)"}
+      </>
+    );
+  }
+  if (line.kind === "other" && !line.description) return <>Ajuste</>;
+  return (
+    <>
+      {line.description}
+      {line.packaging && ` · ${contentLabel(line.packaging)}`}
+      {line.freeOfCharge && (
+        <Badge variant="outline" className="ml-2">
+          {FREE_LABELS[line.freeOfCharge]}
+        </Badge>
+      )}
+      {line.kind === "return" && <span className="ml-2 text-xs text-muted-foreground">devolución</span>}
+      {line.observation && (
+        <span className="block text-xs text-muted-foreground">Obs.: {line.observation}</span>
+      )}
+    </>
+  );
+}
+
+function AgingFigures({ aging }: { aging: AgingView }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-sm font-medium">Antigüedad de la deuda</h3>
+      <Figures>
+        <Figure label="Hasta 30 días" value={formatUsd(aging.upTo30)} />
+        <Figure label="31 a 60 días" value={formatUsd(aging.upTo60)} />
+        <Figure label="61 a 90 días" value={formatUsd(aging.upTo90)} />
+        <Figure label="Más de 90 días" value={formatUsd(aging.over90)} emphasis={Number(aging.over90) > 0} />
+      </Figures>
+    </section>
+  );
+}
+
+function CampaignBreakdown({ campaigns }: { campaigns: CampaignTotalsView[] }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-sm font-medium">Por campaña</h3>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Fecha</TableHead>
-            <TableHead>Boleta</TableHead>
-            <TableHead>Detalle</TableHead>
-            <TableHead className="text-right">Cant.</TableHead>
-            <TableHead className="text-right">Precio</TableHead>
-            <TableHead className="text-right">T/C</TableHead>
+            <TableHead>Campaña</TableHead>
             <TableHead className="text-right">Entrega</TableHead>
-            <TableHead className="text-right">Pago / Dev.</TableHead>
+            <TableHead className="text-right">Pago</TableHead>
+            <TableHead className="text-right">Dev.</TableHead>
+            <TableHead className="text-right">Otros</TableHead>
             <TableHead className="text-right">Saldo</TableHead>
+            <TableHead>Estado</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map(({ line, balance: running }, index) => (
-            <TableRow key={index}>
-              <TableCell className="tabular-nums">{line.date ? formatDate(line.date) : "—"}</TableCell>
-              <TableCell className="tabular-nums">{line.noteNumber ?? "—"}</TableCell>
+          {campaigns.map((campaign) => (
+            <TableRow key={campaign.campaignId}>
+              <TableCell>{campaignLabel(campaign)}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatMoney(campaign.totals.delivered)}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{formatMoney(campaign.totals.paid)}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatMoney(campaign.totals.returned)}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{formatMoney(campaign.totals.other)}</TableCell>
+              <TableCell className="text-right font-medium tabular-nums">
+                {formatMoney(campaign.totals.balance)}
+              </TableCell>
               <TableCell>
-                {line.kind !== "delivery" && !line.description ? UNDATED[line.kind] : line.description}
-                {line.kind === "return" && line.description && (
-                  <span className="ml-2 text-xs text-muted-foreground">devolución</span>
-                )}
-                {line.observation && (
-                  <span className="block text-xs text-muted-foreground">Obs.: {line.observation}</span>
-                )}
+                <StatusBadge status={campaign.totals.status} />
               </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {line.quantity ? formatQuantity(line.quantity) : ""}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {line.unitPrice ? formatMoney(line.unitPrice) : ""}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {line.exchangeRate ? formatRate(line.exchangeRate) : ""}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {line.kind === "delivery" ? formatMoney(line.amount) : ""}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {line.kind === "delivery" ? "" : formatMoney(line.amount)}
-              </TableCell>
-              <TableCell className="text-right font-medium tabular-nums">{formatMoney(running)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell colSpan={6}>Total</TableCell>
-            <TableCell className="text-right tabular-nums">{formatMoney(totals.delivered)}</TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatMoney(Money.parse(totals.paid).add(Money.parse(totals.returned)).toDecimalString())}
-            </TableCell>
-            <TableCell className="text-right font-semibold tabular-nums">
-              <span className="mr-2">{formatMoney(totals.balance)}</span>
-              <StatusBadge status={totals.status} />
-            </TableCell>
-          </TableRow>
-        </TableFooter>
       </Table>
-    </div>
+    </section>
   );
 }
 
@@ -102,7 +244,7 @@ function withRunningBalance(lines: StatementLineView[]): { line: StatementLineVi
   let balance = Money.zero();
   for (const line of lines) {
     const amount = Money.parse(line.amount);
-    balance = line.kind === "delivery" ? balance.add(amount) : balance.subtract(amount);
+    balance = CREDIT_KINDS.has(line.kind) ? balance.subtract(amount) : balance.add(amount);
     rows.push({ line, balance: balance.toDecimalString() });
   }
   return rows;
