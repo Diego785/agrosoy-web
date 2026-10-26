@@ -43,6 +43,9 @@ const ACTION_LABELS: Record<string, string> = {
   "catalog.update_product": "Editó el producto",
   "catalog.add_presentation": "Agregó una presentación a",
   "catalog.save_prices": "Actualizó precios de referencia",
+  "sales.create_draft": "Creó un borrador de boleta",
+  "sales.update_draft": "Editó un borrador de boleta",
+  "sales.discard_draft": "Descartó un borrador de boleta",
 };
 
 export async function AuditLogTable({

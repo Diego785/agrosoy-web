@@ -5,4 +5,5 @@ export * from "@/modules/customers/infrastructure/customers.tables";
 export * from "@/modules/identity/infrastructure/auth.tables";
 export * from "@/modules/identity/infrastructure/permissions.table";
 export * from "@/modules/migration/infrastructure/import.tables";
+export * from "@/modules/sales/infrastructure/notes.tables";
 export * from "@/shared/infrastructure/audit/audit-log.table";

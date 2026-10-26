@@ -3,8 +3,28 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
-## 2026-10-26
+## 2026-10-26 (week 2, branch `feature/week-2`)
 
+- **Everything planned for week 2 is built** (ahead of the 2–6 Nov schedule), on its own branch
+  until it is reviewed and merged into `main`:
+  - **M4 campaigns:** summer and winter, non-overlapping dates, the current one by today's date in
+    Bolivia.
+  - **M3 catalog:** products with line, presentations (container or per liter/kilo), reference
+    prices per campaign and zone with a general fallback.
+  - **M2 rest:** customer page, properties and authorized receivers (deactivated, never deleted),
+    portfolio history when the technician changes, deactivation.
+  - **Import into real records:** sheets turn into customers and products (re-running creates
+    nothing new); tested with `ventas.xlsx` (15 customers, 4-energy and Fulvin).
+  - **Delivery-note drafts (start of M5):** `sales` module, `/notes` list, form and detail. The
+    campaign comes from the date; the customer fills technician and receiver; prices are suggested
+    from the zone's sheet; bonus and sample lines are free; totals in US$, Bs, liters and kilos.
+    Drafts can be edited or discarded; nothing touches debts or stock until confirmation (week 3).
+    Permissions `notes.view` (every role) and `notes.manage` (administration, management,
+    technicians). Tested in the browser: create, edit (10 → 12 units, US$ 625 → 750) and the
+    audit entries.
+  - Fixed on the way: the change log named the property or receiver instead of the customer.
+- **Next (week 3):** confirm notes with numbering and PDF, collections and exchange rates, the
+  account statement from real records, and migrating sales and payments with reconciliation.
 - **Week 2 starts on branch `feature/week-2`** (developer's request); `main` stays as the week 1
   demo version. CI now checks every branch and publishes the image only from `main`.
 - **M1 completed:** editable permission matrix (`/users/permissions`, stored as differences from

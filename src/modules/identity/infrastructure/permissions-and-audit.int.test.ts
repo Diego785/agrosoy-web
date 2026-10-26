@@ -23,7 +23,7 @@ describe("permission matrix", () => {
     const matrix = await getPermissionMatrix(permissionDeps(), admin);
     expect(matrix.find((row) => row.role === "sales_technician")).toEqual({
       role: "sales_technician",
-      permissions: ["customers.view", "statements.view", "catalog.view"],
+      permissions: ["customers.view", "statements.view", "catalog.view", "notes.view", "notes.manage"],
       editable: true,
     });
     expect(matrix.find((row) => row.role === "admin")?.editable).toBe(false);
@@ -40,7 +40,7 @@ describe("permission matrix", () => {
     // Choosing the defaults again leaves no adjustments behind.
     await updateRolePermissions(permissionDeps(), admin, {
       role: "sales_technician",
-      permissions: ["customers.view", "statements.view", "catalog.view"],
+      permissions: ["customers.view", "statements.view", "catalog.view", "notes.view", "notes.manage"],
     });
     expect(await drizzlePermissionSettings(testDb).overrides()).toEqual([]);
   });

@@ -1,5 +1,6 @@
 import {
   CalendarRangeIcon,
+  ClipboardListIcon,
   ContactIcon,
   FileSpreadsheetIcon,
   HistoryIcon,
@@ -20,6 +21,7 @@ type NavigationItem = { label: string; href: string; icon: LucideIcon; permissio
 /** Only modules that already work are listed; each appears as it is delivered. */
 const NAVIGATION: readonly NavigationItem[] = [
   { label: "Inicio", href: "/", icon: HomeIcon },
+  { label: "Boletas", href: "/notes", icon: ClipboardListIcon, permission: "notes.view" },
   { label: "Clientes", href: "/customers", icon: ContactIcon, permission: "customers.view" },
   { label: "Productos", href: "/products", icon: PackageIcon, permission: "catalog.view" },
   { label: "Campañas", href: "/campaigns", icon: CalendarRangeIcon, permission: "catalog.view" },

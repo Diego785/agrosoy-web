@@ -7,6 +7,8 @@ describe("effectivePermissions", () => {
       "customers.view",
       "statements.view",
       "catalog.view",
+      "notes.view",
+      "notes.manage",
     ]);
   });
 
@@ -17,7 +19,7 @@ describe("effectivePermissions", () => {
         { role: "sales_technician", permission: "statements.view", granted: false },
         { role: "warehouse_keeper", permission: "customers.manage", granted: true },
       ]),
-    ).toEqual(["customers.view", "imports.manage", "catalog.view"]);
+    ).toEqual(["customers.view", "imports.manage", "catalog.view", "notes.view", "notes.manage"]);
   });
 
   it("never takes anything away from administration", () => {
