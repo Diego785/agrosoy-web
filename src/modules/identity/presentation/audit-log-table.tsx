@@ -28,6 +28,9 @@ const ACTION_LABELS: Record<string, string> = {
   "customers.register": "Registró al cliente",
   "customers.update": "Editó al cliente",
   "customers.create_zone": "Agregó la zona",
+  "customers.rename_zone": "Renombró la zona",
+  "customers.deactivate_zone": "Desactivó la zona",
+  "customers.reactivate_zone": "Reactivó la zona",
   "migration.import_sheet": "Importó la hoja",
 };
 

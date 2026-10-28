@@ -46,11 +46,22 @@ export interface CustomerRepository {
 
 export type Zone = { id: string; name: string };
 
+/** A zone on the zones page: deactivated ones are listed too, with how many customers they have. */
+export type ZoneListItem = Zone & { isActive: boolean; customerCount: number };
+
 export interface ZoneRepository {
   /** Throws DomainError "DUPLICATE" with `details.field` "name". */
   insert(zone: ZoneRecord): Promise<{ id: string }>;
+  /** Active zones, the ones offered for customers. */
   list(): Promise<Zone[]>;
+  listAll(): Promise<ZoneListItem[]>;
+  find(id: string): Promise<(Zone & { isActive: boolean }) | undefined>;
+  /** Whether the zone exists and is active. */
   exists(id: string): Promise<boolean>;
+  /** Same duplicate rule as insert; NOT_FOUND when the zone doesn't exist. */
+  rename(id: string, zone: ZoneRecord): Promise<void>;
+  /** NOT_FOUND when the zone doesn't exist. */
+  setActive(id: string, active: boolean): Promise<void>;
 }
 
 export type Technician = { id: string; name: string };

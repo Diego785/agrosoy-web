@@ -19,7 +19,7 @@ import { registerCustomerAction, updateCustomerAction } from "./customer-actions
 import { CUSTOMERS_PATH } from "./customer-routes";
 
 type Props = {
-  zones: Zone[];
+  zones: (Zone & { isActive: boolean })[];
   technicians: Technician[];
   /** Present when editing an existing customer. */
   customer?: CustomerFormData;
@@ -77,7 +77,7 @@ export function CustomerForm({ zones, technicians, customer }: Props) {
               <NativeSelectOption value="">Sin zona</NativeSelectOption>
               {zones.map((zone) => (
                 <NativeSelectOption key={zone.id} value={zone.id}>
-                  {zone.name}
+                  {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
                 </NativeSelectOption>
               ))}
             </NativeSelect>

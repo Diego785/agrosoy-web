@@ -3,6 +3,16 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-10-27
+
+- **Zones can be renamed and deactivated** (requested for the week 1 demo). Renaming fixes typos
+  and every customer shows the new name; deactivating stops offering the zone for customers while
+  the ones that have it keep it (also when edited), since week 2's reference prices depend on
+  zones. Never deleted; reactivable. The zones page shows each zone's customer count; the customer
+  search can still filter by a deactivated zone. Audited.
+- The week 1 demo runs against its own local database (`agrosoy_s1` in `.env.local`), so the
+  test data of weeks 2 and 3 (database `agrosoy`) doesn't show up.
+
 ## 2026-10-26
 
 - **M1 completed:** editable permission matrix (`/users/permissions`, stored as differences from

@@ -47,6 +47,8 @@ export const customerSearchSchema = z.object({
 
 export type CustomerSearchInput = z.input<typeof customerSearchSchema>;
 
+export const zoneIdSchema = z.uuid();
+
 export const zoneSchema = z.object({
   name: z
     .string()
