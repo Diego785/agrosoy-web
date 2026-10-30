@@ -27,6 +27,10 @@ export const users = pgTable("users", {
   banExpires: timestamp({ withTimezone: true }),
   /** Set when an administrator assigns a temporary password; cleared when the user changes it. */
   mustChangePassword: boolean().notNull().default(false),
+  // Printed next to the person's signature on documents (D26); Better Auth doesn't read them.
+  position: text(),
+  documentId: text(),
+  workZone: text(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

@@ -5,12 +5,24 @@ import { MIN_PASSWORD_LENGTH, normalizeUsername, USERNAME_PATTERN } from "../dom
 // Shared by the forms (instant feedback) and the use cases (the real check). The messages are
 // shown next to the fields, so they are written in Spanish here.
 
-export const createUserSchema = z.object({
+const profileFields = {
   name: z
     .string()
     .trim()
     .min(3, { error: "Escribe el nombre completo." })
     .max(80, { error: "El nombre admite hasta 80 caracteres." }),
+  position: z.string().trim().max(60, { error: "El cargo admite hasta 60 caracteres." }).optional(),
+  documentId: z
+    .string()
+    .trim()
+    .regex(/^[0-9A-Za-z\s.-]*$/, { error: "El CI solo lleva números y letras." })
+    .max(20, { error: "El CI admite hasta 20 caracteres." })
+    .optional(),
+  workZone: z.string().trim().max(60, { error: "La zona admite hasta 60 caracteres." }).optional(),
+};
+
+export const createUserSchema = z.object({
+  ...profileFields,
   username: z
     .string()
     .transform(normalizeUsername)
@@ -24,6 +36,10 @@ export const createUserSchema = z.object({
 });
 
 export type CreateUserInput = z.input<typeof createUserSchema>;
+
+export const updateUserSchema = z.object(profileFields);
+
+export type UpdateUserInput = z.input<typeof updateUserSchema>;
 
 export const userIdSchema = z.object({ userId: z.uuid() });
 

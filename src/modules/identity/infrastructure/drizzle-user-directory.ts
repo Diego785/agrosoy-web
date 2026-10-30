@@ -56,6 +56,10 @@ export function drizzleUserDirectory(executor: DbExecutor): UserDirectory {
       return row ? toSummary(row) : undefined;
     },
 
+    async updateProfile(userId, profile) {
+      await executor.update(users).set(profile).where(eq(users.id, userId));
+    },
+
     async setActive(userId, active) {
       await executor
         .update(users)
@@ -95,5 +99,8 @@ function toSummary(row: typeof users.$inferSelect): UserSummary {
     role: row.role,
     active: !row.banned,
     mustChangePassword: row.mustChangePassword,
+    position: row.position,
+    documentId: row.documentId,
+    workZone: row.workZone,
   };
 }

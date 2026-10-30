@@ -20,6 +20,7 @@ import { AUDIT_PATH } from "./identity-routes";
 /** How each recorded action reads. Unknown actions (from future modules) show their code. */
 const ACTION_LABELS: Record<string, string> = {
   "identity.create_user": "Creó el usuario",
+  "identity.update_user": "Editó al usuario",
   "identity.reset_password": "Restableció la contraseña de",
   "identity.deactivate_user": "Desactivó al usuario",
   "identity.reactivate_user": "Reactivó al usuario",
