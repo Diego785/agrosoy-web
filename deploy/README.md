@@ -26,6 +26,7 @@ Two phases:
 | `backup.sh`                        | Daily database dump, 30 days kept, optional off-server copy                     |
 | `nginx/agrosoy-staging.http.conf`  | Step A6: HTTP only, serves the certificate challenge                            |
 | `nginx/agrosoy-staging.https.conf` | Step B3: HTTPS, HTTP redirects to it                                            |
+| `server-log.md`                    | Every change made on the server: removed, added, pending, how to undo           |
 
 ## How it fits together
 

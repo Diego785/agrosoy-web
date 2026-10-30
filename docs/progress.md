@@ -25,6 +25,8 @@ up without re-reading the whole history.
 - **Phase A complete:** daily backup at 03:15 server time (first dump checked), and the shared
   nginx serves `agrosoy.solution-services-tech.com` over HTTP to the app (`nginx -t` passed,
   reloaded, answers with our login redirect). The temporary administrator password was changed.
+- `deploy/server-log.md` records every change made on the server (removed, added, shared
+  components touched, pending, how to undo).
 - **Next:** ask the server's admin for the DNS record (message in `deploy/README.md`, B1), then
   certificate and HTTPS (B2–B5).
 
