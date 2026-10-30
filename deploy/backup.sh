@@ -4,6 +4,8 @@
 # Keeps 30 days locally and, when RCLONE_REMOTE is set (e.g. "offsite:agrosoy"), copies each
 # dump off the server, as the proposal requires.
 set -eu
+# Dumps hold every customer and balance: readable only by the owner.
+umask 077
 
 KEEP_DAYS=30
 mkdir -p backups
