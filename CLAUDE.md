@@ -10,12 +10,14 @@ Sales, accounts receivable and warehouse inventory system for Agrosoy (Bolivia).
 - `docs/progress.md`: where the last session stopped.
 - `docs/domain-model.md`: business rules for notes, collections, the ledger and inventory.
 - `docs/glossary.md`: the English name for every Spanish business term. Use it; don't invent synonyms.
-- `docs/decisions.md`: why things are built this way (D1–D22). Add a decision instead of quietly deviating.
+- `docs/decisions.md`: why things are built this way (D1–D30). Add a decision instead of quietly deviating.
 
 ## Working method
 
 - Follow the roadmap steps in order. Each week's work goes on a `feature/week-N` branch; `main`
   keeps the version shown in the last demo and receives the branch once the developer approves it.
+- A change goes on the branch of the week it belongs to (`main` is week 1) and reaches the later
+  weeks by merging forward: `main` → `feature/week-2` → `feature/week-3`. Never merge backwards.
 - Each commit leaves `main` working: `corepack pnpm check` passes before committing.
 - End every session by adding an entry to `docs/progress.md`.
 

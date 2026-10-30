@@ -6,7 +6,7 @@ import { drizzleDailyRateRepository } from "@/modules/collections/infrastructure
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { listProducts, priceSheet } from "@/modules/catalog/application/catalog-use-cases";
 import { catalogDeps } from "@/modules/catalog/presentation/catalog-deps";
-import { listZones } from "@/modules/customers/application/customer-use-cases";
+import { listAllZones } from "@/modules/customers/application/customer-use-cases";
 import {
   authorizedReceivers,
   customerProperties,
@@ -62,7 +62,7 @@ export async function loadNoteFormOptions(actor: Actor) {
         .where(and(eq(authorizedReceivers.isActive, true))),
       listProducts(catalogDeps(db), actor, { text: "" }),
       listCampaigns({ campaigns: drizzleCampaignRepository(db) }, actor),
-      listZones({ zones: drizzleZoneRepository(db) }, actor),
+      listAllZones({ zones: drizzleZoneRepository(db) }, actor),
       identityTechnicianLookup(db).listActive(),
     ]);
 

@@ -3,6 +3,63 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-10-30
+
+- **Agrosoy's answers and documents mapped into the design** (decisions D23–D30, glossary, domain
+  model, roadmap): photos of the paper note (one form and one number sequence for delivery, return
+  and transfer) and of the cash receipt, the product list (`PRODUCTOS.xlsx`: 81 codes per
+  container, prices per liter/kilo or container, "OTROS" codes that are charge concepts) and the
+  weekly travel-expense spreadsheet. Agrosoy won't share its full sales spreadsheets and will enter
+  its own opening debts, so manual opening data becomes the main way to go live (D29). Customers
+  arrive next.
+- Answered: shared note numbering (D19) and interest (D24). Still open: MP/SV and what closes a
+  consignment.
+- Branches: `main` stays week 1; week 2 and week 3 stay on their branches and receive `main`'s
+  changes by merge (week 1 → week 2 → week 3).
+- **Week 2 branch:** `main` merged in. Zone renaming and deactivation now sit beside customer
+  properties, receivers and deactivation; the price sheet and the note form list deactivated zones
+  too (marked), since their customers still need prices.
+- **Week 3 branch:** week 2 merged in (with `main`'s changes); only the docs needed hand merging:
+  decisions now run D1–D30 in order, and the domain model notes that returns and transfers are
+  still built against a single note until D25 is implemented.
+
+## 2026-10-29
+
+- **Staging deployment adapted to the real server** (0.7 part 2, files ready; not deployed yet).
+  The VPS is borrowed and already runs a shared nginx + certbot, so Caddy is dropped (D14
+  updated): `deploy/compose.yaml` publishes no ports, names its containers `agrosoy-<environment>`,
+  joins the shared `server-network`, and keeps the database on an internal network.
+  `deploy/nginx/` holds the HTTP-only and HTTPS files for `agrosoy.solution-services-tech.com` in
+  the server's style. Until the domain is decided, staging is reached at
+  `http://38.242.145.246:3100` through `deploy/compose.ip.yaml`, turned on from `.env` (phase A);
+  phase B (DNS, certificate, HTTPS, closing the port) is ready and documented. All deployment
+  docs moved to `deploy/README.md`, numbered steps with their check and undo.
+- On the server, two unused old projects that published ports 3300 and 3400 were stopped
+  (`docker compose down`, volumes and folders kept for now).
+- Decided: staging stays reachable by IP and port for the whole of phase A (no opening and closing
+  per demo), and its domain is `agrosoy.solution-services-tech.com`. nginx gets the HTTP-only file
+  in phase A (step A6), so once the DNS record exists only the certificate and HTTPS remain. The
+  record will be requested from the server's admin later.
+- **Staging is up** at `http://38.242.145.246:3100` (steps A1–A4): image `main` at 0dccd17,
+  migrations applied, health OK, first administrator created.
+- **Phase A complete:** daily backup at 03:15 server time (first dump checked), and the shared
+  nginx serves `agrosoy.solution-services-tech.com` over HTTP to the app (`nginx -t` passed,
+  reloaded, answers with our login redirect). The temporary administrator password was changed.
+- `deploy/server-log.md` records every change made on the server (removed, added, shared
+  components touched, pending, how to undo).
+- **Next:** ask the server's admin for the DNS record (message in `deploy/README.md`, B1), then
+  certificate and HTTPS (B2–B5).
+
+## 2026-10-27
+
+- **Zones can be renamed and deactivated** (requested for the week 1 demo). Renaming fixes typos
+  and every customer shows the new name; deactivating stops offering the zone for customers while
+  the ones that have it keep it (also when edited), since week 2's reference prices depend on
+  zones. Never deleted; reactivable. The zones page shows each zone's customer count; the customer
+  search can still filter by a deactivated zone. Audited.
+- The week 1 demo runs against its own local database (`agrosoy_s1` in `.env.local`), so the
+  test data of weeks 2 and 3 (database `agrosoy`) doesn't show up.
+
 ## 2026-10-26 (week 3, branch `feature/week-3`)
 
 Branched from `feature/week-2` (not merged into `main` yet). Everything planned for week 3 is

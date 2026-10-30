@@ -80,6 +80,8 @@ export type ReceiverInput = z.input<typeof receiverSchema>;
 
 export type CustomerSearchInput = z.input<typeof customerSearchSchema>;
 
+export const zoneIdSchema = z.uuid();
+
 export const zoneSchema = z.object({
   name: z
     .string()

@@ -4,7 +4,7 @@ import { listCampaigns } from "@/modules/campaigns/application/campaign-use-case
 import { campaignOn } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
-import { listZones } from "@/modules/customers/application/customer-use-cases";
+import { listAllZones } from "@/modules/customers/application/customer-use-cases";
 import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { can } from "@/shared/application/permissions";
@@ -141,7 +141,7 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
   const db = getDb();
   const [campaigns, zones] = await Promise.all([
     listCampaigns({ campaigns: drizzleCampaignRepository(db) }, actor),
-    listZones({ zones: drizzleZoneRepository(db) }, actor),
+    listAllZones({ zones: drizzleZoneRepository(db) }, actor),
   ]);
   if (campaigns.length === 0) {
     return (
@@ -176,7 +176,7 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
           <NativeSelectOption value="">Precio general (todas las zonas)</NativeSelectOption>
           {zones.map((zone) => (
             <NativeSelectOption key={zone.id} value={zone.id}>
-              {zone.name}
+              {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
             </NativeSelectOption>
           ))}
         </NativeSelect>

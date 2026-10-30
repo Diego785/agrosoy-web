@@ -31,7 +31,7 @@ inventory code. Terms follow the [glossary](glossary.md); the reasons behind the
 | M7  | Account statement         | `receivables`                | the customer ledger and statements                                         |
 | M8  | Inventory                 | `inventory`                  | warehouses, stock movements, stock balances, transfers, counts             |
 | M9  | Purchasing                | `purchasing`                 | suppliers, purchases                                                       |
-| M10 | Travel allowances         | `travel-allowances`          | advances and expenses per technician                                       |
+| M10 | Travel allowances         | `travel-allowances`          | weekly expense reports, approvals, monthly limits, vehicles                |
 | M11 | Reports and notifications | `reporting`, `notifications` | read models, exports, alerts                                               |
 | M12 | Migration                 | `migration`                  | spreadsheet import, review findings, statement preview                     |
 
@@ -39,6 +39,12 @@ Modules change each other's data only through their `application` layer (use cas
 never by writing another module's tables. Read models may join across modules (the customer list
 shows the technician's name) and foreign keys may point across them. M5 is the main orchestrator: confirming a note calls
 inventory (M8) and receivables (M7) inside one transaction.
+
+## Users (M1)
+
+- One user per person with a role; permissions per role are editable by administration.
+- Optional **position** ("Ejecutivo de ventas") and **CI**, printed on notes, receipts and travel
+  reports (D26), and for technicians a **zone of work** (D30).
 
 ## Customers (M2)
 
@@ -53,15 +59,24 @@ inventory (M8) and receivables (M7) inside one transaction.
 - **Portfolio:** a customer has one technician at a time. Changing it keeps the history
   (assignments have a start and end date); past documents keep the technician they had.
 - **Authorized receivers:** name, CI and position or kinship. A delivery records who received.
+- **Import (D29):** Agrosoy's customer list is loaded into a preview, matched by normalized name,
+  and saved once reviewed; nothing is created twice.
 
 ## Products and prices (M3)
 
-- **Product:** code, name, line (`agrochemicals` or `fertilizers`).
-- **Presentation:** content and unit (20 L, 250 ml, 25 kg…) and sale unit: the price is either
-  per liter/kilo or per container. Each note line knows its total liters or kilos.
+- **Product:** name and line (`agrochemicals` or `fertilizers`); it groups its presentations.
+- **Presentation (D23):** Agrosoy's **code** ("001"), content and unit (20 L, 250 ml, 25 kg, 50
+  units…) and sale unit: the price is either per liter/kilo or per container (frasco, bolsa,
+  sobre). Each note line knows its total liters or kilos.
+- Products and presentations no longer sold are deactivated, never deleted.
 - **Lot:** lot number and expiry date. Stock is held per warehouse **and lot**.
-- **Reference price:** US dollars per sale unit, per campaign × zone × presentation. The
-  technician records the negotiated price on each line; the reference is a suggestion.
+- **Reference price:** US dollars per sale unit, per campaign × zone × presentation, with a
+  general price (no zone) used where a zone has none. Agrosoy enters them when a campaign starts;
+  the product list's prices load as the general ones. The technician records the negotiated price
+  on each line; the reference is a suggestion.
+- **Catalog import (D23):** Agrosoy's product list (code, name with the container in brackets,
+  price, price unit) is read into a preview that groups presentations under their product and
+  flags what needs a decision; its "OTROS" rows are charge concepts, not products (D24).
 - Products are picked from the catalog, never typed, so each product has exactly one name.
 
 ## Campaigns (M4)
@@ -78,13 +93,19 @@ A note has a header and lines.
 
 - **Header:** number, type, date, customer, property, campaign, technician, warehouse, payment
   terms (`cash` / `credit`), agreed exchange rate, receiver (name, CI, position or kinship),
-  observations, optional SIN invoice number, photo of the signed paper copy.
+  person who hands over (name, position, CI), carrier (company, vehicle, CI), observations,
+  optional SIN invoice number, photo of the signed paper copy.
+- **PDF (D26):** printed like the paper form, one layout for the three types with the type's box
+  checked.
+- **Historical notes (D29):** paper notes dated before the cut-off date, typed with their printed
+  number; they post their debt but never move stock.
 - **Line:** presentation, lot, quantity, unit price in USD, line total, and a free-of-charge flag
   with its reason (`bonus` or `sample`, price 0).
 - **States:** `draft` → `confirmed` → `voided` (with reason). Only drafts can be edited.
-- **Numbering (D19):** one gapless counter, shared by the three types, given on confirmation.
-  Administration sets where it continues (the pad in use). Paper notes typed in later keep their
-  printed number; the counter skips numbers already taken and a repeated number is rejected.
+- **Numbering (D19, D28):** one gapless counter, shared by the three types, given on confirmation.
+  Paper notes typed in later keep their printed number; the counter skips numbers already taken and
+  a repeated number is rejected. Administration sets where the counter starts: the system's own
+  numbers go in a range the paper pads won't reach.
 
 ### What confirming a note does
 
@@ -100,10 +121,11 @@ A note has a header and lines.
 Rules:
 
 - A delivery cannot take more than the warehouse + lot has, and warns when the lot is expired.
-- Returns and campaign transfers are made against the lines of one confirmed delivery note and
-  are saved already confirmed (with their number, or the printed one). Each line can be returned
-  or transferred only up to what is left of it: delivered minus what confirmed returns and
-  transfers already took. This is the customer's consigned quantity of that delivery.
+- Returns and campaign transfers take lines from confirmed delivery notes of the same customer and
+  campaign (D25; the week 3 build still takes them from a single note) and are saved already
+  confirmed (with their number, or the printed one). Each line can be returned or transferred only
+  up to what is left of it: delivered minus what confirmed returns and transfers already took.
+  This is the customer's consigned quantity of that delivery.
 - A return is credited in the original note's campaign, dated the day of the return.
 - A transfer is dated in the new campaign (a different, open one); it credits the old campaign at
   the delivered price and charges the new one at the new price (suggested from the new
@@ -114,18 +136,21 @@ Rules:
 
 - **Payment:** date, customer, amount, currency (`USD` or `BOB`), exchange rate, USD equivalent,
   method (`cash`, `transfer`, `qr`, `in_kind` with description and agreed value), reference,
-  receipt number.
+  receipt number (the next one, or the printed one of a paper receipt, D28).
 - **Allocation (D20):** a payment is applied to a specific note, to a campaign, or by default to
   the oldest debt first (campaigns in order of their start). What is left after every campaign is
   settled stays as a credit in favor in the campaign of the payment date. Each allocation is a
   **credit** entry in that campaign.
-- **Receipt:** every payment gets the next receipt number (its own counter, D19).
+- **Receipt (D19, D26, D27):** its own counter; printed like the paper receipt, with the amount in
+  words, the concept, and the customer's balance before and after the payment as it was when it
+  was recorded.
 - **Cash note:** confirming it records its payment at once, in the currency paid, for exactly the
   note's total (in bolivianos: total × the note's rate). Voiding the note voids that payment.
 - **Exchange rate:** suggested from the customer's agreement; administration records the day's
   rate when the agreement is `daily`.
-- **Charge:** an extra debit (for example interest) entered by administration with a reason, in an
-  open campaign. Payments and charges are voided with a reason, never deleted.
+- **Charge (D24):** entered by administration with a concept (interest, price adjustment,
+  notarized contract, other) and a reason, in an open campaign. A price adjustment can also lower
+  the debt. Payments and charges are voided with a reason, never deleted.
 - A payment in bolivianos stores both amounts: `usd = bob ÷ rate`, rounded half up to the cent.
 
 ## Receivables ledger and statement (M7)
@@ -176,9 +201,22 @@ The **ledger** is an append-only table of entries:
 
 ## Travel allowances (M10)
 
-- **Advance:** money given to a technician. **Expense:** date, category (fuel, lodging, food,
-  tolls, entertainment, vehicle repairs and accessories), amount, receipt photo.
-- Unaccounted balance = advances − expenses, per technician.
+Modeled on Agrosoy's weekly expense spreadsheet (D30). Amounts in bolivianos.
+
+- **Expense report:** one per technician and week (Monday to Saturday), with position and zone of
+  work. States: `draft` → `submitted` (technician) → `approved` (management) → `paid`
+  (administration); only drafts are edited.
+- **Expense:** date, category (`fuel`, `lodging`, `food`, `tolls`, `entertainment`,
+  `vehicle_repairs`, `vehicle_accessories`, `other`), amount, invoice control code, observation,
+  optional receipt photo. Fuel records the odometer; food is entered per day; entertainment says
+  what it was for. Vehicle costs say who paid: the technician or the company.
+- **Result:** subtotal of what the technician paid minus the **cash advanced** = amount reimbursed
+  (positive) or returned (negative).
+- **Monthly limit** per technician (Bs 4,800 by default): the month's total and the difference.
+- **Vehicle:** plate or name and person in charge; its maintenance and accessories add up per
+  month, whoever paid them.
+- Documents: the weekly report as a PDF to sign, the monthly summary per category and week, and
+  the monthly cost per vehicle.
 
 ## Notifications (M11)
 
@@ -200,6 +238,12 @@ minimum, transfers unconfirmed for 3 days, customers with debt older than 90 day
 Column names are `snake_case` in the database and `camelCase` in TypeScript (Drizzle maps them).
 
 ## Migration (M12)
+
+**Going live (D29).** Agrosoy doesn't share its full sales spreadsheets, so administration enters
+its own starting data from a cut-off date: customers and products through imports with a preview,
+an opening balance per customer and campaign, historical notes only for product still on
+consignment, and historical payments with their printed receipt numbers. The spreadsheet import
+and conversion below remain an optional tool Agrosoy can run on its own sheets.
 
 **Import (built in week 1).** An administrator uploads a technician's workbook on the import page.
 Each sheet with a sales table becomes an _import batch_ (D17):

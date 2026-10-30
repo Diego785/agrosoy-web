@@ -1,9 +1,11 @@
 #!/bin/sh
 # Daily database backup for one environment. Run from cron in the environment's folder:
-#   15 3 * * * cd /srv/agrosoy/production && ./backup.sh >> backups/backup.log 2>&1
+#   15 3 * * * cd /home/apps/www/solution/agrosoy/staging && ./backup.sh >> backups/backup.log 2>&1
 # Keeps 30 days locally and, when RCLONE_REMOTE is set (e.g. "offsite:agrosoy"), copies each
 # dump off the server, as the proposal requires.
 set -eu
+# Dumps hold every customer and balance: readable only by the owner.
+umask 077
 
 KEEP_DAYS=30
 mkdir -p backups

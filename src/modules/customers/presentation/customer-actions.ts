@@ -13,7 +13,9 @@ import {
   registerCustomer,
   removeAuthorizedReceiver,
   removeCustomerProperty,
+  renameZone,
   setCustomerActive,
+  setZoneActive,
   updateCustomer,
 } from "../application/customer-use-cases";
 import { customerDeps } from "./customer-deps";
@@ -48,6 +50,25 @@ export async function createZoneAction(input: ZoneInput): Promise<ActionResult<{
     const created = await withTransaction((tx) => createZone(customerDeps(tx), actor, input));
     revalidatePath(ZONES_PATH);
     return created;
+  });
+}
+
+export async function renameZoneAction(zoneId: string, input: ZoneInput): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => renameZone(customerDeps(tx), actor, zoneId, input));
+    // Customer lists and pages show the zone's name.
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return null;
+  });
+}
+
+export async function setZoneActiveAction(zoneId: string, active: boolean): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setZoneActive(customerDeps(tx), actor, zoneId, active));
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return null;
   });
 }
 
