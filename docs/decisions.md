@@ -177,7 +177,7 @@ statement preview show real figures in week 1 without polluting the ledger that 
 
 ## D23 · Product codes belong to presentations and keep Agrosoy's numbers
 
-_D18–D22 are recorded on the week 2 and 3 branches; the numbering is shared across branches._
+_D18–D22 are recorded on the week 3 branch; the numbering is shared across branches._
 
 **Decision:** a code identifies a presentation (a product in one container), as in Agrosoy's
 product list: "001" is Fulvin 40-22 in 20 L, "002" the same product in 5 L. Codes are text of three
