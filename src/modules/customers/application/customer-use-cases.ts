@@ -15,6 +15,7 @@ import type {
   CustomerRepository,
   TechnicianLookup,
   Zone,
+  ZoneListItem,
   ZoneRepository,
 } from "./ports";
 import {
@@ -23,6 +24,7 @@ import {
   customerSearchSchema,
   propertySchema,
   receiverSchema,
+  zoneIdSchema,
   zoneSchema,
 } from "./customer-schemas";
 
@@ -63,12 +65,14 @@ export async function updateCustomer(
 ): Promise<void> {
   assertCan(actor, "customers.manage");
   const id = validateInput(customerIdSchema, customerId);
-  const record = await validCustomer(deps, input);
-  const before = await deps.customers.findForEdit(id);
+  const current = await deps.customers.findForEdit(id);
+  if (!current) throw new DomainError("NOT_FOUND", { entity: "customer", id });
+  // A customer keeps a zone that was deactivated later; only new assignments must be active.
+  const record = await validCustomer(deps, input, current.zoneId);
 
   await deps.customers.update(id, record);
   // The portfolio history only changes when the technician does.
-  if ((before?.technicianId ?? null) !== (record.technicianId ?? null)) {
+  if ((current.technicianId ?? null) !== (record.technicianId ?? null)) {
     await deps.customers.assignTechnician(id, record.technicianId ?? null);
   }
   await deps.audit.record({
@@ -222,18 +226,79 @@ export async function removeAuthorizedReceiver(
 }
 
 /** Options for the customer form's selects. */
+/**
+ * Active zones and technicians for the customer form. When editing, the customer's own zone is
+ * offered even if it was deactivated, so saving other changes doesn't drop it.
+ */
 export async function customerFormOptions(
   deps: Pick<CustomerDeps, "zones" | "technicians">,
   actor: Actor,
-): Promise<{ zones: Zone[]; technicians: { id: string; name: string }[] }> {
+  keepZoneId: string | null = null,
+): Promise<{ zones: (Zone & { isActive: boolean })[]; technicians: { id: string; name: string }[] }> {
   assertCan(actor, "customers.manage");
-  const [zones, technicians] = await Promise.all([deps.zones.list(), deps.technicians.listActive()]);
+  const [active, technicians] = await Promise.all([deps.zones.list(), deps.technicians.listActive()]);
+  const zones = active.map((zone) => ({ ...zone, isActive: true }));
+  if (keepZoneId && !zones.some((zone) => zone.id === keepZoneId)) {
+    const kept = await deps.zones.find(keepZoneId);
+    if (kept) zones.push(kept);
+  }
   return { zones, technicians };
 }
 
-export async function listZones(deps: Pick<CustomerDeps, "zones">, actor: Actor): Promise<Zone[]> {
+/** Every zone, deactivated ones included, for the zones page and the customer search filter. */
+export async function listAllZones(deps: Pick<CustomerDeps, "zones">, actor: Actor): Promise<ZoneListItem[]> {
   assertCan(actor, "customers.view");
-  return deps.zones.list();
+  return deps.zones.listAll();
+}
+
+/** Fixes a zone's name; customers point at the zone, so they all show the new name. */
+export async function renameZone(
+  deps: Pick<CustomerDeps, "zones" | "audit">,
+  actor: Actor,
+  zoneId: unknown,
+  input: unknown,
+): Promise<void> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(zoneIdSchema, zoneId);
+  const record = zoneRecord(validateInput(zoneSchema, input).name);
+  const zone = await deps.zones.find(id);
+  if (!zone) throw new DomainError("NOT_FOUND", { entity: "zone", id });
+  if (zone.name === record.name) return;
+
+  await deps.zones.rename(id, record);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "customers.rename_zone",
+    entityType: "zone",
+    entityId: id,
+    payload: { name: record.name, previousName: zone.name },
+  });
+}
+
+/**
+ * Zones are deactivated, never deleted: they stop being offered for customers, while the ones
+ * that have it keep it (and, from week 2, the reference prices of that zone stay).
+ */
+export async function setZoneActive(
+  deps: Pick<CustomerDeps, "zones" | "audit">,
+  actor: Actor,
+  zoneId: unknown,
+  active: boolean,
+): Promise<void> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(zoneIdSchema, zoneId);
+  const zone = await deps.zones.find(id);
+  if (!zone) throw new DomainError("NOT_FOUND", { entity: "zone", id });
+  if (zone.isActive === active) return;
+
+  await deps.zones.setActive(id, active);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: active ? "customers.reactivate_zone" : "customers.deactivate_zone",
+    entityType: "zone",
+    entityId: id,
+    payload: { name: zone.name },
+  });
 }
 
 export async function createZone(
@@ -255,12 +320,16 @@ export async function createZone(
   return created;
 }
 
-async function validCustomer(deps: CustomerDeps, input: unknown): Promise<CustomerRecord> {
+async function validCustomer(
+  deps: CustomerDeps,
+  input: unknown,
+  currentZoneId: string | null = null,
+): Promise<CustomerRecord> {
   const data = validateInput(customerSchema, input);
   const record = customerRecord({ ...data, exchangeRateAgreement: agreementFrom(data) });
 
   // Ids come from the browser: check they point at a zone and an active technician.
-  if (record.zoneId && !(await deps.zones.exists(record.zoneId))) {
+  if (record.zoneId && record.zoneId !== currentZoneId && !(await deps.zones.exists(record.zoneId))) {
     throw invalidField("zoneId", "La zona elegida ya no existe.");
   }
   if (record.technicianId && !(await deps.technicians.isActiveTechnician(record.technicianId))) {

@@ -11,6 +11,9 @@ import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import {
   createZone,
   customerFormOptions,
+  listAllZones,
+  renameZone,
+  setZoneActive,
   getCustomerForEdit,
   registerCustomer,
   searchCustomers,
@@ -162,5 +165,55 @@ describe("customers", () => {
     await expect(
       inTransaction((deps) => createZone(deps, admin, { name: "cuatro cañadas" })),
     ).rejects.toMatchObject({ code: "DUPLICATE", details: { field: "name" } });
+  });
+
+  it("renames a zone, and its customers show the new name", async () => {
+    const { id: zoneId } = await inTransaction((deps) => createZone(deps, admin, { name: "Cuatro Canadas" }));
+    await inTransaction((deps) => createZone(deps, admin, { name: "Chiquitos" }));
+    await register({ name: "Eduardo Cuaquira", zoneId });
+
+    await inTransaction((deps) => renameZone(deps, admin, zoneId, { name: "Cuatro Cañadas" }));
+    expect((await search({ text: "" })).items[0]).toMatchObject({ zoneName: "Cuatro Cañadas" });
+    await expect(
+      inTransaction((deps) => renameZone(deps, admin, zoneId, { name: "chiquitos" })),
+    ).rejects.toMatchObject({ code: "DUPLICATE", details: { field: "name" } });
+  });
+
+  it("deactivates a zone without taking it from the customers that have it", async () => {
+    const { id: zoneId } = await inTransaction((deps) => createZone(deps, admin, { name: "Norte" }));
+    const { id } = await register({ name: "Agro Sur", zoneId });
+    await inTransaction((deps) => setZoneActive(deps, admin, zoneId, false));
+
+    expect(await listAllZones(depsFor(testDb), admin)).toEqual([
+      { id: zoneId, name: "Norte", isActive: false, customerCount: 1 },
+    ]);
+    // New customers can't take it, but Agro Sur keeps it while being edited.
+    await expect(register({ name: "Otro Cliente", zoneId })).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+    });
+    await inTransaction((deps) =>
+      updateCustomer(deps, admin, id, { name: "Agro Sur SRL", zoneId, exchangeRateKind: "daily" }),
+    );
+    expect((await inTransaction((deps) => customerFormOptions(deps, admin, zoneId))).zones).toEqual([
+      { id: zoneId, name: "Norte", isActive: false },
+    ]);
+
+    await inTransaction((deps) => setZoneActive(deps, admin, zoneId, true));
+    await register({ name: "Otro Cliente", zoneId });
+    const actions = await testDb.select({ action: auditLog.action }).from(auditLog);
+    expect(actions.map((row) => row.action)).toEqual(
+      expect.arrayContaining(["customers.deactivate_zone", "customers.reactivate_zone"]),
+    );
+  });
+
+  it("only lets administration and management rename or deactivate zones", async () => {
+    const favio = await user("Favio Añez", "sales_technician");
+    const { id: zoneId } = await inTransaction((deps) => createZone(deps, admin, { name: "Norte" }));
+    await expect(
+      inTransaction((deps) => renameZone(deps, favio, zoneId, { name: "Sur" })),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(inTransaction((deps) => setZoneActive(deps, favio, zoneId, false))).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 });

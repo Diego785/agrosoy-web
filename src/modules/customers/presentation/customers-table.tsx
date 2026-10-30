@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/presentation/ui/table";
-import { listZones, searchCustomers } from "../application/customer-use-cases";
+import { listAllZones, searchCustomers } from "../application/customer-use-cases";
 import { formatCustomerCode } from "../domain/customer";
 import { customerDeps } from "./customer-deps";
 import { CUSTOMERS_PATH, customerPath } from "./customer-routes";
@@ -29,7 +29,7 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
 
   const [{ items, total, page, pageSize }, zones] = await Promise.all([
     searchCustomers(deps, actor, { text, zoneId, status, page: firstValue(params.page) }),
-    listZones(deps, actor),
+    listAllZones(deps, actor),
   ]);
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
 
@@ -49,7 +49,7 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
             <NativeSelectOption value="">Todas las zonas</NativeSelectOption>
             {zones.map((zone) => (
               <NativeSelectOption key={zone.id} value={zone.id}>
-                {zone.name}
+                {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
               </NativeSelectOption>
             ))}
           </NativeSelect>

@@ -18,7 +18,7 @@ export async function EditCustomer({ params }: { params: Promise<{ id: string }>
       notFound();
     throw error;
   });
-  const options = await customerFormOptions(deps, actor);
+  const options = await customerFormOptions(deps, actor, customer.zoneId);
 
   return (
     <>

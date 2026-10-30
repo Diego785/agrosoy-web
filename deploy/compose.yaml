@@ -1,23 +1,37 @@
-# One copy per environment on the VPS, e.g. /srv/agrosoy/staging and /srv/agrosoy/production,
-# each with its own .env (see .env.example next to this file and docs/deployment.md).
+# One copy per environment on the server, e.g. /home/apps/www/solution/agrosoy/staging, each with
+# its own .env (see .env.example and README.md next to this file).
+# No published ports: the server's shared nginx reaches the app by container name
+# (agrosoy-<environment>) over the shared Docker network. Until the domain exists, compose.ip.yaml
+# adds a public port (phase A).
 name: agrosoy-${ENVIRONMENT:?set ENVIRONMENT in .env}
 
 services:
   app:
     image: ghcr.io/soluti0n-tech/agrosoy-web:${IMAGE_TAG:-main}
+    container_name: agrosoy-${ENVIRONMENT}
     restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgres://agrosoy:${POSTGRES_PASSWORD:?}@db:5432/agrosoy
-    ports:
-      # Only reachable from the server itself; the reverse proxy publishes it with HTTPS.
-      - "127.0.0.1:${APP_PORT:?}:3000"
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - internal
+      - proxy
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   db:
     image: postgres:16-alpine
+    container_name: agrosoy-${ENVIRONMENT}-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: agrosoy
@@ -31,6 +45,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    # Only on the internal network: neither nginx nor the internet can reach the database.
+    networks:
+      - internal
+    logging: *logging
 
 volumes:
   db-data:
+
+networks:
+  internal:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-server-network}
