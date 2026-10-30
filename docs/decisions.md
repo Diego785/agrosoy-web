@@ -146,7 +146,7 @@ VPS. Two environments: `staging` (weekly demos) and `production` (Agrosoy's subd
 The VPS is a borrowed server that already runs a shared nginx with certbot for other projects. So
 instead of the Caddy first planned, each environment publishes no ports: it joins the shared Docker
 network and nginx proxies to it by container name, with one `.conf` file of ours
-(docs/deployment.md).
+(deploy/README.md). Until the domain is decided, staging is reached by IP and port.
 
 **Why:** the proposal promises this setup, and it keeps hosting cost at the Bs 50/month quoted. A
 second proxy on ports 80/443 isn't possible on that server, and following its conventions keeps our

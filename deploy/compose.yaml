@@ -1,7 +1,8 @@
 # One copy per environment on the server, e.g. /home/apps/www/solution/agrosoy/staging, each with
-# its own .env (see .env.example next to this file and docs/deployment.md).
+# its own .env (see .env.example and README.md next to this file).
 # No published ports: the server's shared nginx reaches the app by container name
-# (agrosoy-<environment>) over the shared Docker network.
+# (agrosoy-<environment>) over the shared Docker network. Until the domain exists, compose.ip.yaml
+# adds a public port (phase A).
 name: agrosoy-${ENVIRONMENT:?set ENVIRONMENT in .env}
 
 services:

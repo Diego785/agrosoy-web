@@ -1,0 +1,7 @@
+# Phase A only: publishes the app on the server's public IP (http://<server-ip>:<PUBLIC_PORT>)
+# until the domain exists. Turned on by COMPOSE_FILE in .env and off by removing that line
+# (README.md, phase B). Plain HTTP: demo data and temporary passwords only.
+services:
+  app:
+    ports:
+      - "${PUBLIC_PORT:-3100}:3000"
