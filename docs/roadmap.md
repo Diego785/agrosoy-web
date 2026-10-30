@@ -29,6 +29,19 @@ An issue is **done** when its rules have tests, CI passes, it works on staging a
 If the schedule slips, the milestone in week 3 keeps its scope; part of the 14 reports and the
 travel-allowance module move first.
 
+## Added after Agrosoy's answers (30 Oct 2026)
+
+Each item goes on its week's branch (`main` is week 1) and flows forward by merge.
+
+| Week | Added                                                                                                                                                                                                                                                                                                       |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1   | Users' position and CI, technicians' zone of work (D26, D30); import of Agrosoy's customer list once it arrives (D29)                                                                                                                                                                                       |
+| S2   | Codes per presentation with Agrosoy's numbers, unit presentations, inactive products, import of `PRODUCTOS.xlsx` with its prices as general reference prices (D23); carrier and "handed over by" on notes (D26); copy reference prices from the previous campaign                                           |
+| S3   | Note and receipt PDFs like the paper forms, company profile (D26); receipt balances (D27); printed receipt numbers and the system's own number range (D28); returns and transfers from several deliveries (D25); charge concepts (D24); opening balances, historical notes and payments, cut-off date (D29) |
+| S4   | "Handed over by" defaults to the warehouse keeper; notes before the cut-off take no stock (D29)                                                                                                                                                                                                             |
+| S5   | Travel allowances as weekly reports with approval, monthly limit and vehicles (D30)                                                                                                                                                                                                                         |
+| S6   | Agrosoy loads its own data (customers, products, opening balances, consigned notes) with a guide, instead of the spreadsheet migration (D29)                                                                                                                                                                |
+
 ## Foundation steps (week 1)
 
 | Step | Content                                                                           | Status                           |

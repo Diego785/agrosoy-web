@@ -174,3 +174,124 @@ reviewed step of M12.
 **Why:** the spreadsheets have known inconsistencies (missing exchange rates, formulas that skip
 rows, reused note numbers). Keeping them apart lets Agrosoy review and correct them, and lets the
 statement preview show real figures in week 1 without polluting the ledger that M5–M7 will build.
+
+## D23 · Product codes belong to presentations and keep Agrosoy's numbers
+
+_D18–D22 are recorded on the week 2 and 3 branches; the numbering is shared across branches._
+
+**Decision:** a code identifies a presentation (a product in one container), as in Agrosoy's
+product list: "001" is Fulvin 40-22 in 20 L, "002" the same product in 5 L. Codes are text of three
+or more digits, unique, imported as written; a new presentation takes the next free number. The
+product groups its presentations by name. Products and presentations no longer sold are
+deactivated, never deleted, so old documents keep them. A catalog import reads Agrosoy's list (name
+with the container in brackets, US$ price, price unit) into a preview to review before saving;
+its prices become the campaign's general reference prices (no zone), which each zone can override.
+Presentations can be counted in units (a bag of 50 sheets); a listed product without a container
+is created as "1 unit, priced per container" and flagged for administration.
+
+**Why:** staff, paper notes and price lists already use these codes, one per container. New
+numbers would force everyone to relearn them, and a product-level code can't tell a 1 L bottle from
+a 20 L can.
+
+## D24 · Charges have a concept, and a price adjustment can lower the debt
+
+**Decision:** the "OTROS" codes of Agrosoy's product list are charge concepts, not products: 079
+interest, 080 price adjustment, 081 notarized contracts, plus "other". Administration enters a
+charge with its concept and a reason, in an open campaign. Interest and notarized contracts are
+debits; a price adjustment can be a debit or a credit. Charges never touch stock and are voided,
+never deleted.
+
+**Why:** it answers the open question on interest (they charge it). The list mixes these concepts
+with products because the spreadsheets bill them as rows, but in this system a product takes stock.
+
+## D25 · Returns and campaign transfers gather lines from several deliveries
+
+**Decision:** a return or campaign-transfer note lists lines from any confirmed delivery notes of
+the same customer and campaign. Each line keeps its link to the delivered line it gives back or
+moves, which fixes its price and limits it to what is still consigned. The note itself no longer
+points to a single original note; its PDF lists the deliveries it draws from.
+
+**Why:** the paper form has no "original note" field, and one return slip can bring back product
+from several deliveries. With one printed number it has to be one note.
+
+## D26 · Notes and receipts print like Agrosoy's paper forms
+
+**Decision:** the PDFs follow the forms Agrosoy uses (photos of 28 Oct 2026).
+
+- **Note:** one layout for the three types, with the type's box checked (entrega, devolución,
+  traspaso). Header: date, customer with NIT or CI, property ("Hac."), cash or credit, campaign.
+  Columns: quantity, description, presentation, total liters/kilos, unit price US$, total US$.
+  Footer: total in US$ and Bs with the exchange rate, observations, carrier (company, vehicle, CI),
+  the person who hands over and the one who receives (names, position, CI; signed on paper).
+- **Receipt:** amount in its currency (Bs or US$) and in words, "received from", concept (built
+  from what the payment was applied to, editable), on account / balance / total (D27), place and
+  long date ("Santa Cruz, 28 de octubre de 2026"), and two signatures with name and CI.
+- Document numbers print with six digits (012951).
+
+Notes get optional carrier fields and a "handed over by" person: the technician by default (the
+warehouse keeper once inventory exists); on a return the customer's person hands over and
+Agrosoy's receives. Users get an optional position ("Ejecutivo de ventas") and CI to print them.
+The company's name, logo and contact details come from a settings page; the documents carry the
+brand printed on the forms, **Agrosoil Bolivia**.
+
+**Why:** customers and staff already know and sign these forms; the printed copy stays the
+physical record, so it must look like the one they trust.
+
+## D27 · A receipt keeps the balances of the moment it was issued
+
+**Decision:** recording a payment stores the customer's balance (US$) right before and right after
+it. The receipt prints them as total, on account (the payment) and balance. Reprints and later
+payments don't change them; voiding the payment marks the receipt as void.
+
+**Why:** a receipt is evidence of one moment. Recomputing would make two prints of the same
+receipt disagree.
+
+## D28 · Paper pads and the system number in separate ranges
+
+**Decision:** paper notes and receipts typed in later keep their printed numbers (receipts can now
+take one too). Numbers the system gives start in a range the pads won't reach, set by
+administration per document (for example from 100001). A number is unique across both, whatever
+its origin. Completes D19: the counter is the same, it only starts elsewhere.
+
+**Why:** technicians keep using pads in the field, often without signal, while the system issues
+documents. A counter that continued the pad would collide with its next sheet.
+
+## D29 · Agrosoy enters its own opening debts; spreadsheets are optional
+
+**Decision:** going live doesn't depend on Agrosoy sharing its sales spreadsheets. Administration
+enters, from a chosen **cut-off date** (the day the system starts):
+
+- an **opening balance** per customer and campaign (amount, date, note) for debt without detail;
+- **historical notes**: paper notes typed with their printed number, date and lines, only where
+  product is still on consignment and may be returned or carried over;
+- **historical payments** with their printed receipt number;
+- customers and the product list through imports with a preview, matched by normalized name.
+
+Notes dated before the cut-off never move stock; a return dated after it does, because the product
+physically comes back. The spreadsheet import and its conversion (D17, D22) remain an optional tool
+that Agrosoy can run on its own sheets.
+
+**Why:** Agrosoy can't share the full sales spreadsheets; the sample it sent shows the format, not
+the data. Entered inside their own system, the data stays theirs. Typing every old note would be
+too much work; only consigned product needs its lines.
+
+## D30 · Travel allowances follow Agrosoy's weekly expense report
+
+**Decision:** M10 is a **weekly expense report** per technician, modeled on Agrosoy's spreadsheet
+(`10. VIATICO OCTUBRE 2026.xlsx`):
+
+- Header: week (Monday to Saturday), technician, position, zone of work.
+- Expenses, in bolivianos, by category: fuel (with odometer reading), lodging, food (per day),
+  tolls, entertainment (with a description), vehicle maintenance and repairs, vehicle accessories,
+  other. Each has date, amount, invoice control code, observation and an optional receipt photo.
+  Vehicle costs say who paid: the technician (from the allowance) or Agrosoy directly.
+- Subtotal minus the **cash advanced** gives what is reimbursed or returned.
+- States: draft → submitted (technician) → approved (management) → paid (administration), like the
+  form's signatures "Ing. / Aprobado / Revisado y cancelado".
+- A **monthly limit** per technician (Bs 4,800 by default) with its difference, and **vehicles**
+  with their person in charge, whose maintenance and accessories add up per month.
+- PDFs and reports: the weekly form for signing, the monthly summary per category and the monthly
+  cost per vehicle (the spreadsheet's hidden sheets).
+
+**Why:** it is how Agrosoy already accounts for field expenses, including approvals and the limit,
+so the module replaces the spreadsheet instead of running beside it.

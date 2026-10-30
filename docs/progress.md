@@ -3,6 +3,20 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-10-30
+
+- **Agrosoy's answers and documents mapped into the design** (decisions D23–D30, glossary, domain
+  model, roadmap): photos of the paper note (one form and one number sequence for delivery, return
+  and transfer) and of the cash receipt, the product list (`PRODUCTOS.xlsx`: 81 codes per
+  container, prices per liter/kilo or container, "OTROS" codes that are charge concepts) and the
+  weekly travel-expense spreadsheet. Agrosoy won't share its full sales spreadsheets and will enter
+  its own opening debts, so manual opening data becomes the main way to go live (D29). Customers
+  arrive next.
+- Answered: shared note numbering (D19) and interest (D24). Still open: MP/SV and what closes a
+  consignment.
+- Branches: `main` stays week 1; week 2 and week 3 stay on their branches and receive `main`'s
+  changes by merge (week 1 → week 2 → week 3).
+
 ## 2026-10-29
 
 - **Staging deployment adapted to the real server** (0.7 part 2, files ready; not deployed yet).

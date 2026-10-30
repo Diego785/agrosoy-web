@@ -10,11 +10,14 @@ Sales, accounts receivable and warehouse inventory system for Agrosoy (Bolivia).
 - `docs/progress.md`: where the last session stopped.
 - `docs/domain-model.md`: business rules for notes, collections, the ledger and inventory.
 - `docs/glossary.md`: the English name for every Spanish business term. Use it; don't invent synonyms.
-- `docs/decisions.md`: why things are built this way (D1–D17). Add a decision instead of quietly deviating.
+- `docs/decisions.md`: why things are built this way (D1–D17 and D23–D30; D18–D22 live on the week branches). Add a decision instead of quietly deviating.
 
 ## Working method
 
-- Follow the roadmap steps in order, committing straight to `main` (no branches or pull requests).
+- Follow the roadmap steps in order. Each week's work goes on a `feature/week-N` branch; `main`
+  keeps the version shown in the last demo and receives the branch once the developer approves it.
+- A change goes on the branch of the week it belongs to (`main` is week 1) and reaches the later
+  weeks by merging forward: `main` → `feature/week-2` → `feature/week-3`. Never merge backwards.
 - Each commit leaves `main` working: `corepack pnpm check` passes before committing.
 - End every session by adding an entry to `docs/progress.md`.
 
@@ -58,7 +61,8 @@ Stop a server you started by the PID listening on its port, never by process nam
 
 ## Git
 
-- Work directly on `main`; CI runs on every push and must stay green.
+- Work on the current `feature/week-N` branch; CI runs on every push to any branch and must stay
+  green. Only `main` publishes the Docker image.
 - Conventional commits (`feat(sales): …`, `fix(inventory): …`, `docs: …`, `chore: …`) with a body
   listing the main changes. Stage files by path, never `git add -A`.
 - **Never add `Co-Authored-By` or "Generated with" lines.** `.githooks/commit-msg` strips them anyway.
