@@ -16,7 +16,11 @@ up without re-reading the whole history.
   docs moved to `deploy/README.md`, numbered steps with their check and undo.
 - On the server, two unused old projects that published ports 3300 and 3400 were stopped
   (`docker compose down`, volumes and folders kept for now).
-- **Next:** registry token and phase A of `deploy/README.md`; the domain at the end.
+- Decided: staging stays reachable by IP and port for the whole of phase A (no opening and closing
+  per demo), and its domain is `agrosoy.solution-services-tech.com`. nginx gets the HTTP-only file
+  in phase A (step A6), so once the DNS record exists only the certificate and HTTPS remain. The
+  record will be requested from the server's admin later.
+- **Next:** registry token and phase A of `deploy/README.md` (A1–A6); DNS, then phase B.
 
 ## 2026-10-27
 

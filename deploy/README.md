@@ -10,10 +10,11 @@ see it in the address.
 
 Two phases:
 
-- **Phase A, now:** staging reached by IP and port, `http://38.242.145.246:3100`. No domain, no
-  DNS, nothing to ask the server's admin.
-- **Phase B, at the end:** a domain with HTTPS through the server's shared nginx. Its files are
-  ready in `nginx/`; it only needs the final domain name and its DNS record.
+- **Phase A, now:** staging reached by IP and port, `http://38.242.145.246:3100`, which stays open
+  until phase B. nginx is already prepared for the domain `agrosoy.solution-services-tech.com`
+  (step A6), so nothing waits on us once the DNS record exists.
+- **Phase B, at the end:** the server's admin creates the DNS record; then the certificate, HTTPS,
+  and the public port is closed.
 
 ## Files
 
@@ -23,8 +24,8 @@ Two phases:
 | `compose.ip.yaml`                  | Phase A only: publishes the app on the public port. Turned on from `.env`       |
 | `.env.example`                     | Every setting, with phase A and phase B values                                  |
 | `backup.sh`                        | Daily database dump, 30 days kept, optional off-server copy                     |
-| `nginx/agrosoy-staging.http.conf`  | Phase B, step 1: HTTP only, serves the certificate challenge                    |
-| `nginx/agrosoy-staging.https.conf` | Phase B, step 4: HTTPS, HTTP redirects to it                                    |
+| `nginx/agrosoy-staging.http.conf`  | Step A6: HTTP only, serves the certificate challenge                            |
+| `nginx/agrosoy-staging.https.conf` | Step B3: HTTPS, HTTP redirects to it                                            |
 
 ## How it fits together
 
@@ -39,7 +40,7 @@ Server  /home/apps/www/solution/agrosoy/staging      │
                              │ phase A        │ phase B: server-network
                     http://IP:3100            │
         /home/apps/nginx-certbot-docker   shared nginx, ports 80/443
-        └─ conf/agrosoy-staging.conf      https://<domain> ──▶ http://agrosoy-staging:3000
+        └─ conf/agrosoy-staging.conf      https://agrosoy.solution-services-tech.com ──▶ http://agrosoy-staging:3000
 ```
 
 - The container applies pending migrations, then starts the server (`Dockerfile`, last line).
@@ -137,66 +138,68 @@ crontab -e
 
 For the off-server copy, configure `rclone config` and set `RCLONE_REMOTE`.
 
-### While in phase A
+### A6 · Prepare nginx for the domain
 
-- It's plain HTTP: passwords travel unencrypted. Demo data and temporary passwords only; nothing
-  real until phase B.
-- Sign-in only works from the address in `BETTER_AUTH_URL`; opening the app by another address
-  (e.g. without the port) fails at sign-in.
-
-## Phase B · Domain and HTTPS
-
-To do at the end, when the domain is decided.
-
-### B0 · Choose the domain
-
-The nginx files use `agrosoy.solution-services-tech.com`. If the final name differs, replace it in
-both files before copying them:
-
-```bash
-sed -i 's/agrosoy\.solution-services-tech\.com/<final-domain>/g' deploy/nginx/*.conf
-```
-
-If production will later take that same name, use a different one for staging
-(e.g. `demo-agrosoy.solution-services-tech.com`).
-
-### B1 · nginx, HTTP only
+Harmless before DNS exists: nginx only answers for this name when someone asks for it.
 
 Copy `nginx/agrosoy-staging.http.conf` to the server as
-`/home/apps/nginx-certbot-docker/conf/agrosoy-staging.conf`, then:
+`/home/apps/nginx-certbot-docker/conf/agrosoy-staging.conf` (from your computer:
+`scp deploy/nginx/agrosoy-staging.http.conf root@38.242.145.246:/home/apps/nginx-certbot-docker/conf/agrosoy-staging.conf`),
+then on the server:
 
 ```bash
 docker exec nginx curl -s http://agrosoy-staging:3000/api/health     # nginx reaches the app
 docker exec nginx nginx -t                                           # must pass…
 docker exec nginx nginx -s reload                                    # …before this
-curl -sI -H "Host: <domain>" http://127.0.0.1/
+curl -sI -H "Host: agrosoy.solution-services-tech.com" http://127.0.0.1/
 ```
 
-- **Check:** the last `curl` answers from our app, not another site. It's harmless before DNS exists.
-- **Undo:** remove the file, `nginx -t`, reload.
+- **Check:** the last `curl` answers from our app (a redirect to `/login` or a 200), not another
+  site.
+- **Undo:** `rm /home/apps/nginx-certbot-docker/conf/agrosoy-staging.conf`, `nginx -t`, reload.
 
-### B2 · DNS
+### While in phase A
 
-An A record `<domain>` → `38.242.145.246`, created by whoever manages the domain (for
-`solution-services-tech.com`, the server's admin).
+- The public port stays open the whole phase; no need to open and close it per demo.
+- It's plain HTTP: passwords travel unencrypted. Demo data and temporary passwords only; nothing
+  real until phase B.
+- Sign-in only works from the address in `BETTER_AUTH_URL`; opening the app by another address
+  (e.g. without the port) fails at sign-in.
+- Deploy the latest image before each demo (`docker compose pull && docker compose up -d`): it
+  carries the framework's security fixes.
 
-- **Check:** `nslookup <domain> 1.1.1.1` returns the server's IP.
+## Phase B · Domain and HTTPS
+
+Starts when the DNS record exists. Domain: `agrosoy.solution-services-tech.com`. If production
+later takes this name, staging moves to another one (e.g. `demo-agrosoy.solution-services-tech.com`)
+by replacing the name in both `nginx/` files and repeating A6 and phase B.
+
+### B1 · DNS
+
+Ask the server's admin, who manages `solution-services-tech.com`:
+
+> Please create an **A record** `agrosoy.solution-services-tech.com` → `38.242.145.246`
+> (TTL 300). nginx already has its `.conf` (`conf/agrosoy-staging.conf`) and I'll request the
+> certificate with certbot once it resolves.
+
+- **Check:** `nslookup agrosoy.solution-services-tech.com 1.1.1.1` returns `38.242.145.246`, and
+  `http://agrosoy.solution-services-tech.com` opens the app (HTTP for now).
 - **Undo:** remove the record.
 
-### B3 · Certificate
+### B2 · Certificate
 
 From `/home/apps/nginx-certbot-docker`, rehearsal first:
 
 ```bash
-docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d <domain> --dry-run
-docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d <domain>
+docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoy.solution-services-tech.com --dry-run
+docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoy.solution-services-tech.com
 ```
 
 - **Check:** `Successfully received certificate`.
-- **Undo:** `docker compose run --rm certbot delete --cert-name <domain>` (after removing the
+- **Undo:** `docker compose run --rm certbot delete --cert-name agrosoy.solution-services-tech.com` (after removing the
   HTTPS file that uses it).
 
-### B4 · nginx, HTTPS
+### B3 · nginx, HTTPS
 
 ```bash
 cp conf/agrosoy-staging.conf ~/agrosoy-staging.http.conf.bak     # outside conf/
@@ -204,23 +207,23 @@ cp conf/agrosoy-staging.conf ~/agrosoy-staging.http.conf.bak     # outside conf/
 docker exec nginx nginx -t && docker exec nginx nginx -s reload
 ```
 
-- **Check:** `https://<domain>` opens with the padlock; `http://` redirects to it.
+- **Check:** `https://agrosoy.solution-services-tech.com` opens with the padlock; `http://` redirects to it.
 - **Undo:** copy the backup back, test, reload.
 
-### B5 · Switch the app to the domain and close the port
+### B4 · Switch the app to the domain and close the port
 
 In `.env`: remove the `COMPOSE_FILE` and `PUBLIC_PORT` lines, and set
-`BETTER_AUTH_URL=https://<domain>`. Then:
+`BETTER_AUTH_URL=https://agrosoy.solution-services-tech.com`. Then:
 
 ```bash
 docker compose up -d                    # recreates the app without the public port
 docker compose ps                       # no 0.0.0.0:3100 anymore
 ```
 
-- **Check:** sign-in works at `https://<domain>`; `http://38.242.145.246:3100` no longer answers.
+- **Check:** sign-in works at `https://agrosoy.solution-services-tech.com`; `http://38.242.145.246:3100` no longer answers.
 - **Undo:** put the lines back, `docker compose up -d`.
 
-### B6 · Renewal
+### B5 · Renewal
 
 Let's Encrypt certificates last 90 days and the server has no scheduled renewal. Agree with the
 server's admin on one (`docker compose run --rm certbot renew` plus `nginx -s reload`), since it
