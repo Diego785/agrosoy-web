@@ -139,11 +139,18 @@ constraints, transactions and rounding behave together.
 ## D14 · Hosting on the SolutionTech VPS with Docker
 
 **Decision:** the app runs as a Docker image (`output: "standalone"`) next to Postgres on the
-VPS, behind Caddy for automatic HTTPS. Two environments: `staging` (weekly demos) and
-`production` (Agrosoy's subdomain). Daily `pg_dump` copied off the server, 30 days kept.
-GitHub Actions builds and deploys after a merge to `main`.
+VPS. Two environments: `staging` (weekly demos) and `production` (Agrosoy's subdomain). Daily
+`pg_dump` copied off the server, 30 days kept. GitHub Actions builds the image after a push to
+`main`; the server pulls it.
 
-**Why:** the proposal promises this setup, and it keeps hosting cost at the Bs 50/month quoted.
+The VPS is a borrowed server that already runs a shared nginx with certbot for other projects. So
+instead of the Caddy first planned, each environment publishes no ports: it joins the shared Docker
+network and nginx proxies to it by container name, with one `.conf` file of ours
+(docs/deployment.md).
+
+**Why:** the proposal promises this setup, and it keeps hosting cost at the Bs 50/month quoted. A
+second proxy on ports 80/443 isn't possible on that server, and following its conventions keeps our
+changes inside our own folder and file.
 
 ## D15 · Language and time
 

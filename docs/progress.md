@@ -3,6 +3,19 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-10-29
+
+- **Staging deployment adapted to the real server** (0.7 part 2, files ready; not deployed yet).
+  The VPS is borrowed and already runs a shared nginx + certbot, so Caddy is dropped (D14
+  updated): `deploy/compose.yaml` publishes no ports, names its containers `agrosoy-<environment>`,
+  joins the shared `server-network`, and keeps the database on an internal network.
+  `deploy/nginx/` holds the HTTP-only and HTTPS files for `agrosoy.solution-services-tech.com` in
+  the server's style. `docs/deployment.md` lists the numbered steps, each with its check and
+  undo, including seeing staging through an SSH tunnel before DNS exists.
+- On the server, two unused old projects that published ports 3300 and 3400 were stopped
+  (`docker compose down`, volumes and folders kept for now).
+- **Next:** registry token and steps 1–5 of `docs/deployment.md`; DNS and certificate later.
+
 ## 2026-10-27
 
 - **Zones can be renamed and deactivated** (requested for the week 1 demo). Renaming fixes typos
