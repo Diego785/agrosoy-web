@@ -20,7 +20,9 @@ up without re-reading the whole history.
   per demo), and its domain is `agrosoy.solution-services-tech.com`. nginx gets the HTTP-only file
   in phase A (step A6), so once the DNS record exists only the certificate and HTTPS remain. The
   record will be requested from the server's admin later.
-- **Next:** registry token and phase A of `deploy/README.md` (A1–A6); DNS, then phase B.
+- **Staging is up** at `http://38.242.145.246:3100` (steps A1–A4): image `main` at 0dccd17,
+  migrations applied, health OK, first administrator created.
+- **Next:** A5 (backups) and A6 (nginx file for the domain); DNS, then phase B.
 
 ## 2026-10-27
 
