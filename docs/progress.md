@@ -22,7 +22,11 @@ up without re-reading the whole history.
   record will be requested from the server's admin later.
 - **Staging is up** at `http://38.242.145.246:3100` (steps A1–A4): image `main` at 0dccd17,
   migrations applied, health OK, first administrator created.
-- **Next:** A5 (backups) and A6 (nginx file for the domain); DNS, then phase B.
+- **Phase A complete:** daily backup at 03:15 server time (first dump checked), and the shared
+  nginx serves `agrosoy.solution-services-tech.com` over HTTP to the app (`nginx -t` passed,
+  reloaded, answers with our login redirect). The temporary administrator password was changed.
+- **Next:** ask the server's admin for the DNS record (message in `deploy/README.md`, B1), then
+  certificate and HTTPS (B2–B5).
 
 ## 2026-10-27
 
