@@ -6,12 +6,13 @@ import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-t
 import { withTransaction, type DbExecutor } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
-import type { ChangeOwnPasswordInput, CreateUserInput } from "../application/user-schemas";
+import type { ChangeOwnPasswordInput, CreateUserInput, UpdateUserInput } from "../application/user-schemas";
 import {
   changeOwnPassword,
   createUser,
   resetUserPassword,
   setUserActive,
+  updateUser,
 } from "../application/user-use-cases";
 import { getAuth } from "../infrastructure/auth";
 import { betterAuthOwnCredentials } from "../infrastructure/better-auth-own-credentials";
@@ -36,6 +37,15 @@ export async function createUserAction(
     const created = await withTransaction((tx) => createUser(userAdminDeps(tx), actor, input));
     revalidatePath(USERS_PATH);
     return created;
+  });
+}
+
+export async function updateUserAction(userId: string, input: UpdateUserInput): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => updateUser(userAdminDeps(tx), actor, userId, input));
+    revalidatePath(USERS_PATH, "layout");
+    return null;
   });
 }
 

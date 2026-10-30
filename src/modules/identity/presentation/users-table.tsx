@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
 import { Badge } from "@/shared/presentation/ui/badge";
@@ -12,6 +13,7 @@ import {
 import { listUsers } from "../application/user-use-cases";
 import { drizzleUserDirectory } from "../infrastructure/drizzle-user-directory";
 import { requireActor } from "./current-user";
+import { editUserPath } from "./identity-routes";
 import { UserRowActions } from "./user-row-actions";
 
 export async function UsersTable() {
@@ -35,11 +37,20 @@ export async function UsersTable() {
         {users.map((user) => (
           <TableRow key={user.id}>
             <TableCell>
-              <span className="font-medium">{user.name}</span>
-              {user.email && <span className="block text-xs text-muted-foreground">{user.email}</span>}
+              <Link href={editUserPath(user.id)} className="font-medium hover:underline">
+                {user.name}
+              </Link>
+              {(user.position || user.email) && (
+                <span className="block text-xs text-muted-foreground">
+                  {[user.position, user.email].filter(Boolean).join(" · ")}
+                </span>
+              )}
             </TableCell>
             <TableCell className="font-mono text-sm">{user.username}</TableCell>
-            <TableCell>{ROLE_LABELS[user.role]}</TableCell>
+            <TableCell>
+              {ROLE_LABELS[user.role]}
+              {user.workZone && <span className="block text-xs text-muted-foreground">{user.workZone}</span>}
+            </TableCell>
             <TableCell>
               {!user.active ? (
                 <Badge variant="destructive">Desactivado</Badge>

@@ -1,0 +1,3 @@
+ALTER TABLE "users" ADD COLUMN "position" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "document_id" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "work_zone" text;

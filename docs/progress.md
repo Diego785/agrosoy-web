@@ -16,6 +16,11 @@ up without re-reading the whole history.
   consignment.
 - Branches: `main` stays week 1; week 2 and week 3 stay on their branches and receive `main`'s
   changes by merge (week 1 → week 2 → week 3).
+- **Users get a position, CI and (technicians) a zone of work** (D26, D30): optional fields on
+  create, a new edit page at `/users/[id]` (name, position, CI, zone; username and role stay as
+  created), shown in the users list. Migration `0005_user_profile`. The zone of work is free text,
+  as on the expense form, not one of the customers' zones. Customer import still waits for the
+  list.
 
 ## 2026-10-29
 
