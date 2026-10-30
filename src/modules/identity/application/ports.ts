@@ -1,10 +1,9 @@
 import type { PermissionOverride } from "@/shared/application/permissions";
 import type { Role } from "@/shared/domain/role";
-import type { NewUserAccount } from "../domain/user-account";
+import type { NewUserAccount, UserProfile } from "../domain/user-account";
 
-export type UserSummary = {
+export type UserSummary = UserProfile & {
   id: string;
-  name: string;
   username: string;
   /** Null for users without a real email address. */
   email: string | null;
@@ -19,6 +18,7 @@ export interface UserDirectory {
   create(account: NewUserAccount, temporaryPassword: string): Promise<{ id: string }>;
   list(): Promise<UserSummary[]>;
   findById(userId: string): Promise<UserSummary | undefined>;
+  updateProfile(userId: string, profile: UserProfile): Promise<void>;
   /** Deactivating also ends the user's open sessions. */
   setActive(userId: string, active: boolean): Promise<void>;
   /** Replaces the password, ends open sessions and asks for a change at next sign-in. */

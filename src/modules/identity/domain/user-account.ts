@@ -12,8 +12,25 @@ export const MIN_PASSWORD_LENGTH = 8;
  */
 const PLACEHOLDER_EMAIL_DOMAIN = "usuarios.agrosoy.invalid";
 
-export type NewUserAccount = {
+/** What is printed on notes, receipts and expense reports next to the person's signature (D26). */
+export type UserProfile = {
   name: string;
+  /** "Ejecutivo de ventas". */
+  position: string | null;
+  /** The person's CI. */
+  documentId: string | null;
+  /** Only technicians have one; it heads their expense reports (D30). */
+  workZone: string | null;
+};
+
+export type ProfileDetails = {
+  name: string;
+  position?: string;
+  documentId?: string;
+  workZone?: string;
+};
+
+export type NewUserAccount = UserProfile & {
   username: string;
   email: string;
   role: Role;
@@ -23,15 +40,21 @@ export function normalizeUsername(value: string): string {
   return value.trim().toLowerCase();
 }
 
-export function newUserAccount(details: {
-  name: string;
-  username: string;
-  email?: string;
-  role: Role;
-}): NewUserAccount {
-  const username = normalizeUsername(details.username);
+export function userProfile(details: ProfileDetails, role: Role): UserProfile {
   return {
     name: cleanText(details.name),
+    position: optionalText(details.position) ?? null,
+    documentId: optionalText(details.documentId)?.toUpperCase() ?? null,
+    workZone: role === "sales_technician" ? (optionalText(details.workZone) ?? null) : null,
+  };
+}
+
+export function newUserAccount(
+  details: ProfileDetails & { username: string; email?: string; role: Role },
+): NewUserAccount {
+  const username = normalizeUsername(details.username);
+  return {
+    ...userProfile(details, details.role),
     username,
     email: optionalText(details.email)?.toLowerCase() ?? `${username}@${PLACEHOLDER_EMAIL_DOMAIN}`,
     role: details.role,

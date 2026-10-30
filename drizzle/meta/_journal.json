@@ -40,57 +40,64 @@
     {
       "idx": 5,
       "version": "7",
-      "when": 1793035853058,
-      "tag": "0005_campaigns",
+      "when": 1793395364690,
+      "tag": "0005_user_profile",
       "breakpoints": true
     },
     {
       "idx": 6,
       "version": "7",
-      "when": 1793036073874,
-      "tag": "0006_catalog",
+      "when": 1793395424690,
+      "tag": "0006_campaigns",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "7",
-      "when": 1793036733793,
-      "tag": "0007_customer_contacts",
+      "when": 1793395484690,
+      "tag": "0007_catalog",
       "breakpoints": true
     },
     {
       "idx": 8,
       "version": "7",
-      "when": 1793037700061,
-      "tag": "0008_delivery_notes",
+      "when": 1793395544690,
+      "tag": "0008_customer_contacts",
       "breakpoints": true
     },
     {
       "idx": 9,
       "version": "7",
-      "when": 1793039741504,
-      "tag": "0009_note_confirmation_and_ledger",
+      "when": 1793395604690,
+      "tag": "0009_delivery_notes",
       "breakpoints": true
     },
     {
       "idx": 10,
       "version": "7",
-      "when": 1793040847057,
-      "tag": "0010_collections",
+      "when": 1793395664690,
+      "tag": "0010_note_confirmation_and_ledger",
       "breakpoints": true
     },
     {
       "idx": 11,
       "version": "7",
-      "when": 1793044342318,
-      "tag": "0011_note_follow_ups",
+      "when": 1793395724690,
+      "tag": "0011_collections",
       "breakpoints": true
     },
     {
       "idx": 12,
       "version": "7",
-      "when": 1793045855028,
-      "tag": "0012_sales_import",
+      "when": 1793395784690,
+      "tag": "0012_note_follow_ups",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793395844690,
+      "tag": "0013_sales_import",
       "breakpoints": true
     }
   ]

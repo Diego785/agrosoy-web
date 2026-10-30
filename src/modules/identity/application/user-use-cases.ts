@@ -3,9 +3,9 @@ import type { AuditTrail } from "@/shared/application/audit-trail";
 import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
-import { newUserAccount } from "../domain/user-account";
+import { newUserAccount, userProfile } from "../domain/user-account";
 import type { OwnCredentials, PasswordGenerator, UserDirectory, UserSummary } from "./ports";
-import { changeOwnPasswordSchema, createUserSchema, userIdSchema } from "./user-schemas";
+import { changeOwnPasswordSchema, createUserSchema, updateUserSchema, userIdSchema } from "./user-schemas";
 
 export type UserAdminDeps = {
   users: UserDirectory;
@@ -38,6 +38,37 @@ export async function createUser(
 export async function listUsers(deps: Pick<UserAdminDeps, "users">, actor: Actor): Promise<UserSummary[]> {
   assertCan(actor, "users.manage");
   return deps.users.list();
+}
+
+export async function getUser(
+  deps: Pick<UserAdminDeps, "users">,
+  actor: Actor,
+  input: unknown,
+): Promise<UserSummary> {
+  assertCan(actor, "users.manage");
+  const { userId } = validateInput(userIdSchema, input);
+  return findExisting(deps.users, userId);
+}
+
+/** Name, position, CI and zone of work; the username and role stay as created. */
+export async function updateUser(
+  deps: Pick<UserAdminDeps, "users" | "audit">,
+  actor: Actor,
+  userId: unknown,
+  input: unknown,
+): Promise<void> {
+  assertCan(actor, "users.manage");
+  const user = await findExisting(deps.users, validateInput(userIdSchema, { userId }).userId);
+  const profile = userProfile(validateInput(updateUserSchema, input), user.role);
+
+  await deps.users.updateProfile(user.id, profile);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "identity.update_user",
+    entityType: "user",
+    entityId: user.id,
+    payload: profile,
+  });
 }
 
 export async function setUserActive(

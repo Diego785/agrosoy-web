@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { ROLES } from "@/shared/domain/role";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
@@ -17,7 +17,15 @@ import { TemporaryPasswordNotice } from "./temporary-password-notice";
 import { createUserAction } from "./user-actions";
 import { USERS_PATH } from "./identity-routes";
 
-const EMPTY: CreateUserInput = { name: "", username: "", email: "", role: "sales_technician" };
+const EMPTY: CreateUserInput = {
+  name: "",
+  username: "",
+  email: "",
+  role: "sales_technician",
+  position: "",
+  documentId: "",
+  workZone: "",
+};
 
 const DUPLICATE_MESSAGES = {
   username: "Ese usuario ya existe. Prueba con otro, por ejemplo agregando la inicial del apellido.",
@@ -29,6 +37,7 @@ export function CreateUserForm() {
   const [isSaving, startSaving] = useTransition();
   const form = useForm({ resolver: zodResolver(createUserSchema), defaultValues: EMPTY });
   const { errors } = form.formState;
+  const isTechnician = useWatch({ control: form.control, name: "role" }) === "sales_technician";
 
   const submit = form.handleSubmit((values) =>
     startSaving(async () => {
@@ -100,6 +109,25 @@ export function CreateUserForm() {
           </NativeSelect>
           <FieldError errors={[errors.role]} />
         </Field>
+        <Field data-invalid={!!errors.position}>
+          <FieldLabel htmlFor="position">Cargo (opcional)</FieldLabel>
+          <Input id="position" aria-invalid={!!errors.position} {...form.register("position")} />
+          <FieldDescription>Se imprime junto a su firma, por ejemplo Ejecutivo de ventas.</FieldDescription>
+          <FieldError errors={[errors.position]} />
+        </Field>
+        <Field data-invalid={!!errors.documentId}>
+          <FieldLabel htmlFor="documentId">CI (opcional)</FieldLabel>
+          <Input id="documentId" aria-invalid={!!errors.documentId} {...form.register("documentId")} />
+          <FieldError errors={[errors.documentId]} />
+        </Field>
+        {isTechnician && (
+          <Field data-invalid={!!errors.workZone}>
+            <FieldLabel htmlFor="workZone">Zona de trabajo (opcional)</FieldLabel>
+            <Input id="workZone" aria-invalid={!!errors.workZone} {...form.register("workZone")} />
+            <FieldDescription>Aparece en sus informes de viáticos.</FieldDescription>
+            <FieldError errors={[errors.workZone]} />
+          </Field>
+        )}
       </FieldGroup>
 
       <FieldError errors={[errors.root]} />

@@ -1,6 +1,6 @@
 {
-  "id": "cfbb81e6-ecdf-4cdd-adce-fbcca4abef7c",
-  "prevId": "ae61ee80-0a08-448f-869e-b81f7d4e995c",
+  "id": "ae61ee80-0a08-448f-869e-b81f7d4e995c",
+  "prevId": "ac657174-415b-4740-bd96-3e8ebebb6122",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1838,6 +1838,24 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "work_zone": {
+          "name": "work_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -2025,30 +2043,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "sales_converted_at": {
-          "name": "sales_converted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sales_converted_by": {
-          "name": "sales_converted_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sales_campaign_id": {
-          "name": "sales_campaign_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sales_cutoff_date": {
-          "name": "sales_cutoff_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -2734,25 +2728,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "imported": {
-          "name": "imported",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "import_batch_id": {
-          "name": "import_batch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sheet_number": {
-          "name": "sheet_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "note_date": {
           "name": "note_date",
           "type": "date",
@@ -2927,21 +2902,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "delivery_notes_import_batch_id_index": {
-          "name": "delivery_notes_import_batch_id_index",
-          "columns": [
-            {
-              "expression": "import_batch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -3029,7 +2989,7 @@
         },
         "delivery_notes_confirmed_have_number": {
           "name": "delivery_notes_confirmed_have_number",
-          "value": "\"delivery_notes\".\"status\" = 'draft' or \"delivery_notes\".\"number\" is not null or \"delivery_notes\".\"imported\""
+          "value": "\"delivery_notes\".\"status\" = 'draft' or \"delivery_notes\".\"number\" is not null"
         },
         "delivery_notes_voided_have_reason": {
           "name": "delivery_notes_voided_have_reason",

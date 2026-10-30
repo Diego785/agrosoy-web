@@ -7,6 +7,7 @@ import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-t
 import { listAuditEntries } from "../application/audit-use-cases";
 import { getPermissionMatrix, updateRolePermissions } from "../application/permission-use-cases";
 import { createUser } from "../application/user-use-cases";
+import { newUserAccount } from "../domain/user-account";
 import { drizzleAuditLogReader } from "./drizzle-audit-log-reader";
 import { drizzlePermissionSettings } from "./drizzle-permission-settings";
 import { drizzleUserDirectory } from "./drizzle-user-directory";
@@ -72,7 +73,7 @@ describe("permission matrix", () => {
 describe("audit log", () => {
   it("lists changes newest first with who made them and what they touched", async () => {
     const { id: lizId } = await drizzleUserDirectory(testDb).create(
-      { name: "Liz", username: "liz", email: "liz@agrosoy.com", role: "admin" },
+      newUserAccount({ name: "Liz", username: "liz", email: "liz@agrosoy.com", role: "admin" }),
       "temporary-password",
     );
     const liz = actorWithRole("admin", lizId, "Liz");

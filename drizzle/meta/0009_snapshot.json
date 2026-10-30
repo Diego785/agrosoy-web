@@ -1,6 +1,6 @@
 {
-  "id": "09f98cd3-75ed-4d12-afc8-10bad3324fe8",
-  "prevId": "38557e74-020f-48ae-b765-f9968c462248",
+  "id": "38557e74-020f-48ae-b765-f9968c462248",
+  "prevId": "371d9e4d-3e85-43b3-979b-a7870e9f2f1b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1306,6 +1306,24 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "work_zone": {
+          "name": "work_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -1825,183 +1843,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.ledger_entries": {
-      "name": "ledger_entries",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "customer_id": {
-          "name": "customer_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "campaign_id": {
-          "name": "campaign_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entry_date": {
-          "name": "entry_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount": {
-          "name": "amount",
-          "type": "numeric(14, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_type": {
-          "name": "source_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_id": {
-          "name": "source_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reverses_entry_id": {
-          "name": "reverses_entry_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "ledger_entries_customer_id_campaign_id_index": {
-          "name": "ledger_entries_customer_id_campaign_id_index",
-          "columns": [
-            {
-              "expression": "customer_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "campaign_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "ledger_entries_source_type_source_id_index": {
-          "name": "ledger_entries_source_type_source_id_index",
-          "columns": [
-            {
-              "expression": "source_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "ledger_entries_customer_id_customers_id_fk": {
-          "name": "ledger_entries_customer_id_customers_id_fk",
-          "tableFrom": "ledger_entries",
-          "tableTo": "customers",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "ledger_entries_campaign_id_campaigns_id_fk": {
-          "name": "ledger_entries_campaign_id_campaigns_id_fk",
-          "tableFrom": "ledger_entries",
-          "tableTo": "campaigns",
-          "columnsFrom": [
-            "campaign_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "ledger_entries_reverses_entry_id_ledger_entries_id_fk": {
-          "name": "ledger_entries_reverses_entry_id_ledger_entries_id_fk",
-          "tableFrom": "ledger_entries",
-          "tableTo": "ledger_entries",
-          "columnsFrom": [
-            "reverses_entry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "ledger_entries_reversesEntryId_unique": {
-          "name": "ledger_entries_reversesEntryId_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "reverses_entry_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "ledger_entries_amount_not_zero": {
-          "name": "ledger_entries_amount_not_zero",
-          "value": "\"ledger_entries\".\"amount\" <> 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.delivery_note_lines": {
       "name": "delivery_note_lines",
       "schema": "",
@@ -2216,36 +2057,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "confirmed_at": {
-          "name": "confirmed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmed_by": {
-          "name": "confirmed_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "voided_at": {
-          "name": "voided_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "voided_by": {
-          "name": "voided_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "void_reason": {
-          "name": "void_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -2364,60 +2175,7 @@
         }
       },
       "policies": {},
-      "checkConstraints": {
-        "delivery_notes_confirmed_have_number": {
-          "name": "delivery_notes_confirmed_have_number",
-          "value": "\"delivery_notes\".\"status\" = 'draft' or \"delivery_notes\".\"number\" is not null"
-        },
-        "delivery_notes_voided_have_reason": {
-          "name": "delivery_notes_voided_have_reason",
-          "value": "\"delivery_notes\".\"status\" <> 'voided' or \"delivery_notes\".\"void_reason\" is not null"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.document_counters": {
-      "name": "document_counters",
-      "schema": "",
-      "columns": {
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "next_number": {
-          "name": "next_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "document_counters_next_number_positive": {
-          "name": "document_counters_next_number_positive",
-          "value": "\"document_counters\".\"next_number\" > 0"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.audit_log": {

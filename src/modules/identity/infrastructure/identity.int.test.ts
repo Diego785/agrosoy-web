@@ -8,9 +8,11 @@ import type { Actor } from "@/shared/application/actor";
 import {
   changeOwnPassword,
   createUser,
+  getUser,
   listUsers,
   resetUserPassword,
   setUserActive,
+  updateUser,
 } from "../application/user-use-cases";
 import { createAuth } from "./auth";
 import { sessions } from "./auth.tables";
@@ -71,6 +73,39 @@ describe("user administration", () => {
     const [entry] = await testDb.select().from(auditLog);
     expect(entry).toMatchObject({ action: "identity.create_user", entityId: id, actorId: admin.id });
     expect(JSON.stringify(entry?.payload)).not.toContain(temporaryPassword);
+  });
+
+  it("edits the name, position, CI and zone of work", async () => {
+    const { id } = await create({ name: "Favio", username: "fanez", role: "sales_technician" });
+    await inTransaction((deps) =>
+      updateUser(deps, admin, id, {
+        name: "Favio Añez",
+        position: "Ejecutivo de ventas",
+        documentId: "4567891 SC",
+        workZone: "Cuatro Cañadas",
+      }),
+    );
+
+    await expect(inTransaction((deps) => getUser(deps, admin, { userId: id }))).resolves.toMatchObject({
+      name: "Favio Añez",
+      username: "fanez",
+      role: "sales_technician",
+      position: "Ejecutivo de ventas",
+      documentId: "4567891 SC",
+      workZone: "Cuatro Cañadas",
+    });
+    const entries = await testDb.select().from(auditLog).where(eq(auditLog.action, "identity.update_user"));
+    expect(entries).toHaveLength(1);
+  });
+
+  it("rejects an edit with an invalid CI or by a technician", async () => {
+    const { id } = await create({ name: "Liz", username: "liz", role: "admin" });
+    await expect(
+      inTransaction((deps) => updateUser(deps, admin, id, { name: "Liz", documentId: "45#67" })),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    await expect(
+      inTransaction((deps) => updateUser(deps, actorWithRole("sales_technician"), id, { name: "Liz" })),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("rejects a repeated username, ignoring case", async () => {
