@@ -10,12 +10,14 @@ import { applyActionError } from "@/shared/presentation/form-errors";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import type { UserSummary } from "../application/ports";
 import { updateUserSchema } from "../application/user-schemas";
+import type { WorkZoneOption } from "./edit-user";
 import { USERS_PATH } from "./identity-routes";
 import { updateUserAction } from "./user-actions";
 
-export function EditUserForm({ user }: { user: UserSummary }) {
+export function EditUserForm({ user, zones }: { user: UserSummary; zones: WorkZoneOption[] }) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({
@@ -24,7 +26,7 @@ export function EditUserForm({ user }: { user: UserSummary }) {
       name: user.name,
       position: user.position ?? "",
       documentId: user.documentId ?? "",
-      workZone: user.workZone ?? "",
+      workZoneId: user.workZoneId ?? "",
     },
   });
   const { errors } = form.formState;
@@ -61,11 +63,18 @@ export function EditUserForm({ user }: { user: UserSummary }) {
           <FieldError errors={[errors.documentId]} />
         </Field>
         {user.role === "sales_technician" && (
-          <Field data-invalid={!!errors.workZone}>
-            <FieldLabel htmlFor="workZone">Zona de trabajo (opcional)</FieldLabel>
-            <Input id="workZone" aria-invalid={!!errors.workZone} {...form.register("workZone")} />
+          <Field data-invalid={!!errors.workZoneId}>
+            <FieldLabel htmlFor="workZoneId">Zona de trabajo</FieldLabel>
+            <NativeSelect id="workZoneId" aria-invalid={!!errors.workZoneId} {...form.register("workZoneId")}>
+              <NativeSelectOption value="">Sin zona</NativeSelectOption>
+              {zones.map((zone) => (
+                <NativeSelectOption key={zone.id} value={zone.id}>
+                  {zone.label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
             <FieldDescription>Aparece en sus informes de viáticos.</FieldDescription>
-            <FieldError errors={[errors.workZone]} />
+            <FieldError errors={[errors.workZoneId]} />
           </Field>
         )}
       </FieldGroup>

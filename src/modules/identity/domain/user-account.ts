@@ -19,15 +19,15 @@ export type UserProfile = {
   position: string | null;
   /** The person's CI. */
   documentId: string | null;
-  /** Only technicians have one; it heads their expense reports (D30). */
-  workZone: string | null;
+  /** One of the customers' zones; only technicians have one. It heads their expense reports (D30). */
+  workZoneId: string | null;
 };
 
 export type ProfileDetails = {
   name: string;
   position?: string;
   documentId?: string;
-  workZone?: string;
+  workZoneId?: string;
 };
 
 export type NewUserAccount = UserProfile & {
@@ -45,7 +45,7 @@ export function userProfile(details: ProfileDetails, role: Role): UserProfile {
     name: cleanText(details.name),
     position: optionalText(details.position) ?? null,
     documentId: optionalText(details.documentId)?.toUpperCase() ?? null,
-    workZone: role === "sales_technician" ? (optionalText(details.workZone) ?? null) : null,
+    workZoneId: role === "sales_technician" ? details.workZoneId || null : null,
   };
 }
 

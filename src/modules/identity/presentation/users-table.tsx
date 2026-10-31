@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { listAllZones } from "@/modules/customers/application/customer-use-cases";
+import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
 import { Badge } from "@/shared/presentation/ui/badge";
@@ -18,7 +20,12 @@ import { UserRowActions } from "./user-row-actions";
 
 export async function UsersTable() {
   const actor = await requireActor();
-  const users = await listUsers({ users: drizzleUserDirectory(getDb()) }, actor);
+  const db = getDb();
+  const [users, zones] = await Promise.all([
+    listUsers({ users: drizzleUserDirectory(db) }, actor),
+    listAllZones({ zones: drizzleZoneRepository(db) }, actor),
+  ]);
+  const zoneNames = new Map(zones.map((zone) => [zone.id, zone.name]));
 
   return (
     <Table>
@@ -49,7 +56,9 @@ export async function UsersTable() {
             <TableCell className="font-mono text-sm">{user.username}</TableCell>
             <TableCell>
               {ROLE_LABELS[user.role]}
-              {user.workZone && <span className="block text-xs text-muted-foreground">{user.workZone}</span>}
+              {user.workZoneId && (
+                <span className="block text-xs text-muted-foreground">{zoneNames.get(user.workZoneId)}</span>
+              )}
             </TableCell>
             <TableCell>
               {!user.active ? (

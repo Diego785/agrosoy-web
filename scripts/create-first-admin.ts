@@ -6,6 +6,7 @@
 import { parseArgs } from "node:util";
 import { config } from "dotenv";
 import { count } from "drizzle-orm";
+import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { createUser } from "@/modules/identity/application/user-use-cases";
 import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
@@ -44,7 +45,12 @@ async function main() {
     }
     const { temporaryPassword } = await db.transaction((tx) =>
       createUser(
-        { users: drizzleUserDirectory(tx), passwords: randomPasswordGenerator, audit: drizzleAuditTrail(tx) },
+        {
+          users: drizzleUserDirectory(tx),
+          passwords: randomPasswordGenerator,
+          audit: drizzleAuditTrail(tx),
+          zones: drizzleZoneRepository(tx),
+        },
         INSTALLER,
         { name: values.name, username: values.username, email: values.email, role: "admin" },
       ),
