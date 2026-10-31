@@ -3,14 +3,15 @@ import type { AuditTrail } from "@/shared/application/audit-trail";
 import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
-import { newUserAccount, userProfile } from "../domain/user-account";
-import type { OwnCredentials, PasswordGenerator, UserDirectory, UserSummary } from "./ports";
+import { newUserAccount, userProfile, type UserProfile } from "../domain/user-account";
+import type { OwnCredentials, PasswordGenerator, UserDirectory, UserSummary, WorkZones } from "./ports";
 import { changeOwnPasswordSchema, createUserSchema, updateUserSchema, userIdSchema } from "./user-schemas";
 
 export type UserAdminDeps = {
   users: UserDirectory;
   passwords: PasswordGenerator;
   audit: AuditTrail;
+  zones: WorkZones;
 };
 
 /** Administration creates every account; there is no self sign-up. */
@@ -21,6 +22,7 @@ export async function createUser(
 ): Promise<{ id: string; temporaryPassword: string }> {
   assertCan(actor, "users.manage");
   const account = newUserAccount(validateInput(createUserSchema, input));
+  await checkWorkZone(deps.zones, account);
   const temporaryPassword = deps.passwords.generate();
 
   const { id } = await deps.users.create(account, temporaryPassword);
@@ -52,7 +54,7 @@ export async function getUser(
 
 /** Name, position, CI and zone of work; the username and role stay as created. */
 export async function updateUser(
-  deps: Pick<UserAdminDeps, "users" | "audit">,
+  deps: Pick<UserAdminDeps, "users" | "audit" | "zones">,
   actor: Actor,
   userId: unknown,
   input: unknown,
@@ -60,6 +62,7 @@ export async function updateUser(
   assertCan(actor, "users.manage");
   const user = await findExisting(deps.users, validateInput(userIdSchema, { userId }).userId);
   const profile = userProfile(validateInput(updateUserSchema, input), user.role);
+  await checkWorkZone(deps.zones, profile, user.workZoneId);
 
   await deps.users.updateProfile(user.id, profile);
   await deps.audit.record({
@@ -133,6 +136,16 @@ export async function changeOwnPassword(
     entityId: actor.id,
     payload: {},
   });
+}
+
+/** The id comes from the browser; a zone deactivated after it was assigned may stay. */
+async function checkWorkZone(zones: WorkZones, profile: UserProfile, currentZoneId: string | null = null) {
+  const { workZoneId } = profile;
+  if (workZoneId && workZoneId !== currentZoneId && !(await zones.exists(workZoneId))) {
+    throw new DomainError("VALIDATION_FAILED", {
+      fieldErrors: { workZoneId: ["La zona elegida ya no existe."] },
+    });
+  }
 }
 
 async function findExisting(users: UserDirectory, userId: string): Promise<UserSummary> {

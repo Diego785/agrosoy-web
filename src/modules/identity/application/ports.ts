@@ -26,6 +26,12 @@ export interface UserDirectory {
   clearMustChangePassword(userId: string): Promise<void>;
 }
 
+/** The customers' zones, which are also the technicians' zones of work. */
+export interface WorkZones {
+  /** True for an active zone. */
+  exists(zoneId: string): Promise<boolean>;
+}
+
 export interface PasswordGenerator {
   generate(): string;
 }

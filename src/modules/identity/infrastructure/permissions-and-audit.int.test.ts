@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { actorWithRole } from "@test/actors";
 import { testDb } from "@test/test-database";
+import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { effectivePermissions } from "@/shared/application/permissions";
 import { auditLog } from "@/shared/infrastructure/audit/audit-log.table";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
@@ -82,6 +83,7 @@ describe("audit log", () => {
         users: drizzleUserDirectory(testDb),
         passwords: randomPasswordGenerator,
         audit: drizzleAuditTrail(testDb),
+        zones: drizzleZoneRepository(testDb),
       },
       liz,
       { name: "Favio Añez", username: "fanez", role: "sales_technician" },

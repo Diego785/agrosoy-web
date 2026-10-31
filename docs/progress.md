@@ -3,6 +3,14 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-10-31
+
+- **The zone of work is chosen from the zones** (the customers' zones; Agrosoy's technicians work
+  in the same two). Migration `0006_user_work_zone` replaces the text column with a reference;
+  deactivated zones stay on the technicians who had them and show as "(desactivada)".
+- In development, a schema change can leave the hot-reloaded database client with stale column
+  names (Drizzle's casing cache); restart `pnpm dev` after migrations.
+
 ## 2026-10-30
 
 - **Agrosoy's answers and documents mapped into the design** (decisions D23–D30, glossary, domain
@@ -18,9 +26,8 @@ up without re-reading the whole history.
   changes by merge (week 1 → week 2 → week 3).
 - **Users get a position, CI and (technicians) a zone of work** (D26, D30): optional fields on
   create, a new edit page at `/users/[id]` (name, position, CI, zone; username and role stay as
-  created), shown in the users list. Migration `0005_user_profile`. The zone of work is free text,
-  as on the expense form, not one of the customers' zones. Customer import still waits for the
-  list.
+  created), shown in the users list. Migration `0005_user_profile`. Customer import still waits
+  for the list.
 
 ## 2026-10-29
 

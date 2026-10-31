@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import { withTransaction, type DbExecutor } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
@@ -26,6 +27,7 @@ function userAdminDeps(executor: DbExecutor) {
     users: drizzleUserDirectory(executor),
     passwords: randomPasswordGenerator,
     audit: drizzleAuditTrail(executor),
+    zones: drizzleZoneRepository(executor),
   };
 }
 

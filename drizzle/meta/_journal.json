@@ -43,6 +43,13 @@
       "when": 1793395364690,
       "tag": "0005_user_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793420855650,
+      "tag": "0006_user_work_zone",
+      "breakpoints": true
     }
   ]
 }

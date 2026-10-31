@@ -18,7 +18,7 @@ const profileFields = {
     .regex(/^[0-9A-Za-z\s.-]*$/, { error: "El CI solo lleva números y letras." })
     .max(20, { error: "El CI admite hasta 20 caracteres." })
     .optional(),
-  workZone: z.string().trim().max(60, { error: "La zona admite hasta 60 caracteres." }).optional(),
+  workZoneId: z.union([z.literal(""), z.uuid()]).optional(),
 };
 
 export const createUserSchema = z.object({

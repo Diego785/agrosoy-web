@@ -1,4 +1,5 @@
 import { boolean, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { zones } from "@/modules/customers/infrastructure/customers.tables";
 import { id } from "@/shared/infrastructure/db/columns";
 
 // Tables required by Better Auth 1.7 with the username and admin plugins, plus our
@@ -30,7 +31,7 @@ export const users = pgTable("users", {
   // Printed next to the person's signature on documents (D26); Better Auth doesn't read them.
   position: text(),
   documentId: text(),
-  workZone: text(),
+  workZoneId: uuid().references(() => zones.id),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
