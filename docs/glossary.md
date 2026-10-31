@@ -13,7 +13,7 @@ tables and docs, and the Spanish column in the user interface.
 | Encargado de almacén / almacenero | `warehouse_keeper` | Records stock in and out of their warehouse.                      |
 | Usuario                           | `user`             | One per person; nobody shares a login.                            |
 | Cargo                             | `user.position`    | Printed on documents, e.g. "Ejecutivo de ventas" (D26).           |
-| Zona de trabajo                   | `user.work_zone`   | A technician's zone, shown on travel-allowance reports (D30).     |
+| Zona de trabajo                   | `user.work_zone`   | One of the zones; heads a technician's expense reports (D30).     |
 
 ## Sales and customers
 

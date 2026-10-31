@@ -14,6 +14,7 @@ import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/nativ
 import { createUserSchema, type CreateUserInput } from "../application/user-schemas";
 import { normalizeUsername } from "../domain/user-account";
 import { TemporaryPasswordNotice } from "./temporary-password-notice";
+import type { WorkZoneOption } from "./edit-user";
 import { createUserAction } from "./user-actions";
 import { USERS_PATH } from "./identity-routes";
 
@@ -24,7 +25,7 @@ const EMPTY: CreateUserInput = {
   role: "sales_technician",
   position: "",
   documentId: "",
-  workZone: "",
+  workZoneId: "",
 };
 
 const DUPLICATE_MESSAGES = {
@@ -32,7 +33,7 @@ const DUPLICATE_MESSAGES = {
   email: "Ese correo ya pertenece a otro usuario.",
 };
 
-export function CreateUserForm() {
+export function CreateUserForm({ zones }: { zones: WorkZoneOption[] }) {
   const [created, setCreated] = useState<{ username: string; password: string }>();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({ resolver: zodResolver(createUserSchema), defaultValues: EMPTY });
@@ -121,11 +122,18 @@ export function CreateUserForm() {
           <FieldError errors={[errors.documentId]} />
         </Field>
         {isTechnician && (
-          <Field data-invalid={!!errors.workZone}>
-            <FieldLabel htmlFor="workZone">Zona de trabajo (opcional)</FieldLabel>
-            <Input id="workZone" aria-invalid={!!errors.workZone} {...form.register("workZone")} />
+          <Field data-invalid={!!errors.workZoneId}>
+            <FieldLabel htmlFor="workZoneId">Zona de trabajo</FieldLabel>
+            <NativeSelect id="workZoneId" aria-invalid={!!errors.workZoneId} {...form.register("workZoneId")}>
+              <NativeSelectOption value="">Sin zona</NativeSelectOption>
+              {zones.map((zone) => (
+                <NativeSelectOption key={zone.id} value={zone.id}>
+                  {zone.label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
             <FieldDescription>Aparece en sus informes de viáticos.</FieldDescription>
-            <FieldError errors={[errors.workZone]} />
+            <FieldError errors={[errors.workZoneId]} />
           </Field>
         )}
       </FieldGroup>

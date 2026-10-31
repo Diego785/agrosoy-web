@@ -101,6 +101,6 @@ function toSummary(row: typeof users.$inferSelect): UserSummary {
     mustChangePassword: row.mustChangePassword,
     position: row.position,
     documentId: row.documentId,
-    workZone: row.workZone,
+    workZoneId: row.workZoneId,
   };
 }

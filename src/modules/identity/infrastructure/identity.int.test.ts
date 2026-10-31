@@ -4,6 +4,8 @@ import { actorWithRole } from "@test/actors";
 import { testDb } from "@test/test-database";
 import { auditLog } from "@/shared/infrastructure/audit/audit-log.table";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
+import { zones } from "@/modules/customers/infrastructure/customers.tables";
+import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import type { Actor } from "@/shared/application/actor";
 import {
   changeOwnPassword,
@@ -37,6 +39,7 @@ function depsFor(executor: Parameters<typeof drizzleUserDirectory>[0]) {
     users: drizzleUserDirectory(executor),
     passwords: randomPasswordGenerator,
     audit: drizzleAuditTrail(executor),
+    zones: drizzleZoneRepository(executor),
   };
 }
 
@@ -77,12 +80,16 @@ describe("user administration", () => {
 
   it("edits the name, position, CI and zone of work", async () => {
     const { id } = await create({ name: "Favio", username: "fanez", role: "sales_technician" });
+    const [zone] = await testDb
+      .insert(zones)
+      .values({ name: "Cuatro Cañadas", comparisonName: "cuatro cañadas" })
+      .returning();
     await inTransaction((deps) =>
       updateUser(deps, admin, id, {
         name: "Favio Añez",
         position: "Ejecutivo de ventas",
         documentId: "4567891 SC",
-        workZone: "Cuatro Cañadas",
+        workZoneId: zone?.id,
       }),
     );
 
@@ -92,10 +99,24 @@ describe("user administration", () => {
       role: "sales_technician",
       position: "Ejecutivo de ventas",
       documentId: "4567891 SC",
-      workZone: "Cuatro Cañadas",
+      workZoneId: zone?.id,
     });
     const entries = await testDb.select().from(auditLog).where(eq(auditLog.action, "identity.update_user"));
     expect(entries).toHaveLength(1);
+  });
+
+  it("rejects a zone of work that doesn't exist", async () => {
+    await expect(
+      create({
+        name: "Favio",
+        username: "fanez",
+        role: "sales_technician",
+        workZoneId: crypto.randomUUID(),
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { workZoneId: expect.any(Array) } },
+    });
   });
 
   it("rejects an edit with an invalid CI or by a technician", async () => {

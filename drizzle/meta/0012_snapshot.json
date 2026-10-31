@@ -1,6 +1,6 @@
 {
-  "id": "ae61ee80-0a08-448f-869e-b81f7d4e995c",
-  "prevId": "ac657174-415b-4740-bd96-3e8ebebb6122",
+  "id": "ac657174-415b-4740-bd96-3e8ebebb6122",
+  "prevId": "09f98cd3-75ed-4d12-afc8-10bad3324fe8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1825,6 +1825,24 @@
           "notNull": true,
           "default": false
         },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "work_zone_id": {
+          "name": "work_zone_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1838,28 +1856,24 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "position": {
-          "name": "position",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "document_id": {
-          "name": "document_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "work_zone": {
-          "name": "work_zone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "users_work_zone_id_zones_id_fk": {
+          "name": "users_work_zone_id_zones_id_fk",
+          "tableFrom": "users",
+          "tableTo": "zones",
+          "columnsFrom": [
+            "work_zone_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "users_email_unique": {
@@ -2604,12 +2618,6 @@
           "type": "numeric(14, 2)",
           "primaryKey": false,
           "notNull": true
-        },
-        "original_line_id": {
-          "name": "original_line_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -2618,21 +2626,6 @@
           "columns": [
             {
               "expression": "note_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "delivery_note_lines_original_line_id_index": {
-          "name": "delivery_note_lines_original_line_id_index",
-          "columns": [
-            {
-              "expression": "original_line_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2664,19 +2657,6 @@
           "tableTo": "presentations",
           "columnsFrom": [
             "presentation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "delivery_note_lines_original_line_id_delivery_note_lines_id_fk": {
-          "name": "delivery_note_lines_original_line_id_delivery_note_lines_id_fk",
-          "tableFrom": "delivery_note_lines",
-          "tableTo": "delivery_note_lines",
-          "columnsFrom": [
-            "original_line_id"
           ],
           "columnsTo": [
             "id"
@@ -2719,12 +2699,6 @@
         "number": {
           "name": "number",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "original_note_id": {
-          "name": "original_note_id",
-          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -2887,37 +2861,9 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "delivery_notes_original_note_id_index": {
-          "name": "delivery_notes_original_note_id_index",
-          "columns": [
-            {
-              "expression": "original_note_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
-        "delivery_notes_original_note_id_delivery_notes_id_fk": {
-          "name": "delivery_notes_original_note_id_delivery_notes_id_fk",
-          "tableFrom": "delivery_notes",
-          "tableTo": "delivery_notes",
-          "columnsFrom": [
-            "original_note_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "delivery_notes_customer_id_customers_id_fk": {
           "name": "delivery_notes_customer_id_customers_id_fk",
           "tableFrom": "delivery_notes",
@@ -2983,10 +2929,6 @@
       },
       "policies": {},
       "checkConstraints": {
-        "delivery_notes_follow_ups_have_original": {
-          "name": "delivery_notes_follow_ups_have_original",
-          "value": "(\"delivery_notes\".\"type\" = 'delivery') = (\"delivery_notes\".\"original_note_id\" is null)"
-        },
         "delivery_notes_confirmed_have_number": {
           "name": "delivery_notes_confirmed_have_number",
           "value": "\"delivery_notes\".\"status\" = 'draft' or \"delivery_notes\".\"number\" is not null"

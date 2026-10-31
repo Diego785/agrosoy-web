@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { newUserAccount, USERNAME_PATTERN, userProfile, visibleEmail } from "./user-account";
 
+const ZONE_ID = "0b6f4c3e-8a1d-4f2b-9c5e-7d3a2b1c0f9e";
+
 describe("newUserAccount", () => {
   it("normalizes what was typed", () => {
     expect(
@@ -11,7 +13,7 @@ describe("newUserAccount", () => {
         role: "sales_technician",
         position: " Ejecutivo  de ventas ",
         documentId: " 4567891 sc ",
-        workZone: " Cuatro Cañadas ",
+        workZoneId: ZONE_ID,
       }),
     ).toEqual({
       name: "Favio Añez",
@@ -20,7 +22,7 @@ describe("newUserAccount", () => {
       role: "sales_technician",
       position: "Ejecutivo de ventas",
       documentId: "4567891 SC",
-      workZone: "Cuatro Cañadas",
+      workZoneId: ZONE_ID,
     });
   });
 
@@ -43,13 +45,14 @@ describe("userProfile", () => {
       name: "Liz",
       position: null,
       documentId: null,
-      workZone: null,
+      workZoneId: null,
     });
   });
 
   it("keeps a zone of work only for technicians", () => {
-    expect(userProfile({ name: "Liz", workZone: "Norte" }, "admin").workZone).toBeNull();
-    expect(userProfile({ name: "Favio", workZone: "Norte" }, "sales_technician").workZone).toBe("Norte");
+    expect(userProfile({ name: "Liz", workZoneId: ZONE_ID }, "admin").workZoneId).toBeNull();
+    expect(userProfile({ name: "Favio", workZoneId: ZONE_ID }, "sales_technician").workZoneId).toBe(ZONE_ID);
+    expect(userProfile({ name: "Favio", workZoneId: "" }, "sales_technician").workZoneId).toBeNull();
   });
 });
 
