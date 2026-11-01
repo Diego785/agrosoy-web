@@ -14,7 +14,7 @@ import {
 import type { PortfolioStatementView } from "../application/statement-view";
 import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
 
-/** The summary Agrosoy keeps next to each sheet: Cliente, Entrega, Pago, Dev., Deuda and status. */
+/** The summary Agrosoil keeps next to each sheet: Cliente, Entrega, Pago, Dev., Deuda and status. */
 export function PortfolioStatement({
   statement,
   customerHref,

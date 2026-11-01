@@ -1,5 +1,10 @@
 import { eq, inArray } from "drizzle-orm";
-import { addPresentation, createProduct, savePrices } from "@/modules/catalog/application/catalog-use-cases";
+import {
+  addPresentation,
+  createProduct,
+  savePrices,
+  updateProduct,
+} from "@/modules/catalog/application/catalog-use-cases";
 import { catalogLookups } from "@/modules/catalog/infrastructure/catalog-lookups";
 import {
   drizzlePriceRepository,
@@ -12,6 +17,7 @@ import { drizzleCustomerRepository } from "@/modules/customers/infrastructure/dr
 import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { identityTechnicianLookup } from "@/modules/customers/infrastructure/identity-technician-lookup";
 import type { Actor } from "@/shared/application/actor";
+import { DomainError } from "@/shared/domain/domain-error";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import type {
@@ -69,7 +75,7 @@ export function conversionDeps(executor: DbExecutor, actor: Actor): ConversionDe
   };
 }
 
-/** Agrosoy's product list: the catalog's products and its general reference prices. */
+/** Agrosoil's product list: the catalog's products and its general reference prices. */
 export function productListDeps(executor: DbExecutor, actor: Actor): ProductListDeps {
   const audit = drizzleAuditTrail(executor);
   const prices: GeneralPrices = {
@@ -84,6 +90,10 @@ export function productListDeps(executor: DbExecutor, actor: Actor): ProductList
         actor,
         { campaignId, zoneId: "", prices: rows },
       );
+    },
+    async current(campaignId) {
+      const rows = await drizzlePriceRepository(executor).list(campaignId, null);
+      return new Map(rows.map((row) => [row.presentationId, row.price]));
     },
   };
   return { workbooks: exceljsWorkbookReader, products: productRegistry(executor, actor), prices, audit };
@@ -140,6 +150,7 @@ function productRegistry(executor: DbExecutor, actor: Actor): ProductRegistry {
           content: presentations.content,
           unit: presentations.unit,
           saleUnit: presentations.saleUnit,
+          productId: products.id,
           productKey: products.comparisonName,
           productName: products.name,
         })
@@ -153,6 +164,11 @@ function productRegistry(executor: DbExecutor, actor: Actor): ProductRegistry {
     },
     async addPresentation(productId, presentation) {
       await addPresentation(catalogDeps, actor, productId, presentation);
+    },
+    async rename(productId, name) {
+      const product = await catalogDeps.products.findById(productId);
+      if (!product) throw new DomainError("NOT_FOUND", { entity: "product", id: productId });
+      await updateProduct(catalogDeps, actor, productId, { name, line: product.line });
     },
   };
 }

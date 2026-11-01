@@ -19,7 +19,7 @@ export function AppShell({
       <header className="flex h-14 items-center justify-between gap-4 border-b px-4 md:px-6 print:hidden">
         <div className="flex items-center gap-1">
           <MobileNavigation>{navigation}</MobileNavigation>
-          <span className="text-lg font-semibold tracking-tight">Agrosoy</span>
+          <span className="text-lg font-semibold tracking-tight">Agrosoil</span>
         </div>
         {userMenu}
       </header>

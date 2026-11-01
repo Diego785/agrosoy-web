@@ -32,7 +32,7 @@ export function measureOf(unit: ContentUnit): "l" | "kg" | "u" {
 }
 
 /**
- * Agrosoy's codes identify a presentation and have three or more digits ("001" is Fulvin 40-22 in
+ * Agrosoil's codes identify a presentation and have three or more digits ("001" is Fulvin 40-22 in
  * 20 L, D23). Shorter ones are padded, so "7" and "007" are the same code.
  */
 export function presentationCode(raw: string): string | undefined {

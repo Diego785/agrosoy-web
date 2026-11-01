@@ -9,7 +9,7 @@ export default function LoginPage() {
     <main className="flex flex-1 items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Agrosoy</CardTitle>
+          <CardTitle className="text-xl">Agrosoil</CardTitle>
           <CardDescription>Ventas, cobranzas e inventario</CardDescription>
         </CardHeader>
         <CardContent>

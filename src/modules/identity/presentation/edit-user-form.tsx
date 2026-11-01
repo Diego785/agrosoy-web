@@ -16,8 +16,15 @@ import { updateUserSchema } from "../application/user-schemas";
 import type { WorkZoneOption } from "./edit-user";
 import { USERS_PATH } from "./identity-routes";
 import { updateUserAction } from "./user-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-export function EditUserForm({ user, zones }: { user: UserSummary; zones: WorkZoneOption[] }) {
+export const EditUserForm = resetOnLeave(function EditUserForm({
+  user,
+  zones,
+}: {
+  user: UserSummary;
+  zones: WorkZoneOption[];
+}) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({
@@ -91,4 +98,4 @@ export function EditUserForm({ user, zones }: { user: UserSummary; zones: WorkZo
       </div>
     </form>
   );
-}
+});

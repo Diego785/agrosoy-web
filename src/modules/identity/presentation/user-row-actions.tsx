@@ -23,12 +23,18 @@ import {
 } from "@/shared/presentation/ui/dropdown-menu";
 import { resetUserPasswordAction, setUserActiveAction } from "./user-actions";
 import { TemporaryPasswordNotice } from "./temporary-password-notice";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 type Props = { userId: string; name: string; username: string; active: boolean };
 
 type Dialog = "reset" | "toggle" | { password: string } | null;
 
-export function UserRowActions({ userId, name, username, active }: Props) {
+export const UserRowActions = resetOnLeave(function UserRowActions({
+  userId,
+  name,
+  username,
+  active,
+}: Props) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [isWorking, startWorking] = useTransition();
 
@@ -131,4 +137,4 @@ export function UserRowActions({ userId, name, username, active }: Props) {
       </AlertDialog>
     </>
   );
-}
+});

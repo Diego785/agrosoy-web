@@ -9,6 +9,7 @@ import { useFieldArray, useForm, type UseFormRegisterReturn } from "react-hook-f
 import { toast } from "sonner";
 import { ConfirmButton } from "@/shared/presentation/confirm-button";
 import { applyActionError } from "@/shared/presentation/form-errors";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
@@ -21,7 +22,7 @@ import {
   type NewProductInput,
   type PresentationInput,
 } from "../application/catalog-schemas";
-import { CONTENT_UNITS, PRODUCT_LINES, SALE_UNITS } from "../domain/product";
+import { CONTENT_UNITS, PRODUCT_LINES, SALE_UNITS, nextPresentationCodes } from "../domain/product";
 import {
   addPresentationAction,
   createProductAction,
@@ -33,10 +34,19 @@ import { LINE_LABELS, SALE_UNIT_LABELS, UNIT_LABELS, contentLabel } from "./cata
 import { PRODUCTS_PATH, productPath } from "./catalog-routes";
 
 const EMPTY_PRESENTATION: PresentationInput = { code: "", content: "", unit: "l", saleUnit: "container" };
+
+const presentationWith = (code: string): PresentationInput => ({ ...EMPTY_PRESENTATION, code });
+
+/** The code after the highest one offered or typed, so each new row proposes a free number. */
+function followingCode(nextCode: string, typed: string[]): string {
+  const numbers = typed.flatMap((code) => (/^\d{1,6}$/.test(code.trim()) ? [Number(code)] : []));
+  return nextPresentationCodes(Math.max(Number(nextCode) - 1, ...numbers), 1)[0]!;
+}
 const DUPLICATE_NAME = { name: "Ya hay un producto con ese nombre." };
 const DUPLICATE_CODE = "Ese código ya es de otra presentación.";
 
-export function NewProductForm() {
+/** `nextCode` is the first free code: it is proposed, and can be changed. */
+export const NewProductForm = resetOnLeave(function NewProductForm({ nextCode }: { nextCode: string }) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({
@@ -44,7 +54,7 @@ export function NewProductForm() {
     defaultValues: {
       name: "",
       line: "fertilizers",
-      presentations: [EMPTY_PRESENTATION],
+      presentations: [presentationWith(nextCode)],
     } satisfies NewProductInput,
   });
   const presentations = useFieldArray({ control: form.control, name: "presentations" });
@@ -107,7 +117,16 @@ export function NewProductForm() {
             variant="outline"
             size="sm"
             className="self-start"
-            onClick={() => presentations.append(EMPTY_PRESENTATION)}
+            onClick={() =>
+              presentations.append(
+                presentationWith(
+                  followingCode(
+                    nextCode,
+                    form.getValues("presentations").map((presentation) => presentation.code ?? ""),
+                  ),
+                ),
+              )
+            }
           >
             <PlusIcon aria-hidden /> Otra presentación
           </Button>
@@ -125,9 +144,9 @@ export function NewProductForm() {
       </div>
     </form>
   );
-}
+});
 
-export function EditProductForm({ product }: { product: ProductView }) {
+export const EditProductForm = resetOnLeave(function EditProductForm({ product }: { product: ProductView }) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({
@@ -161,12 +180,22 @@ export function EditProductForm({ product }: { product: ProductView }) {
       </Button>
     </form>
   );
-}
+});
 
-export function AddPresentationForm({ productId }: { productId: string }) {
+/** Starts with the first free code, and moves on to the next one after each presentation added. */
+export const AddPresentationForm = resetOnLeave(function AddPresentationForm({
+  productId,
+  nextCode,
+}: {
+  productId: string;
+  nextCode: string;
+}) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
-  const form = useForm({ resolver: zodResolver(presentationSchema), defaultValues: EMPTY_PRESENTATION });
+  const form = useForm({
+    resolver: zodResolver(presentationSchema),
+    defaultValues: presentationWith(nextCode),
+  });
   const { errors } = form.formState;
 
   const submit = form.handleSubmit((values) =>
@@ -179,7 +208,7 @@ export function AddPresentationForm({ productId }: { productId: string }) {
         });
       }
       toast.success(`Presentación ${result.data.code} agregada`);
-      form.reset(EMPTY_PRESENTATION);
+      form.reset(presentationWith(followingCode(nextCode, [result.data.code])));
       router.refresh();
     }),
   );
@@ -202,7 +231,7 @@ export function AddPresentationForm({ productId }: { productId: string }) {
       <FieldError errors={[errors.root]} />
     </form>
   );
-}
+});
 
 function LineField({ registration }: { registration: UseFormRegisterReturn }) {
   return (
@@ -239,14 +268,16 @@ function PresentationFields({
         <Input
           className="w-28"
           inputMode="numeric"
+          selectOnFocus
           placeholder="Código"
-          aria-label="Código (vacío: el siguiente libre)"
-          title="Vacío: el siguiente número libre"
+          aria-label="Código"
+          title="Se propone el siguiente número libre; puedes cambiarlo."
           {...code}
         />
         <Input
           className="w-24"
           inputMode="decimal"
+          selectOnFocus
           placeholder="20"
           aria-label="Contenido"
           aria-invalid={!!error}

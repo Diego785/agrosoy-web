@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseProductList } from "./product-list";
 import type { CellValue, SheetGrid } from "./sales-sheet";
 
-// Laid out like Agrosoy's PRODUCTOS.xlsx: table from column B, price unit in the column after the
+// Laid out like Agrosoil's PRODUCTOS.xlsx: table from column B, price unit in the column after the
 // price, without a header of its own.
 const row = (...cells: CellValue[]): CellValue[] => [null, ...cells];
 
@@ -30,7 +30,7 @@ const grid: SheetGrid = {
   ],
 };
 
-describe("Agrosoy's product list", () => {
+describe("Agrosoil's product list", () => {
   const parsed = parseProductList(grid)!;
   const byCode = new Map(parsed.rows.map((item) => [item.code, item]));
 

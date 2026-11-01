@@ -5,12 +5,12 @@ starts on Monday 26 October 2026.
 
 ## How each week works
 
-| When               | What                                                                           |
-| ------------------ | ------------------------------------------------------------------------------ |
-| Monday             | Planning (30 min): pick the demo goal and the issues for the week.             |
-| Monday to Thursday | One task per working session, committed to `main` once `pnpm check` passes.    |
-| Thursday afternoon | Freeze, full check, deploy to staging.                                         |
-| Friday             | 30-minute demo to Agrosoy on staging. Feedback becomes issues for next Monday. |
+| When               | What                                                                            |
+| ------------------ | ------------------------------------------------------------------------------- |
+| Monday             | Planning (30 min): pick the demo goal and the issues for the week.              |
+| Monday to Thursday | One task per working session, committed to `main` once `pnpm check` passes.     |
+| Thursday afternoon | Freeze, full check, deploy to staging.                                          |
+| Friday             | 30-minute demo to Agrosoil on staging. Feedback becomes issues for next Monday. |
 
 An issue is **done** when its rules have tests, CI passes, it works on staging and
 [progress](progress.md) mentions it.
@@ -24,25 +24,25 @@ An issue is **done** when its rules have tests, CI passes, it works on staging a
 | S3   | 9–13 Nov                     | Delivery notes with PDF (M5), collections and exchange rates (M6), account statement (M7), migration of sales and payments with reconciliation     | **Milestone: notes, collections and statement with real data** (second payment) |
 | S4   | 16–20 Nov                    | Warehouses, lots, kardex, transfers and counts (M8), purchasing (M9)                                                                               | Inventory                                                                       |
 | S5   | 23–27 Nov                    | Reports, exports and notifications (M11), travel allowances (M10), QA starts                                                                       | Reports                                                                         |
-| S6   | 30 Nov–4 Dec                 | QA, final migration, production on Agrosoy's subdomain, training, acceptance                                                                       | **Final delivery** (third payment)                                              |
+| S6   | 30 Nov–4 Dec                 | QA, final migration, production on Agrosoil's subdomain, training, acceptance                                                                      | **Final delivery** (third payment)                                              |
 
 If the schedule slips, the milestone in week 3 keeps its scope; part of the 14 reports and the
 travel-allowance module move first.
 
-## Added after Agrosoy's answers (30 Oct 2026)
+## Added after Agrosoil's answers (30 Oct 2026)
 
 Each item goes on its week's branch and flows forward by merge; `main` receives a week once it is
 approved (weeks 1 and 2 by 31 October). S2's items are built (31 October); S1's customer import
-waits for Agrosoy's list.
+waits for Agrosoil's list.
 
 | Week | Added                                                                                                                                                                                                                                                                                                       |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S1   | Users' position and CI, technicians' zone of work (D26, D30); import of Agrosoy's customer list once it arrives (D29)                                                                                                                                                                                       |
-| S2   | Codes per presentation with Agrosoy's numbers, unit presentations, inactive products, import of `PRODUCTOS.xlsx` with its prices as general reference prices (D23); carrier and "handed over by" on notes (D26); copy reference prices from the previous campaign                                           |
+| S1   | Users' position and CI, technicians' zone of work (D26, D30); import of Agrosoil's customer list once it arrives (D29)                                                                                                                                                                                      |
+| S2   | Codes per presentation with Agrosoil's numbers, unit presentations, inactive products, import of `PRODUCTOS.xlsx` with its prices as general reference prices (D23); carrier and "handed over by" on notes (D26); copy reference prices from the previous campaign                                          |
 | S3   | Note and receipt PDFs like the paper forms, company profile (D26); receipt balances (D27); printed receipt numbers and the system's own number range (D28); returns and transfers from several deliveries (D25); charge concepts (D24); opening balances, historical notes and payments, cut-off date (D29) |
 | S4   | "Handed over by" defaults to the warehouse keeper; notes before the cut-off take no stock (D29)                                                                                                                                                                                                             |
 | S5   | Travel allowances as weekly reports with approval, monthly limit and vehicles (D30)                                                                                                                                                                                                                         |
-| S6   | Agrosoy loads its own data (customers, products, opening balances, consigned notes) with a guide, instead of the spreadsheet migration (D29)                                                                                                                                                                |
+| S6   | Agrosoil loads its own data (customers, products, opening balances, consigned notes) with a guide, instead of the spreadsheet migration (D29)                                                                                                                                                               |
 
 ## Foundation steps (week 1)
 

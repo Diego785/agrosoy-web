@@ -65,7 +65,7 @@ export type ParsedProductList = {
 type Columns = { code: number; product: number; price: number | undefined };
 
 /**
- * Reads Agrosoy's product list ("CODIGOS DE LOS PRODUCTOS"): code, name with the container in
+ * Reads Agrosoil's product list ("CODIGOS DE LOS PRODUCTOS"): code, name with the container in
  * brackets, US$ price and, in the column after it, what the price is per. Rows under the
  * "AGROQUIMICOS" heading are agrochemicals, the ones before it fertilizers, and the "OTROS" ones
  * are charge concepts. Returns undefined when the sheet has no such table.

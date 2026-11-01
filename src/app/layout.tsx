@@ -7,8 +7,8 @@ const sans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Agrosoy", template: "%s · Agrosoy" },
-  description: "Ventas, cobranzas e inventario de Agrosoy",
+  title: { default: "Agrosoil", template: "%s · Agrosoil" },
+  description: "Ventas, cobranzas e inventario de Agrosoil",
   // Internal system: keep it out of search engines.
   robots: { index: false, follow: false },
 };

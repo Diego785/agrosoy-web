@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { LINE_LABELS, contentLabel, priceUnitLabel } from "@/modules/catalog/presentation/catalog-labels";
 import { PRODUCTS_PATH } from "@/modules/catalog/presentation/catalog-routes";
 import { errorMessage } from "@/shared/presentation/error-messages";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { formatMoney } from "@/shared/presentation/format";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { Button } from "@/shared/presentation/ui/button";
@@ -26,7 +27,7 @@ import { importProductListAction, previewProductListAction } from "./product-lis
 
 type Row = ProductListPreview["rows"][number];
 
-export function ProductListForm({
+export const ProductListForm = resetOnLeave(function ProductListForm({
   campaigns,
   defaultCampaignId,
 }: {
@@ -72,9 +73,13 @@ export function ProductListForm({
         setError(errorMessage(result.error));
         return;
       }
-      const { newProducts, newPresentations, prices } = result.data;
+      const { newProducts, newPresentations, priceChanges, renamed } = result.data;
       toast.success("Lista de productos importada", {
-        description: `${newProducts} productos y ${newPresentations} presentaciones nuevas, ${prices} precios.`,
+        description: [
+          `${newProducts} productos y ${newPresentations} presentaciones nuevas`,
+          `${priceChanges} precios cambiados`,
+          `${renamed} nombres cambiados`,
+        ].join(", "),
       });
       router.push(PRODUCTS_PATH);
     });
@@ -104,7 +109,11 @@ export function ProductListForm({
             <NativeSelect
               id="campaignId"
               value={campaignId}
-              onChange={(event) => setCampaignId(event.target.value)}
+              onChange={(event) => {
+                // The preview compares prices with this campaign's: it has to be read again.
+                setCampaignId(event.target.value);
+                setPreview(undefined);
+              }}
             >
               {campaigns.map((option) => (
                 <NativeSelectOption key={option.id} value={option.id}>
@@ -115,9 +124,10 @@ export function ProductListForm({
           </Field>
         </div>
         <FieldDescription>
-          Primero se muestra lo que se va a crear; nada se guarda hasta confirmar. Los precios pasan a ser los
-          precios generales de la campaña, y cada zona puede tener los suyos. Importar la misma lista otra vez
-          no repite nada: solo actualiza los precios.
+          Primero se muestra lo que va a cambiar; nada se guarda hasta confirmar. Los precios pasan a ser los
+          precios generales de la campaña, y cada zona puede tener los suyos. El código identifica cada
+          presentación: para cambiar el precio o el nombre de un producto, cámbialo en la lista y deja su
+          código. Importar la lista otra vez no repite nada: solo aplica lo que cambió.
         </FieldDescription>
         {error && <FieldError>{error}</FieldError>}
         <Button
@@ -160,6 +170,13 @@ export function ProductListForm({
                   <TableCell>{contentLabel({ content: row.content, unit: row.unit })}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {row.price ? `${formatMoney(row.price)} por ${priceUnitLabel(row)}` : "—"}
+                    {row.plan.status === "existing" && row.plan.priceChange && (
+                      <span className="block text-xs text-muted-foreground">
+                        {row.plan.priceChange.from
+                          ? `antes ${formatMoney(row.plan.priceChange.from)}`
+                          : "antes sin precio"}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>{LINE_LABELS[row.line]}</TableCell>
                   <TableCell className="whitespace-normal">
@@ -182,17 +199,18 @@ export function ProductListForm({
       )}
     </div>
   );
-}
+});
 
 function Summary({ preview }: { preview: ProductListPreview }) {
-  const { newProducts, newPresentations, existing, conflicts, prices } = preview.counts;
+  const { newProducts, newPresentations, existing, conflicts, priceChanges, renamed } = preview.counts;
   return (
-    <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+    <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
       <Figure label="Productos nuevos" value={newProducts} />
       <Figure label="Presentaciones nuevas" value={newPresentations} />
       <Figure label="Ya existen" value={existing} />
+      <Figure label="Cambian de precio" value={priceChanges} />
+      <Figure label="Cambian de nombre" value={renamed} />
       <Figure label="Con conflicto (no se importan)" value={conflicts} />
-      <Figure label="Precios" value={prices} />
     </dl>
   );
 }
@@ -215,7 +233,18 @@ function PlanBadge({ plan }: { plan: ProductListRowPlan }) {
     case "existing":
       return (
         <>
-          <Badge variant="outline">Ya existe</Badge>
+          <Badge variant={plan.priceChange || plan.renamedFrom ? "secondary" : "outline"}>
+            {plan.priceChange || plan.renamedFrom ? "Se actualiza" : "Sin cambios"}
+          </Badge>
+          {plan.priceChange && <span className="block text-xs">Cambia el precio.</span>}
+          {plan.renamedFrom && <span className="block text-xs">Antes se llamaba {plan.renamedFrom}.</span>}
+          {plan.nameKept && (
+            <span className="block text-xs text-muted-foreground">
+              {plan.nameKept === "name_taken"
+                ? `Ya hay otro producto con este nombre: sigue como ${plan.productName}.`
+                : `Las otras presentaciones de ${plan.productName} tienen otro nombre en la lista: el nombre no cambia.`}
+            </span>
+          )}
           {plan.priceKept && (
             <span className="block text-xs text-muted-foreground">
               En el sistema se cobra de otra forma: su precio no cambia.
@@ -236,9 +265,9 @@ function PlanBadge({ plan }: { plan: ProductListRowPlan }) {
 function conflictText(plan: Extract<ProductListRowPlan, { status: "conflict" }>): string {
   switch (plan.reason) {
     case "code_taken":
-      return `El código ya es de ${plan.productName} ${contentLabel(plan)}.`;
+      return `El código ya es de ${plan.productName} ${contentLabel(plan)}, otro envase. Para un envase nuevo usa un código nuevo.`;
     case "other_code":
-      return `El producto ya tiene ese envase con el código ${plan.code}.`;
+      return `${plan.productName} ya tiene ese envase con el código ${plan.code}. Para cambiar su precio o su nombre, usa el código ${plan.code}.`;
     case "repeated":
       return "El mismo producto y envase ya está más arriba en la lista.";
   }

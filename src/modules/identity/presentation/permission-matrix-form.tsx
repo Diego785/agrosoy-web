@@ -10,8 +10,13 @@ import { ROLE_LABELS } from "@/shared/presentation/role-labels";
 import { Button } from "@/shared/presentation/ui/button";
 import type { PermissionMatrix } from "../application/permission-use-cases";
 import { savePermissionMatrixAction } from "./permission-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-export function PermissionMatrixForm({ matrix }: { matrix: PermissionMatrix }) {
+export const PermissionMatrixForm = resetOnLeave(function PermissionMatrixForm({
+  matrix,
+}: {
+  matrix: PermissionMatrix;
+}) {
   const [granted, setGranted] = useState(
     () => new Map(matrix.map((row) => [row.role, new Set<Permission>(row.permissions)])),
   );
@@ -88,4 +93,4 @@ export function PermissionMatrixForm({ matrix }: { matrix: PermissionMatrix }) {
       </Button>
     </div>
   );
-}
+});

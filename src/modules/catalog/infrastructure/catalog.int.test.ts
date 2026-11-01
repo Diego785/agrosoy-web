@@ -56,7 +56,7 @@ async function campaignAndZone() {
 }
 
 describe("products", () => {
-  it("gives each presentation a code: Agrosoy's, or the next free number", async () => {
+  it("gives each presentation a code: Agrosoil's, or the next free number", async () => {
     const first = await createProduct(deps(), admin, fulvin);
     const { id, codes } = await createProduct(deps(), admin, {
       name: "4-energy",

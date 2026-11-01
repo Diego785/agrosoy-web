@@ -22,7 +22,7 @@ describe("products", () => {
 });
 
 describe("presentations", () => {
-  it("keeps Agrosoy's codes with at least three digits", () => {
+  it("keeps Agrosoil's codes with at least three digits", () => {
     expect(presentationCode("001")).toBe("001");
     expect(presentationCode(" 7 ")).toBe("007");
     expect(presentationCode("1234")).toBe("1234");

@@ -170,6 +170,15 @@ export async function getProduct(
   return findProduct(deps.products, productId);
 }
 
+/** The code a new presentation is offered: the one after the highest in use. */
+export async function nextPresentationCode(
+  deps: Pick<CatalogDeps, "products">,
+  actor: Actor,
+): Promise<string> {
+  assertCan(actor, "catalog.manage");
+  return nextPresentationCodes(await deps.products.highestPresentationCode(), 1)[0]!;
+}
+
 export type PriceSheetRow = { product: ProductView; presentation: PresentationView; price: string | null };
 
 /** Every presentation with its reference price for one campaign and zone (or the general price). */

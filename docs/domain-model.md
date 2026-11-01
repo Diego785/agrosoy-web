@@ -1,6 +1,6 @@
 # Domain model
 
-How Agrosoy's business works in this system. Read this before touching sales, collections or
+How Agrosoil's business works in this system. Read this before touching sales, collections or
 inventory code. Terms follow the [glossary](glossary.md); the reasons behind the design are in
 [decisions](decisions.md).
 
@@ -59,22 +59,22 @@ inventory (M8) and receivables (M7) inside one transaction.
 - **Portfolio:** a customer has one technician at a time. Changing it keeps the history
   (assignments have a start and end date); past documents keep the technician they had.
 - **Authorized receivers:** name, CI and position or kinship. A delivery records who received.
-- **Import (D29):** Agrosoy's customer list is loaded into a preview, matched by normalized name,
+- **Import (D29):** Agrosoil's customer list is loaded into a preview, matched by normalized name,
   and saved once reviewed; nothing is created twice.
 
 ## Products and prices (M3)
 
 - **Product:** name and line (`agrochemicals` or `fertilizers`); it groups its presentations.
-- **Presentation (D23):** Agrosoy's **code** ("001"), content and unit (20 L, 250 ml, 25 kg, 50
+- **Presentation (D23):** Agrosoil's **code** ("001"), content and unit (20 L, 250 ml, 25 kg, 50
   units…) and sale unit: the price is either per liter/kilo or per container (frasco, bolsa,
   sobre). Each note line knows its total liters or kilos.
 - Products and presentations no longer sold are deactivated, never deleted.
 - **Lot:** lot number and expiry date. Stock is held per warehouse **and lot**.
 - **Reference price:** US dollars per sale unit, per campaign × zone × presentation, with a
-  general price (no zone) used where a zone has none. Agrosoy enters them when a campaign starts;
+  general price (no zone) used where a zone has none. Agrosoil enters them when a campaign starts;
   the product list's prices load as the general ones. The technician records the negotiated price
   on each line; the reference is a suggestion.
-- **Catalog import (D23):** Agrosoy's product list (code, name with the container in brackets,
+- **Catalog import (D23):** Agrosoil's product list (code, name with the container in brackets,
   price, price unit) is read into a preview that groups presentations under their product and
   flags what needs a decision; its "OTROS" rows are charge concepts, not products (D24).
 - Products are picked from the catalog, never typed, so each product has exactly one name.
@@ -151,7 +151,7 @@ The **ledger** is an append-only table of entries:
 | source             | the document that produced it (note, payment, charge, migration batch)                                                    |
 
 - **Balance** of a customer = sum of amounts; per campaign = sum filtered by campaign.
-- The **statement** keeps the columns Agrosoy uses today: deliveries, payments, returns, balance,
+- The **statement** keeps the columns Agrosoil uses today: deliveries, payments, returns, balance,
   and status `settled` (balance 0) or `owing`, per campaign and in total, plus the dated detail
   and the consigned product.
 - **Aging** pairs credits with the oldest debits (first in, first out) and reports the age of
@@ -181,7 +181,7 @@ The **ledger** is an append-only table of entries:
 
 ## Travel allowances (M10)
 
-Modeled on Agrosoy's weekly expense spreadsheet (D30). Amounts in bolivianos.
+Modeled on Agrosoil's weekly expense spreadsheet (D30). Amounts in bolivianos.
 
 - **Expense report:** one per technician and week (Monday to Saturday), with position and zone of
   work. States: `draft` → `submitted` (technician) → `approved` (management) → `paid`
@@ -219,11 +219,11 @@ Column names are `snake_case` in the database and `camelCase` in TypeScript (Dri
 
 ## Migration (M12)
 
-**Going live (D29).** Agrosoy doesn't share its full sales spreadsheets, so administration enters
+**Going live (D29).** Agrosoil doesn't share its full sales spreadsheets, so administration enters
 its own starting data from a cut-off date: customers and products through imports with a preview,
 an opening balance per customer and campaign, historical notes only for product still on
 consignment, and historical payments with their printed receipt numbers. The spreadsheet import
-and conversion below remain an optional tool Agrosoy can run on its own sheets.
+and conversion below remain an optional tool Agrosoil can run on its own sheets.
 
 **Import (built in week 1).** An administrator uploads a technician's workbook on the import page.
 Each sheet with a sales table becomes an _import batch_ (D17):
@@ -240,7 +240,7 @@ Each sheet with a sales table becomes an _import batch_ (D17):
 - The account-statement preview reads these batches and renders with the same components the
   ledger-based statement (M7) will use.
 
-**Conversion (weeks 2–3, after Agrosoy answers the open questions):**
+**Conversion (weeks 2–3, after Agrosoil answers the open questions):**
 
 - Customers and products are normalized and receive codes.
 - Spreadsheet sales rows become confirmed notes marked `imported`, with their original numbers,

@@ -19,7 +19,7 @@ import { findBatch } from "./import-use-cases";
 import type { ImportBatch, ImportRepository, StoredLine, StoredSummaryRow } from "./ports";
 
 /**
- * Account statements built from an imported sheet, so Agrosoy can validate the format with real
+ * Account statements built from an imported sheet, so Agrosoil can validate the format with real
  * figures before the ledger exists (roadmap, week 1). Payments come from the sheet's summary,
  * which has no dates; returns come from the returns table, or from the summary's "Dev." column.
  */

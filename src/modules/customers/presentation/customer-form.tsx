@@ -18,6 +18,7 @@ import type { CustomerFormData, Technician, Zone } from "../application/ports";
 import { formatCustomerCode } from "../domain/customer";
 import { registerCustomerAction, updateCustomerAction } from "./customer-actions";
 import { CUSTOMERS_PATH, customerPath } from "./customer-routes";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 type Props = {
   zones: (Zone & { isActive: boolean })[];
@@ -30,7 +31,7 @@ const DUPLICATE_MESSAGES = {
   name: "Ya hay un cliente con ese nombre. Si es otra persona, agrega algo que los distinga, como la localidad.",
 };
 
-export function CustomerForm({ zones, technicians, customer }: Props) {
+export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technicians, customer }: Props) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({ resolver: zodResolver(customerSchema), defaultValues: initialValues(customer) });
@@ -115,7 +116,8 @@ export function CustomerForm({ zones, technicians, customer }: Props) {
               <Input
                 id="fixedExchangeRate"
                 inputMode="decimal"
-                placeholder="6.96"
+                selectOnFocus
+                placeholder="12.00"
                 aria-invalid={!!errors.fixedExchangeRate}
                 {...form.register("fixedExchangeRate")}
               />
@@ -147,7 +149,7 @@ export function CustomerForm({ zones, technicians, customer }: Props) {
       </div>
     </form>
   );
-}
+});
 
 function initialValues(customer: CustomerFormData | undefined): CustomerInput {
   return {
