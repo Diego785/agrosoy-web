@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Quantity } from "@/shared/domain/quantity";
-import { contentInMeasure, measureDelivered, measureOf, productRecord } from "./product";
+import {
+  contentInMeasure,
+  measureDelivered,
+  measureOf,
+  nextPresentationCodes,
+  presentationCode,
+  productRecord,
+} from "./product";
 
 const q = (value: string) => Quantity.parse(value);
 
@@ -15,9 +22,20 @@ describe("products", () => {
 });
 
 describe("presentations", () => {
-  it("measures liquids in liters and solids in kilos", () => {
+  it("keeps Agrosoy's codes with at least three digits", () => {
+    expect(presentationCode("001")).toBe("001");
+    expect(presentationCode(" 7 ")).toBe("007");
+    expect(presentationCode("1234")).toBe("1234");
+    expect(presentationCode("")).toBeUndefined();
+    expect(presentationCode("A1")).toBeUndefined();
+    expect(nextPresentationCodes(81, 2)).toEqual(["082", "083"]);
+    expect(nextPresentationCodes(0, 1)).toEqual(["001"]);
+  });
+
+  it("measures liquids in liters, solids in kilos and pieces apart", () => {
     expect(measureOf("ml")).toBe("l");
     expect(measureOf("g")).toBe("kg");
+    expect(measureOf("u")).toBe("u");
     expect(contentInMeasure({ content: q("250"), unit: "ml" }).toDecimalString()).toBe("0.250");
     expect(contentInMeasure({ content: q("1.5"), unit: "l" }).toDecimalString()).toBe("1.500");
   });

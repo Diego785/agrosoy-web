@@ -19,6 +19,7 @@ import { LINE_LABELS, contentLabel, priceUnitLabel } from "./catalog-labels";
 
 export type PriceRow = {
   presentationId: string;
+  code: string;
   productName: string;
   line: ProductLine;
   content: string;
@@ -72,6 +73,7 @@ export function PriceSheetForm({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-16">Código</TableHead>
             <TableHead>Producto</TableHead>
             <TableHead>Presentación</TableHead>
             <TableHead>Línea</TableHead>
@@ -81,6 +83,7 @@ export function PriceSheetForm({
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.presentationId}>
+              <TableCell className="font-mono text-xs text-muted-foreground">{row.code}</TableCell>
               <TableCell className="font-medium">{row.productName}</TableCell>
               <TableCell>{contentLabel(row)}</TableCell>
               <TableCell className="text-muted-foreground">{LINE_LABELS[row.line]}</TableCell>

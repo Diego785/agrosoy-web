@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -8,6 +9,8 @@ import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import type { NoteRepository } from "../application/note-ports";
 import { lineTotal, type DraftNote } from "../domain/delivery-note";
 import { deliveryNoteLines, deliveryNotes } from "./notes.tables";
+
+const handedOverBy = alias(users, "handed_over_by");
 
 export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
   async function insertLines(noteId: string, note: DraftNote) {
@@ -62,12 +65,14 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           propertyName: customerProperties.name,
           campaign: { id: campaigns.id, season: campaigns.season, year: campaigns.year },
           technicianName: users.name,
+          handedOverBy: { id: handedOverBy.id, name: handedOverBy.name, position: handedOverBy.position },
         })
         .from(deliveryNotes)
         .innerJoin(customers, eq(customers.id, deliveryNotes.customerId))
         .innerJoin(campaigns, eq(campaigns.id, deliveryNotes.campaignId))
         .leftJoin(customerProperties, eq(customerProperties.id, deliveryNotes.propertyId))
         .leftJoin(users, eq(users.id, deliveryNotes.technicianId))
+        .leftJoin(handedOverBy, eq(handedOverBy.id, deliveryNotes.handedOverById))
         .where(eq(deliveryNotes.id, id));
       if (!row) return undefined;
 
@@ -109,6 +114,12 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           name: note.receiverName,
           documentId: note.receiverDocumentId,
           relationship: note.receiverRelationship,
+        },
+        handedOverBy: row.handedOverBy?.id ? row.handedOverBy : null,
+        carrier: {
+          name: note.carrierName,
+          vehicle: note.carrierVehicle,
+          documentId: note.carrierDocumentId,
         },
         observations: note.observations,
         taxInvoiceNumber: note.taxInvoiceNumber,
@@ -164,6 +175,10 @@ function headerRow(note: DraftNote) {
     receiverName: note.receiver.name,
     receiverDocumentId: note.receiver.documentId,
     receiverRelationship: note.receiver.relationship,
+    handedOverById: note.handedOverById,
+    carrierName: note.carrier.name,
+    carrierVehicle: note.carrier.vehicle,
+    carrierDocumentId: note.carrier.documentId,
     observations: note.observations,
     taxInvoiceNumber: note.taxInvoiceNumber,
   };

@@ -6,6 +6,7 @@ import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import { formatDate } from "@/shared/presentation/format";
+import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { Badge } from "@/shared/presentation/ui/badge";
 import {
   Table,
@@ -31,40 +32,66 @@ export async function CampaignsTable() {
   if (campaigns.length === 0) {
     return <p className="text-sm text-muted-foreground">Todavía no hay campañas.</p>;
   }
+  const name = (campaign: (typeof campaigns)[number]) =>
+    canEdit && campaign.status === "open" ? (
+      <Link href={editCampaignPath(campaign.id)} className="font-medium hover:underline">
+        {campaignLabel(campaign)}
+      </Link>
+    ) : (
+      <span className="font-medium">{campaignLabel(campaign)}</span>
+    );
+  const currentBadge = (
+    <Badge className="ml-2" variant="secondary">
+      Actual
+    </Badge>
+  );
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Campaña</TableHead>
-          <TableHead>Desde</TableHead>
-          <TableHead>Hasta</TableHead>
-          <TableHead>Estado</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <>
+      <WideOnly>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Campaña</TableHead>
+              <TableHead>Desde</TableHead>
+              <TableHead>Hasta</TableHead>
+              <TableHead>Estado</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {campaigns.map((campaign) => (
+              <TableRow key={campaign.id}>
+                <TableCell>
+                  {name(campaign)}
+                  {campaign.id === current?.id && currentBadge}
+                </TableCell>
+                <TableCell className="tabular-nums">{formatDate(campaign.startsOn)}</TableCell>
+                <TableCell className="tabular-nums">{formatDate(campaign.endsOn)}</TableCell>
+                <TableCell>{campaign.status === "open" ? "Abierta" : "Cerrada"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </WideOnly>
+      <CardList label="Campañas">
         {campaigns.map((campaign) => (
-          <TableRow key={campaign.id}>
-            <TableCell className="font-medium">
-              {canEdit && campaign.status === "open" ? (
-                <Link href={editCampaignPath(campaign.id)} className="hover:underline">
-                  {campaignLabel(campaign)}
-                </Link>
-              ) : (
-                campaignLabel(campaign)
-              )}
-              {campaign.id === current?.id && (
-                <Badge className="ml-2" variant="secondary">
-                  Actual
-                </Badge>
-              )}
-            </TableCell>
-            <TableCell className="tabular-nums">{formatDate(campaign.startsOn)}</TableCell>
-            <TableCell className="tabular-nums">{formatDate(campaign.endsOn)}</TableCell>
-            <TableCell>{campaign.status === "open" ? "Abierta" : "Cerrada"}</TableCell>
-          </TableRow>
+          <CardListItem key={campaign.id}>
+            <div className="flex items-center justify-between gap-3">
+              <span>
+                {name(campaign)}
+                {campaign.id === current?.id && currentBadge}
+              </span>
+              <span className="text-muted-foreground">
+                {campaign.status === "open" ? "Abierta" : "Cerrada"}
+              </span>
+            </div>
+            <CardField label="Del">
+              {formatDate(campaign.startsOn)} al {formatDate(campaign.endsOn)}
+            </CardField>
+          </CardListItem>
         ))}
-      </TableBody>
-    </Table>
+      </CardList>
+    </>
   );
 }
 

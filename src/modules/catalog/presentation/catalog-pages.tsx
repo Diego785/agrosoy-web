@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
-import { campaignOn } from "@/modules/campaigns/domain/campaign";
+import { campaignOn, previousCampaign } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { listAllZones } from "@/modules/customers/application/customer-use-cases";
@@ -11,6 +11,8 @@ import { can } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
+import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
@@ -22,13 +24,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/presentation/ui/table";
+import type { ProductView } from "../application/catalog-ports";
 import { getProduct, listProducts, priceSheet } from "../application/catalog-use-cases";
 import { PRODUCT_LINES } from "../domain/product";
 import { catalogDeps } from "./catalog-deps";
-import { LINE_LABELS, SALE_UNIT_LABELS, contentLabel } from "./catalog-labels";
+import { LINE_LABELS, contentLabel, priceUnitLabel } from "./catalog-labels";
 import { PRICES_PATH, PRODUCTS_PATH, productPath } from "./catalog-routes";
 import { PriceSheetForm } from "./price-sheet-form";
-import { AddPresentationForm, EditProductForm } from "./product-forms";
+import {
+  AddPresentationForm,
+  EditProductForm,
+  PresentationStatusButton,
+  ProductStatusButton,
+} from "./product-forms";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -39,7 +47,12 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
   const actor = await requireActor();
   const text = first(params.q)?.trim() ?? "";
   const line = first(params.line) ?? "";
-  const products = await listProducts(catalogDeps(getDb()), actor, { text, line: line || undefined });
+  const status = first(params.status) === "inactive" ? "inactive" : "active";
+  const products = await listProducts(catalogDeps(getDb()), actor, {
+    text,
+    line: line || undefined,
+    status,
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -59,43 +72,82 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
             </NativeSelectOption>
           ))}
         </NativeSelect>
+        <NativeSelect name="status" defaultValue={status} aria-label="Estado">
+          <NativeSelectOption value="active">Activos</NativeSelectOption>
+          <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
+        </NativeSelect>
         <button type="submit" className={buttonVariants({ variant: "outline" })}>
           Buscar
         </button>
       </form>
       {products.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
-          {text || line ? "Ningún producto coincide con la búsqueda." : "Todavía no hay productos."}
+          {text || line
+            ? "Ningún producto coincide con la búsqueda."
+            : status === "inactive"
+              ? "No hay productos desactivados."
+              : "Todavía no hay productos."}
         </p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-20">Código</TableHead>
-              <TableHead>Producto</TableHead>
-              <TableHead>Línea</TableHead>
-              <TableHead>Presentaciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          <WideOnly>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Línea</TableHead>
+                  <TableHead>Presentaciones (código y contenido)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-medium">
+                      <Link href={productPath(product.id)} className="hover:underline">
+                        {product.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{LINE_LABELS[product.line]}</TableCell>
+                    <TableCell className="whitespace-normal">
+                      <PresentationList presentations={product.presentations} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </WideOnly>
+          <CardList label="Productos">
             {products.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell className="font-mono text-xs text-muted-foreground">
-                  {String(product.code).padStart(4, "0")}
-                </TableCell>
-                <TableCell className="font-medium">
-                  <Link href={productPath(product.id)} className="hover:underline">
+              <CardListItem key={product.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <Link href={productPath(product.id)} className="font-medium hover:underline">
                     {product.name}
                   </Link>
-                </TableCell>
-                <TableCell>{LINE_LABELS[product.line]}</TableCell>
-                <TableCell>{product.presentations.map(contentLabel).join(" · ")}</TableCell>
-              </TableRow>
+                  <span className="text-xs text-muted-foreground">{LINE_LABELS[product.line]}</span>
+                </div>
+                <PresentationList presentations={product.presentations} />
+              </CardListItem>
             ))}
-          </TableBody>
-        </Table>
+          </CardList>
+        </>
       )}
     </div>
+  );
+}
+
+function PresentationList({ presentations }: { presentations: ProductView["presentations"] }) {
+  if (presentations.length === 0) {
+    return <span className="text-muted-foreground">Sin presentaciones activas</span>;
+  }
+  return (
+    <span className="flex flex-wrap gap-x-3 gap-y-1">
+      {presentations.map((presentation) => (
+        <span key={presentation.id} className="tabular-nums">
+          <span className="mr-1 font-mono text-xs text-muted-foreground">{presentation.code}</span>
+          {contentLabel(presentation)}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -111,20 +163,43 @@ export async function ProductDetail({ params }: { params: Promise<{ id: string }
 
   return (
     <div className="flex max-w-3xl flex-col gap-8">
-      {canEdit ? (
-        <EditProductForm product={product} />
-      ) : (
-        <p>
-          <span className="text-lg font-semibold">{product.name}</span> · {LINE_LABELS[product.line]}
+      {!product.isActive && (
+        <p className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed px-4 py-3 text-sm">
+          <Badge variant="destructive">Desactivado</Badge>
+          No se ofrece en nuevas boletas ni en los precios.
         </p>
       )}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        {canEdit ? (
+          <EditProductForm product={product} />
+        ) : (
+          <p>
+            <span className="text-lg font-semibold">{product.name}</span> · {LINE_LABELS[product.line]}
+          </p>
+        )}
+        {canEdit && <ProductStatusButton product={product} />}
+      </div>
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">Presentaciones</h2>
         <ul className="divide-y rounded-lg border">
           {product.presentations.map((presentation) => (
-            <li key={presentation.id} className="flex justify-between px-4 py-2.5 text-sm">
-              <span className="font-medium">{contentLabel(presentation)}</span>
-              <span className="text-muted-foreground">Precio {SALE_UNIT_LABELS[presentation.saleUnit]}</span>
+            <li
+              key={presentation.id}
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-sm"
+            >
+              <span className={presentation.isActive ? "" : "text-muted-foreground"}>
+                <span className="mr-1 font-mono text-xs text-muted-foreground">{presentation.code}</span>
+                <span className="font-medium">{contentLabel(presentation)}</span>
+                {!presentation.isActive && (
+                  <Badge variant="outline" className="ml-2">
+                    Desactivada
+                  </Badge>
+                )}
+              </span>
+              <span className="flex items-center gap-3">
+                <span className="text-muted-foreground">Precio por {priceUnitLabel(presentation)}</span>
+                {canEdit && <PresentationStatusButton productId={product.id} presentation={presentation} />}
+              </span>
             </li>
           ))}
         </ul>
@@ -155,12 +230,18 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
   const campaign = requested ?? campaignOn(campaigns, todayInBolivia()) ?? campaigns[0]!;
   const zoneId = zones.some((zone) => zone.id === first(params.zone)) ? (first(params.zone) ?? "") : "";
   const deps = catalogDeps(db);
-  const [sheet, general] = await Promise.all([
+  const canEdit = can(actor, "catalog.manage");
+  const previous = previousCampaign(campaigns, campaign);
+  const copyFrom = canEdit && previous && first(params.copyFrom) === previous.id ? previous : undefined;
+  const [sheet, general, copied] = await Promise.all([
     priceSheet(deps, actor, { campaignId: campaign.id, zoneId }),
     zoneId ? priceSheet(deps, actor, { campaignId: campaign.id }) : Promise.resolve([]),
+    copyFrom ? priceSheet(deps, actor, { campaignId: copyFrom.id, zoneId }) : Promise.resolve([]),
   ]);
   const generalByPresentation = new Map(general.map((row) => [row.presentation.id, row.price]));
-  const canEdit = can(actor, "catalog.manage");
+  // Copied prices only fill the empty ones; nothing is saved until "Guardar precios".
+  const copiedByPresentation = new Map(copied.map((row) => [row.presentation.id, row.price]));
+  const filled = sheet.filter((row) => !row.price && copiedByPresentation.get(row.presentation.id)).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -189,21 +270,43 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
           Deja vacío el precio de la zona para usar el general (se muestra en gris).
         </p>
       )}
+      {canEdit && previous && sheet.length > 0 && !copyFrom && (
+        <Link
+          href={`${PRICES_PATH}?${new URLSearchParams({ campaign: campaign.id, zone: zoneId, copyFrom: previous.id })}`}
+          className={buttonVariants({ variant: "outline", size: "sm", className: "self-start" })}
+        >
+          Copiar precios de {campaignLabel(previous)}
+        </Link>
+      )}
+      {copyFrom && (
+        <p className="rounded-lg border border-dashed px-4 py-3 text-sm">
+          {filled === 0
+            ? `${campaignLabel(copyFrom)} no tiene precios para los productos que aquí están vacíos.`
+            : `Se completaron ${filled === 1 ? "1 precio" : `${filled} precios`} con los de ${campaignLabel(copyFrom)}. Revísalos y guarda; los que ya tenían precio no cambiaron.`}{" "}
+          <Link
+            href={`${PRICES_PATH}?${new URLSearchParams({ campaign: campaign.id, zone: zoneId })}`}
+            className="font-medium hover:underline"
+          >
+            Descartar
+          </Link>
+        </p>
+      )}
       {sheet.length === 0 ? (
         <p className="text-sm text-muted-foreground">Todavía no hay productos.</p>
       ) : canEdit ? (
         <PriceSheetForm
-          key={`${campaign.id}:${zoneId}`}
+          key={`${campaign.id}:${zoneId}:${copyFrom?.id ?? ""}`}
           campaignId={campaign.id}
           zoneId={zoneId}
           rows={sheet.map((row) => ({
             presentationId: row.presentation.id,
+            code: row.presentation.code,
             productName: row.product.name,
             line: row.product.line,
             content: row.presentation.content,
             unit: row.presentation.unit,
             saleUnit: row.presentation.saleUnit,
-            price: row.price ?? "",
+            price: row.price ?? copiedByPresentation.get(row.presentation.id) ?? "",
             generalPrice: generalByPresentation.get(row.presentation.id) ?? null,
           }))}
         />
@@ -211,6 +314,7 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-16">Código</TableHead>
               <TableHead>Producto</TableHead>
               <TableHead>Presentación</TableHead>
               <TableHead className="text-right">Precio US$</TableHead>
@@ -219,6 +323,9 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
           <TableBody>
             {sheet.map((row) => (
               <TableRow key={row.presentation.id}>
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  {row.presentation.code}
+                </TableCell>
                 <TableCell>{row.product.name}</TableCell>
                 <TableCell>{contentLabel(row.presentation)}</TableCell>
                 <TableCell className="text-right tabular-nums">

@@ -5,6 +5,28 @@ up without re-reading the whole history.
 
 ## 2026-10-31
 
+- **Week 2 merged into `main`** (developer's approval), after `main` → `feature/week-2`; week 3
+  received both. Week 2's last items stay on `feature/week-2` and reach `main` the same way.
+- **Small screens:** from 768px the modules sit in a sidebar; below, the header's menu button
+  opens them in a drawer. Tables become one card per row (customers, users, change log, imports,
+  statements, products, campaigns, notes).
+- **Week 2's additions from Agrosoy's answers are built** (`feature/week-2`):
+  - **Codes per presentation (D23):** Agrosoy's numbers ("001"), padded to three digits and
+    unique; an empty code takes the next free one. The product's own number is gone. Migration
+    `0011_presentation_codes` numbers existing presentations in creation order.
+  - **Pieces** ("u", a bag of 50 sheets), outside the liter and kilo totals.
+  - **Inactive products and presentations:** deactivated and reactivated, never deleted; they
+    leave new notes and price sheets. The product list filters by status and finds codes.
+  - **Product list import:** Productos > "Importar lista" reads `PRODUCTOS.xlsx` into a preview
+    (new, existing, conflicts, findings to review) and then into products with Agrosoy's codes and
+    the chosen campaign's general prices. Again creates nothing new. Checked with the real list:
+    78 presentations of 57 products; the 3 "OTROS" rows are charge concepts (week 3).
+  - **Copy prices from the previous campaign** on the price sheet: fills only empty prices and
+    saves nothing until "Guardar precios".
+  - **Notes:** who hands the product over (any active user, the technician by default) and the
+    optional carrier (company, vehicle, driver's CI). Migration `0012_note_carrier`.
+- **Next:** the customer list import when Agrosoy sends it; week 3 receives these changes with
+  its migrations renumbered after `0012`.
 - **The zone of work is chosen from the zones** (the customers' zones; Agrosoy's technicians work
   in the same two). Migration `0006_user_work_zone` replaces the text column with a reference;
   deactivated zones stay on the technicians who had them and show as "(desactivada)".

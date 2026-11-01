@@ -7,7 +7,12 @@ import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import { normalizeForComparison } from "@/shared/domain/text";
-import { productRecord, type PresentationRecord } from "../domain/product";
+import {
+  nextPresentationCodes,
+  presentationCode,
+  productRecord,
+  type PresentationRecord,
+} from "../domain/product";
 import type {
   CatalogLookups,
   PresentationView,
@@ -35,11 +40,11 @@ export async function createProduct(
   deps: Pick<CatalogDeps, "products" | "audit">,
   actor: Actor,
   input: unknown,
-): Promise<{ id: string; code: number }> {
+): Promise<{ id: string; codes: string[] }> {
   assertCan(actor, "catalog.manage");
   const data = validateInput(newProductSchema, input);
   const product = productRecord(data.name, data.line);
-  const presentations = data.presentations.map(presentationRecord);
+  const presentations = await withCodes(deps.products, data.presentations);
 
   const created = await deps.products.insert(product, presentations);
   await deps.audit.record({
@@ -47,9 +52,9 @@ export async function createProduct(
     action: "catalog.create_product",
     entityType: "product",
     entityId: created.id,
-    payload: { ...product, presentations: data.presentations },
+    payload: { ...product, presentations: presentations.map(presentationPayload) },
   });
-  return created;
+  return { id: created.id, codes: presentations.map((presentation) => presentation.code) };
 }
 
 export async function updateProduct(
@@ -78,20 +83,72 @@ export async function addPresentation(
   actor: Actor,
   productId: unknown,
   input: unknown,
-): Promise<{ id: string }> {
+): Promise<{ id: string; code: string }> {
   assertCan(actor, "catalog.manage");
   const product = await findProduct(deps.products, productId);
   const data = validateInput(presentationSchema, input);
+  const [presentation] = await withCodes(deps.products, [data]);
+  if (!presentation) throw new Error("No presentation to add");
 
-  const created = await deps.products.addPresentation(product.id, presentationRecord(data));
+  const created = await deps.products.addPresentation(product.id, presentation);
   await deps.audit.record({
     actorId: actor.id,
     action: "catalog.add_presentation",
     entityType: "product",
     entityId: product.id,
-    payload: { name: product.name, ...data },
+    payload: { name: product.name, ...presentationPayload(presentation) },
   });
-  return created;
+  return { id: created.id, code: presentation.code };
+}
+
+/**
+ * Products and presentations no longer sold are deactivated, never deleted, so the notes that
+ * used them keep showing them (D23). Deactivated ones aren't offered on new notes or price sheets.
+ */
+export async function setProductActive(
+  deps: Pick<CatalogDeps, "products" | "audit">,
+  actor: Actor,
+  productId: unknown,
+  isActive: boolean,
+): Promise<void> {
+  assertCan(actor, "catalog.manage");
+  const product = await findProduct(deps.products, productId);
+  await deps.products.setActive(product.id, isActive);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: isActive ? "catalog.reactivate_product" : "catalog.deactivate_product",
+    entityType: "product",
+    entityId: product.id,
+    payload: { name: product.name },
+  });
+}
+
+export async function setPresentationActive(
+  deps: Pick<CatalogDeps, "products" | "audit">,
+  actor: Actor,
+  productId: unknown,
+  presentationId: unknown,
+  isActive: boolean,
+): Promise<void> {
+  assertCan(actor, "catalog.manage");
+  const product = await findProduct(deps.products, productId);
+  const id = validateInput(z.uuid(), presentationId);
+  const presentation = product.presentations.find((option) => option.id === id);
+  if (!presentation) throw new DomainError("NOT_FOUND", { entity: "presentation", id });
+
+  await deps.products.setPresentationActive(product.id, id, isActive);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: isActive ? "catalog.reactivate_presentation" : "catalog.deactivate_presentation",
+    entityType: "product",
+    entityId: product.id,
+    payload: {
+      name: product.name,
+      code: presentation.code,
+      content: presentation.content,
+      unit: presentation.unit,
+    },
+  });
 }
 
 export async function listProducts(
@@ -100,8 +157,8 @@ export async function listProducts(
   input: unknown,
 ): Promise<ProductView[]> {
   assertCan(actor, "catalog.view");
-  const { text, line } = validateInput(productSearchSchema, input);
-  return deps.products.search({ text: normalizeForComparison(text), line });
+  const { text, line, status } = validateInput(productSearchSchema, input);
+  return deps.products.search({ text: normalizeForComparison(text), line, status });
 }
 
 export async function getProduct(
@@ -180,8 +237,27 @@ export async function referencePrice(
   return (query.zoneId ? await find(query.zoneId) : null) ?? (await find(null));
 }
 
-function presentationRecord(data: z.output<typeof presentationSchema>): PresentationRecord {
-  return { content: Quantity.parse(data.content), unit: data.unit, saleUnit: data.saleUnit };
+/** Typed codes are kept; the rest take the numbers after the highest one in use or typed. */
+async function withCodes(
+  products: ProductRepository,
+  inputs: z.output<typeof presentationSchema>[],
+): Promise<PresentationRecord[]> {
+  const typed = inputs.flatMap((input) => (input.code ? [Number(input.code)] : []));
+  const missing = inputs.length - typed.length;
+  const free =
+    missing > 0
+      ? nextPresentationCodes(Math.max(await products.highestPresentationCode(), ...typed), missing)
+      : [];
+  return inputs.map((input) => ({
+    code: (input.code && presentationCode(input.code)) || free.shift()!,
+    content: Quantity.parse(input.content),
+    unit: input.unit,
+    saleUnit: input.saleUnit,
+  }));
+}
+
+function presentationPayload(presentation: PresentationRecord) {
+  return { ...presentation, content: presentation.content.toDecimalString() };
 }
 
 async function findProduct(products: ProductRepository, productId: unknown): Promise<ProductView> {

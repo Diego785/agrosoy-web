@@ -2,22 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import type { ActionResult } from "@/shared/presentation/action-result";
-import { errorMessage } from "@/shared/presentation/error-messages";
+import { ConfirmButton } from "@/shared/presentation/confirm-button";
 import { applyActionError } from "@/shared/presentation/form-errors";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/presentation/ui/alert-dialog";
 import { Button } from "@/shared/presentation/ui/button";
 import { FieldError } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
@@ -174,63 +162,5 @@ export function CustomerStatusButton({
       confirm={active ? "Desactivar" : "Reactivar"}
       run={() => setCustomerActiveAction(customerId, !active)}
     />
-  );
-}
-
-function ConfirmButton({
-  label,
-  title,
-  description,
-  confirm,
-  run,
-  variant = "ghost",
-}: {
-  label: string;
-  title: string;
-  description: string;
-  confirm: string;
-  run: () => Promise<ActionResult<unknown>>;
-  variant?: "ghost" | "outline" | "destructive";
-}) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [isWorking, startWorking] = useTransition();
-
-  function proceed() {
-    startWorking(async () => {
-      const result = await run();
-      setOpen(false);
-      if (!result.ok) {
-        toast.error(errorMessage(result.error));
-        return;
-      }
-      router.refresh();
-    });
-  }
-
-  return (
-    <>
-      <Button type="button" variant={variant} size="sm" onClick={() => setOpen(true)}>
-        {label}
-      </Button>
-      <AlertDialog open={open} onOpenChange={(next) => !isWorking && setOpen(next)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{title}</AlertDialogTitle>
-            <AlertDialogDescription>{description}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isWorking}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              variant={variant === "destructive" ? "destructive" : "default"}
-              onClick={proceed}
-              disabled={isWorking}
-            >
-              {confirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
   );
 }
