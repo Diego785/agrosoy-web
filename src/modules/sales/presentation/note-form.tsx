@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { campaignOn } from "@/modules/campaigns/domain/campaign";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { measureDelivered, measureOf } from "@/modules/catalog/domain/product";
-import { contentLabel } from "@/modules/catalog/presentation/catalog-labels";
+import { presentationLabel, quantityUnitLabel } from "@/modules/catalog/presentation/catalog-labels";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
@@ -214,7 +214,7 @@ export function NoteForm({ options, today, draft }: Props) {
                   <NativeSelectOption value="">Elegir producto…</NativeSelectOption>
                   {options.presentations.map((option) => (
                     <NativeSelectOption key={option.id} value={option.id}>
-                      {option.productName} · {contentLabel(option)}
+                      {presentationLabel(option.productName, option)}
                     </NativeSelectOption>
                   ))}
                 </NativeSelect>
@@ -227,13 +227,7 @@ export function NoteForm({ options, today, draft }: Props) {
                   {...form.register(`lines.${index}.quantity`)}
                 />
                 <span className="self-center text-xs text-muted-foreground">
-                  {presentation
-                    ? presentation.saleUnit === "measure"
-                      ? measureOf(presentation.unit) === "l"
-                        ? "litros"
-                        : "kilos"
-                      : "envases"
-                    : ""}
+                  {presentation ? quantityUnitLabel(presentation) : ""}
                 </span>
                 <Input
                   className="w-28 text-right"
@@ -417,8 +411,9 @@ function noteTotals(
         },
         Quantity.parse(line.quantity.replace(",", ".")),
       );
-      if (measureOf(presentation.unit) === "l") liters = liters.add(measure);
-      else kilos = kilos.add(measure);
+      const measureUnit = measureOf(presentation.unit);
+      if (measureUnit === "l") liters = liters.add(measure);
+      else if (measureUnit === "kg") kilos = kilos.add(measure);
     } catch {
       // Ignored until the quantity is valid.
     }

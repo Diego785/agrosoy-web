@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { addPresentation, createProduct } from "@/modules/catalog/application/catalog-use-cases";
 import { drizzleProductRepository } from "@/modules/catalog/infrastructure/drizzle-catalog-repositories";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
@@ -67,13 +67,11 @@ export function conversionDeps(executor: DbExecutor, actor: Actor): ConversionDe
                 unit: presentations.unit,
               })
               .from(presentations)
+              // Deactivated presentations count too: adding them again would repeat them.
               .where(
-                and(
-                  inArray(
-                    presentations.productId,
-                    productRows.map((row) => row.id),
-                  ),
-                  eq(presentations.isActive, true),
+                inArray(
+                  presentations.productId,
+                  productRows.map((row) => row.id),
                 ),
               );
       return new Map(

@@ -13,6 +13,8 @@ import {
   priceSheet,
   referencePrice,
   savePrices,
+  setPresentationActive,
+  setProductActive,
   updateProduct,
 } from "../application/catalog-use-cases";
 import { catalogLookups } from "./catalog-lookups";
@@ -54,25 +56,44 @@ async function campaignAndZone() {
 }
 
 describe("products", () => {
-  it("creates a product with its presentations and an automatic code", async () => {
-    const { code } = await createProduct(deps(), admin, fulvin);
-    const { id } = await createProduct(deps(), admin, {
+  it("gives each presentation a code: Agrosoy's, or the next free number", async () => {
+    const first = await createProduct(deps(), admin, fulvin);
+    const { id, codes } = await createProduct(deps(), admin, {
       name: "4-energy",
       line: "agrochemicals",
       presentations: [
-        { content: "250", unit: "ml", saleUnit: "container" },
+        { code: "26", content: "250", unit: "ml", saleUnit: "container" },
         { content: "1", unit: "l", saleUnit: "container" },
       ],
     });
 
-    expect(code).toBe(1);
+    expect(first.codes).toEqual(["001"]);
+    expect(codes).toEqual(["026", "027"]);
     const products = await listProducts(deps(), actorWithRole("sales_technician"), { text: "" });
     expect(products.map((product) => product.name)).toEqual(["4-energy", "Fulvin 40-22"]);
-    expect(products[0]).toMatchObject({ id, line: "agrochemicals" });
-    expect(products[0]?.presentations.map((p) => `${p.content} ${p.unit}`)).toEqual([
-      "1.000 l",
-      "250.000 ml",
+    expect(products[0]).toMatchObject({ id, line: "agrochemicals", isActive: true });
+    expect(products[0]?.presentations.map((p) => `${p.code} ${p.content} ${p.unit}`)).toEqual([
+      "026 250.000 ml",
+      "027 1.000 l",
     ]);
+    const added = await addPresentation(deps(), admin, id, {
+      content: "10",
+      unit: "ml",
+      saleUnit: "container",
+    });
+    expect(added.code).toBe("028");
+  });
+
+  it("counts pieces: a bag of 50 sheets", async () => {
+    const { id } = await createProduct(deps(), admin, {
+      name: "Papel Hidrosensible",
+      line: "agrochemicals",
+      presentations: [{ code: "020", content: "50", unit: "u", saleUnit: "container" }],
+    });
+    expect((await listProducts(deps(), admin, { text: "020" }))[0]).toMatchObject({
+      id,
+      presentations: [{ code: "020", content: "50.000", unit: "u" }],
+    });
   });
 
   it("rejects repeated names and presentations", async () => {
@@ -91,6 +112,9 @@ describe("products", () => {
         presentations: [fulvin.presentations[0], fulvin.presentations[0]],
       }),
     ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    await expect(
+      addPresentation(deps(), admin, id, { code: "1", content: "5", unit: "l", saleUnit: "container" }),
+    ).rejects.toMatchObject({ code: "DUPLICATE", details: { field: "code" } });
   });
 
   it("finds products by name or code and edits them", async () => {
@@ -99,10 +123,44 @@ describe("products", () => {
     expect((await listProducts(deps(), admin, { text: "plus" })).map((p) => p.name)).toEqual([
       "Fulvin 40-22 Plus",
     ]);
-    expect((await listProducts(deps(), admin, { text: "0001" })).map((p) => p.name)).toEqual([
+    expect((await listProducts(deps(), admin, { text: "1" })).map((p) => p.name)).toEqual([
       "Fulvin 40-22 Plus",
     ]);
     expect(await listProducts(deps(), admin, { text: "", line: "agrochemicals" })).toEqual([]);
+  });
+
+  it("deactivates products and presentations without deleting them", async () => {
+    const { campaignId } = await campaignAndZone();
+    const { id } = await createProduct(deps(), admin, {
+      ...fulvin,
+      presentations: [
+        { content: "20", unit: "l", saleUnit: "measure" },
+        { content: "5", unit: "l", saleUnit: "measure" },
+      ],
+    });
+    const product = (await listProducts(deps(), admin, { text: "" }))[0]!;
+    const fiveLiters = product.presentations.find((p) => p.content === "5.000")!;
+
+    await setPresentationActive(deps(), admin, id, fiveLiters.id, false);
+    expect((await priceSheet(deps(), admin, { campaignId })).map((row) => row.presentation.code)).toEqual([
+      "001",
+    ]);
+
+    await setProductActive(deps(), admin, id, false);
+    expect(await listProducts(deps(), admin, { text: "" })).toEqual([]);
+    expect(await priceSheet(deps(), admin, { campaignId })).toEqual([]);
+    const inactive = await listProducts(deps(), admin, { text: "", status: "inactive" });
+    expect(inactive[0]).toMatchObject({ id, isActive: false });
+    expect(inactive[0]?.presentations.map((p) => [p.code, p.isActive])).toEqual([
+      ["001", true],
+      ["002", false],
+    ]);
+
+    await setProductActive(deps(), admin, id, true);
+    expect((await listProducts(deps(), admin, { text: "" }))[0]?.presentations).toHaveLength(1);
+    await expect(setPresentationActive(deps(), admin, id, crypto.randomUUID(), true)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 
   it("only lets catalog managers change products", async () => {

@@ -10,7 +10,7 @@ export interface CustomerRegistry {
 
 export type PresentationSpec = {
   content: string;
-  unit: "l" | "ml" | "kg" | "g";
+  unit: "l" | "ml" | "kg" | "g" | "u";
   saleUnit: "container" | "measure";
 };
 

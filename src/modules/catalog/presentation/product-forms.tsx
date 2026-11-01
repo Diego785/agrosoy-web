@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useFieldArray, useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { toast } from "sonner";
+import { ConfirmButton } from "@/shared/presentation/confirm-button";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
@@ -21,12 +22,19 @@ import {
   type PresentationInput,
 } from "../application/catalog-schemas";
 import { CONTENT_UNITS, PRODUCT_LINES, SALE_UNITS } from "../domain/product";
-import { addPresentationAction, createProductAction, updateProductAction } from "./catalog-actions";
-import { LINE_LABELS, SALE_UNIT_LABELS, UNIT_LABELS } from "./catalog-labels";
+import {
+  addPresentationAction,
+  createProductAction,
+  setPresentationActiveAction,
+  setProductActiveAction,
+  updateProductAction,
+} from "./catalog-actions";
+import { LINE_LABELS, SALE_UNIT_LABELS, UNIT_LABELS, contentLabel } from "./catalog-labels";
 import { PRODUCTS_PATH, productPath } from "./catalog-routes";
 
-const EMPTY_PRESENTATION: PresentationInput = { content: "", unit: "l", saleUnit: "container" };
+const EMPTY_PRESENTATION: PresentationInput = { code: "", content: "", unit: "l", saleUnit: "container" };
 const DUPLICATE_NAME = { name: "Ya hay un producto con ese nombre." };
+const DUPLICATE_CODE = "Ese código ya es de otra presentación.";
 
 export function NewProductForm() {
   const router = useRouter();
@@ -45,6 +53,9 @@ export function NewProductForm() {
   const submit = form.handleSubmit((values) =>
     startSaving(async () => {
       const result = await createProductAction(values);
+      if (!result.ok && result.error.field === "code") {
+        return form.setError("root", { message: DUPLICATE_CODE });
+      }
       if (!result.ok) return applyActionError(form, result.error, DUPLICATE_NAME);
       toast.success("Producto creado");
       router.push(productPath(result.data.id));
@@ -68,10 +79,14 @@ export function NewProductForm() {
           {presentations.fields.map((field, index) => (
             <div key={field.id} className="flex flex-wrap items-start gap-2">
               <PresentationFields
+                code={form.register(`presentations.${index}.code`)}
                 content={form.register(`presentations.${index}.content`)}
                 unit={form.register(`presentations.${index}.unit`)}
                 saleUnit={form.register(`presentations.${index}.saleUnit`)}
-                error={errors.presentations?.[index]?.content?.message}
+                error={
+                  errors.presentations?.[index]?.code?.message ??
+                  errors.presentations?.[index]?.content?.message
+                }
               />
               {presentations.fields.length > 1 && (
                 <Button
@@ -158,9 +173,12 @@ export function AddPresentationForm({ productId }: { productId: string }) {
     startSaving(async () => {
       const result = await addPresentationAction(productId, values);
       if (!result.ok) {
-        return applyActionError(form, result.error, { content: "El producto ya tiene esa presentación." });
+        return applyActionError(form, result.error, {
+          content: "El producto ya tiene esa presentación.",
+          code: DUPLICATE_CODE,
+        });
       }
-      toast.success("Presentación agregada");
+      toast.success(`Presentación ${result.data.code} agregada`);
       form.reset(EMPTY_PRESENTATION);
       router.refresh();
     }),
@@ -171,10 +189,11 @@ export function AddPresentationForm({ productId }: { productId: string }) {
       <p className="text-sm font-medium">Agregar presentación</p>
       <div className="flex flex-wrap items-start gap-2">
         <PresentationFields
+          code={form.register("code")}
           content={form.register("content")}
           unit={form.register("unit")}
           saleUnit={form.register("saleUnit")}
-          error={errors.content?.message}
+          error={errors.code?.message ?? errors.content?.message}
         />
         <Button type="submit" disabled={isSaving}>
           {isSaving ? "Agregando…" : "Agregar"}
@@ -200,13 +219,15 @@ function LineField({ registration }: { registration: UseFormRegisterReturn }) {
   );
 }
 
-/** Content, unit and how the presentation is charged. */
+/** Code, content, unit and how the presentation is charged. */
 function PresentationFields({
+  code,
   content,
   unit,
   saleUnit,
   error,
 }: {
+  code: UseFormRegisterReturn;
   content: UseFormRegisterReturn;
   unit: UseFormRegisterReturn;
   saleUnit: UseFormRegisterReturn;
@@ -215,6 +236,14 @@ function PresentationFields({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap gap-2">
+        <Input
+          className="w-28"
+          inputMode="numeric"
+          placeholder="Código"
+          aria-label="Código (vacío: el siguiente libre)"
+          title="Vacío: el siguiente número libre"
+          {...code}
+        />
         <Input
           className="w-24"
           inputMode="decimal"
@@ -240,5 +269,47 @@ function PresentationFields({
       </div>
       {error && <FieldError>{error}</FieldError>}
     </div>
+  );
+}
+
+export function ProductStatusButton({ product }: { product: Pick<ProductView, "id" | "name" | "isActive"> }) {
+  const active = product.isActive;
+  return (
+    <ConfirmButton
+      label={active ? "Desactivar" : "Reactivar"}
+      variant={active ? "destructive" : "outline"}
+      title={active ? `¿Desactivar ${product.name}?` : `¿Reactivar ${product.name}?`}
+      description={
+        active
+          ? "No se ofrecerá en nuevas boletas ni en los precios. Las boletas que ya lo tienen lo conservan."
+          : "Vuelve a ofrecerse en boletas y precios, con sus presentaciones activas."
+      }
+      confirm={active ? "Desactivar" : "Reactivar"}
+      run={() => setProductActiveAction(product.id, !active)}
+    />
+  );
+}
+
+export function PresentationStatusButton({
+  productId,
+  presentation,
+}: {
+  productId: string;
+  presentation: ProductView["presentations"][number];
+}) {
+  const active = presentation.isActive;
+  const name = `${presentation.code} · ${contentLabel(presentation)}`;
+  return (
+    <ConfirmButton
+      label={active ? "Desactivar" : "Reactivar"}
+      title={active ? `¿Desactivar ${name}?` : `¿Reactivar ${name}?`}
+      description={
+        active
+          ? "Esta presentación no se ofrecerá en nuevas boletas ni en los precios. Su código queda reservado."
+          : "Vuelve a ofrecerse en boletas y precios."
+      }
+      confirm={active ? "Desactivar" : "Reactivar"}
+      run={() => setPresentationActiveAction(productId, presentation.id, !active)}
+    />
   );
 }
