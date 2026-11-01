@@ -1,8 +1,11 @@
 import {
+  CalendarRangeIcon,
+  ClipboardListIcon,
   ContactIcon,
   FileSpreadsheetIcon,
   HistoryIcon,
   HomeIcon,
+  PackageIcon,
   ReceiptTextIcon,
   UsersIcon,
   type LucideIcon,
@@ -18,7 +21,10 @@ type NavigationItem = { label: string; href: string; icon: LucideIcon; permissio
 /** Only modules that already work are listed; each appears as it is delivered. */
 const NAVIGATION: readonly NavigationItem[] = [
   { label: "Inicio", href: "/", icon: HomeIcon },
+  { label: "Boletas", href: "/notes", icon: ClipboardListIcon, permission: "notes.view" },
   { label: "Clientes", href: "/customers", icon: ContactIcon, permission: "customers.view" },
+  { label: "Productos", href: "/products", icon: PackageIcon, permission: "catalog.view" },
+  { label: "Campañas", href: "/campaigns", icon: CalendarRangeIcon, permission: "catalog.view" },
   { label: "Estados de cuenta", href: "/statements", icon: ReceiptTextIcon, permission: "statements.view" },
   { label: "Importar planillas", href: "/imports", icon: FileSpreadsheetIcon, permission: "imports.manage" },
   { label: "Usuarios", href: "/users", icon: UsersIcon, permission: "users.manage" },

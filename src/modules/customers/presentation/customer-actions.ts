@@ -5,11 +5,16 @@ import { requireActor } from "@/modules/identity/presentation/current-user";
 import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
-import type { CustomerInput, ZoneInput } from "../application/customer-schemas";
+import type { CustomerInput, PropertyInput, ReceiverInput, ZoneInput } from "../application/customer-schemas";
 import {
+  addAuthorizedReceiver,
+  addCustomerProperty,
   createZone,
   registerCustomer,
+  removeAuthorizedReceiver,
+  removeCustomerProperty,
   renameZone,
+  setCustomerActive,
   setZoneActive,
   updateCustomer,
 } from "../application/customer-use-cases";
@@ -62,6 +67,70 @@ export async function setZoneActiveAction(zoneId: string, active: boolean): Prom
   return runAction(async () => {
     const actor = await requireActor();
     await withTransaction((tx) => setZoneActive(customerDeps(tx), actor, zoneId, active));
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return null;
+  });
+}
+
+export async function setCustomerActiveAction(
+  customerId: string,
+  active: boolean,
+): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setCustomerActive(customerDeps(tx), actor, customerId, active));
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return null;
+  });
+}
+
+export async function addPropertyAction(
+  customerId: string,
+  input: PropertyInput,
+): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const created = await withTransaction((tx) =>
+      addCustomerProperty(customerDeps(tx), actor, customerId, input),
+    );
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return created;
+  });
+}
+
+export async function removePropertyAction(
+  customerId: string,
+  propertyId: string,
+): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => removeCustomerProperty(customerDeps(tx), actor, customerId, propertyId));
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return null;
+  });
+}
+
+export async function addReceiverAction(
+  customerId: string,
+  input: ReceiverInput,
+): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const created = await withTransaction((tx) =>
+      addAuthorizedReceiver(customerDeps(tx), actor, customerId, input),
+    );
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return created;
+  });
+}
+
+export async function removeReceiverAction(
+  customerId: string,
+  receiverId: string,
+): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => removeAuthorizedReceiver(customerDeps(tx), actor, customerId, receiverId));
     revalidatePath(CUSTOMERS_PATH, "layout");
     return null;
   });

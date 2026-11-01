@@ -57,6 +57,19 @@ export class Quantity {
     return this.thousandths === other.thousandths ? 0 : this.thousandths < other.thousandths ? -1 : 1;
   }
 
+  /** Quantity × quantity (12 containers × 0.250 L), rounded half up to the thousandth. */
+  multiply(other: Quantity): Quantity {
+    return new Quantity(divideRoundingHalfUp(this.thousandths * other.thousandths, SCALE));
+  }
+
+  /** Divides by a whole number (milliliters to liters: ÷ 1000), rounded half up to the thousandth. */
+  divideBy(divisor: number): Quantity {
+    if (!Number.isSafeInteger(divisor) || divisor === 0) {
+      throw new RangeError(`Quantity can only be divided by a non-zero integer, got ${divisor}`);
+    }
+    return new Quantity(divideRoundingHalfUp(this.thousandths, BigInt(divisor)));
+  }
+
   /** Line total = quantity × unit price, rounded half up to the cent. */
   times(unitPrice: Money): Money {
     return Money.ofCents(divideRoundingHalfUp(this.thousandths * unitPrice.cents, SCALE), unitPrice.currency);

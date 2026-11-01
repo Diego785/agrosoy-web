@@ -159,9 +159,10 @@ Spanish (Bolivia). Business dates and reports in `America/La_Paz`.
 
 ## D16 · Git workflow
 
-**Decision:** commits go straight to `main`, in roadmap order, and each one leaves it working
-(`pnpm check` passes locally, CI on every push). No branches or pull requests while one developer
-works on the project. Conventional commit messages. Commits are authored by the developer only: no `Co-Authored-By`
+**Decision:** each week is built on a `feature/week-N` branch, in roadmap order, and every commit
+leaves it working (`pnpm check` passes locally, CI on every push to any branch). `main` keeps the
+version of the last demo and receives the week's branch once the developer approves it. No pull
+requests while one developer works on the project. Conventional commit messages. Commits are authored by the developer only: no `Co-Authored-By`
 or tool attribution lines.
 
 ## D17 · Imported spreadsheets live apart from the system's records

@@ -50,6 +50,34 @@
       "when": 1793420855650,
       "tag": "0006_user_work_zone",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793420915650,
+      "tag": "0007_campaigns",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793420975650,
+      "tag": "0008_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793421035650,
+      "tag": "0009_customer_contacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793421095650,
+      "tag": "0010_delivery_notes",
+      "breakpoints": true
     }
   ]
 }

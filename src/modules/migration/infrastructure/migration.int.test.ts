@@ -1,6 +1,6 @@
-import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { actorWithRole } from "@test/actors";
+import { salesWorkbook } from "@test/sales-workbook";
 import { testDb } from "@test/test-database";
 import { auditLog } from "@/shared/infrastructure/audit/audit-log.table";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
@@ -35,104 +35,9 @@ function importWorkbook(content: Uint8Array, actor: Actor = admin, fileName = "v
   );
 }
 
-/** A workbook laid out like the technicians' sheets: merged title, formulas, side summary. */
-async function workbook({ extraRow = false } = {}): Promise<Uint8Array> {
-  const book = new ExcelJS.Workbook();
-  const sheet = book.addWorksheet("Ing. Favio Añez");
-  sheet.getCell("B2").value = "CAMPAÑA INVIERNO 2026";
-  sheet.mergeCells("B2:K2");
-  // In exceljs `row.values[1]` is column A; the leading holes put the table in column B, as in the real sheet.
-  sheet.getRow(4).values = [
-    ,
-    ,
-    "FECHA ",
-    "PRODUCTO ",
-    "CLIENTE ",
-    "CANT. ",
-    "PREC.",
-    "TOTAL $US. ",
-    "TIPO DE CAMBIO ",
-    "OBSERVACION ",
-    "#BOLETA ",
-  ];
-  const rows: [
-    Date,
-    string,
-    string,
-    number | ExcelJS.CellFormulaValue,
-    number | ExcelJS.CellFormulaValue,
-    number | null,
-    string | null,
-    number,
-  ][] = [
-    [
-      new Date(Date.UTC(2026, 3, 30)),
-      "Fulvin 40-22(20lts.)",
-      "Alexander Jimenez ",
-      200,
-      11,
-      6.96,
-      null,
-      11737,
-    ],
-    [
-      new Date(Date.UTC(2026, 6, 23)),
-      "4-energy(250ml.)",
-      "Andres Kaoru Matsudo ",
-      12,
-      { formula: "250/4", result: 62.5 },
-      10.9,
-      "contado ",
-      12125,
-    ],
-    [
-      new Date(Date.UTC(2026, 4, 29)),
-      "Biogain Amino Como(1lt.)",
-      "Rodolfo Romero ",
-      { formula: "12+8", result: 20 },
-      39,
-      6.96,
-      null,
-      11599,
-    ],
-  ];
-  if (extraRow)
-    rows.push([
-      new Date(Date.UTC(2026, 8, 29)),
-      "Proan(5kg.)",
-      "Eduardo Cuaquira ",
-      60,
-      20,
-      null,
-      null,
-      12491,
-    ]);
-  rows.forEach((values, index) => {
-    const rowNumber = 5 + index;
-    sheet.getRow(rowNumber).values = [
-      ,
-      ,
-      ...values.slice(0, 5),
-      { formula: `E${rowNumber}*F${rowNumber}` },
-      ...values.slice(5),
-    ];
-  });
-  sheet.getCell("B12").value = "Total ";
-  sheet.getCell("G12").value = { formula: "SUM(G5:G7)", result: 3730 };
-
-  sheet.getRow(20).values = [, , , , , , , , , , , , "Cliente", "Entrega", "Pago", "Dev.", "Deuda"];
-  sheet.getRow(21).values = [, , , , , , , , , , , , "ALEXANDER JIMENEZ ", 2200, null, null, 2200];
-  sheet.getRow(22).values = [, , , , , , , , , , , , "ANDRES KAORU", 750, 750, null, 0];
-  sheet.getRow(23).values = [, , , , , , , , , , , , "RODOLFO ROMERO ", 780, 100.5, null, 679.5];
-  sheet.getRow(24).values = [, , , , , , , , , , , , "DEUDA TOTAL "];
-
-  book.addWorksheet("Notas").getCell("A1").value = "Recordatorios";
-  return new Uint8Array(await book.xlsx.writeBuffer());
-}
-
 describe("spreadsheet import", () => {
   it("imports the sales sheet, skips sheets without a sales table and records it", async () => {
-    const result = await importWorkbook(await workbook());
+    const result = await importWorkbook(await salesWorkbook());
 
     expect(result.skippedSheets).toEqual(["Notas"]);
     expect(result.sheets).toMatchObject([
@@ -144,7 +49,7 @@ describe("spreadsheet import", () => {
   });
 
   it("builds the portfolio statement with the same columns as the sheet's summary", async () => {
-    const { sheets } = await importWorkbook(await workbook());
+    const { sheets } = await importWorkbook(await salesWorkbook());
     const statement = await portfolioStatementFromImport(deps(), technician, sheets[0]?.batchId);
 
     expect(statement.source).toEqual({
@@ -175,7 +80,7 @@ describe("spreadsheet import", () => {
   });
 
   it("shows a customer's dated lines and the undated payment from the summary", async () => {
-    const { sheets } = await importWorkbook(await workbook());
+    const { sheets } = await importWorkbook(await salesWorkbook());
     const statement = await customerStatementFromImport(deps(), admin, sheets[0]?.batchId, "rodolfo romero");
 
     expect(statement.lines).toEqual([
@@ -194,8 +99,8 @@ describe("spreadsheet import", () => {
   });
 
   it("replaces a sheet imported again and keeps its review list", async () => {
-    await importWorkbook(await workbook());
-    const { sheets } = await importWorkbook(await workbook({ extraRow: true }));
+    await importWorkbook(await salesWorkbook());
+    const { sheets } = await importWorkbook(await salesWorkbook({ extraRow: true }));
 
     expect(sheets[0]).toMatchObject({ lineCount: 4, replaced: true });
     expect(await listImportBatches(deps(), admin)).toHaveLength(1);
@@ -215,7 +120,9 @@ describe("spreadsheet import", () => {
   });
 
   it("only lets administration and management import", async () => {
-    await expect(importWorkbook(await workbook(), technician)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(importWorkbook(await salesWorkbook(), technician)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
     await expect(
       portfolioStatementFromImport(deps(), actorWithRole("warehouse_keeper"), crypto.randomUUID()),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });

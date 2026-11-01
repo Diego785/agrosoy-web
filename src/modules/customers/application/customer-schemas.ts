@@ -42,8 +42,41 @@ export const customerIdSchema = z.uuid();
 export const customerSearchSchema = z.object({
   text: z.string().trim().max(100).catch(""),
   zoneId: z.uuid().optional().catch(undefined),
+  status: z.enum(["active", "inactive"]).catch("active"),
   page: z.coerce.number().int().min(1).catch(1),
 });
+
+export const propertySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, { error: "Escribe el nombre de la propiedad." })
+    .max(80, { error: "El nombre admite hasta 80 caracteres." }),
+  location: optionalText(120, "La ubicación admite hasta 120 caracteres."),
+});
+
+export type PropertyInput = z.input<typeof propertySchema>;
+
+export const receiverSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, { error: "Escribe el nombre completo." })
+    .max(80, { error: "El nombre admite hasta 80 caracteres." }),
+  documentId: z
+    .string()
+    .trim()
+    .regex(/^[0-9A-Za-z\s.-]*$/, { error: "El CI solo lleva números y letras." })
+    .max(20, { error: "El CI admite hasta 20 caracteres." })
+    .optional(),
+  relationship: z
+    .string()
+    .trim()
+    .min(2, { error: "Escribe el cargo o parentesco, por ejemplo hijo o encargado." })
+    .max(60, { error: "Admite hasta 60 caracteres." }),
+});
+
+export type ReceiverInput = z.input<typeof receiverSchema>;
 
 export type CustomerSearchInput = z.input<typeof customerSearchSchema>;
 

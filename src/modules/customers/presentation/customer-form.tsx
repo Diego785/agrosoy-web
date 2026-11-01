@@ -7,6 +7,7 @@ import { useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { applyActionError } from "@/shared/presentation/form-errors";
+import { trimDecimalZeros } from "@/shared/presentation/format";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
@@ -16,7 +17,7 @@ import { customerSchema, type CustomerInput } from "../application/customer-sche
 import type { CustomerFormData, Technician, Zone } from "../application/ports";
 import { formatCustomerCode } from "../domain/customer";
 import { registerCustomerAction, updateCustomerAction } from "./customer-actions";
-import { CUSTOMERS_PATH } from "./customer-routes";
+import { CUSTOMERS_PATH, customerPath } from "./customer-routes";
 
 type Props = {
   zones: (Zone & { isActive: boolean })[];
@@ -42,12 +43,13 @@ export function CustomerForm({ zones, technicians, customer }: Props) {
         const result = await updateCustomerAction(customer.id, values);
         if (!result.ok) return applyActionError(form, result.error, DUPLICATE_MESSAGES);
         toast.success("Cliente actualizado");
+        router.push(customerPath(customer.id));
       } else {
         const result = await registerCustomerAction(values);
         if (!result.ok) return applyActionError(form, result.error, DUPLICATE_MESSAGES);
         toast.success(`Cliente registrado con el código ${formatCustomerCode(result.data.code)}`);
+        router.push(customerPath(result.data.id));
       }
-      router.push(CUSTOMERS_PATH);
     }),
   );
 
@@ -136,7 +138,10 @@ export function CustomerForm({ zones, technicians, customer }: Props) {
         <Button type="submit" disabled={isSaving}>
           {isSaving ? "Guardando…" : customer ? "Guardar cambios" : "Registrar cliente"}
         </Button>
-        <Link href={CUSTOMERS_PATH} className={buttonVariants({ variant: "ghost" })}>
+        <Link
+          href={customer ? customerPath(customer.id) : CUSTOMERS_PATH}
+          className={buttonVariants({ variant: "ghost" })}
+        >
           Cancelar
         </Link>
       </div>
@@ -153,7 +158,7 @@ function initialValues(customer: CustomerFormData | undefined): CustomerInput {
     technicianId: customer?.technicianId ?? "",
     exchangeRateKind: customer?.exchangeRateKind ?? "daily",
     // "6.9600" from the database reads better as "6.96".
-    fixedExchangeRate: customer?.fixedExchangeRate?.replace(/\.?0+$/, "") ?? "",
+    fixedExchangeRate: customer?.fixedExchangeRate ? trimDecimalZeros(customer.fixedExchangeRate) : "",
     notes: customer?.notes ?? "",
   };
 }

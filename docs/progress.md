@@ -10,6 +10,8 @@ up without re-reading the whole history.
   deactivated zones stay on the technicians who had them and show as "(desactivada)".
 - In development, a schema change can leave the hot-reloaded database client with stale column
   names (Drizzle's casing cache); restart `pnpm dev` after migrations.
+- **Week 2 branch:** `main` merged in; the week's migrations are now `0007_campaigns` to
+  `0010_delivery_notes`.
 
 ## 2026-10-30
 
@@ -28,6 +30,11 @@ up without re-reading the whole history.
   create, a new edit page at `/users/[id]` (name, position, CI, zone; username and role stay as
   created), shown in the users list. Migration `0005_user_profile`. Customer import still waits
   for the list.
+- **Week 2 branch:** `main` merged in. Zone renaming and deactivation now sit beside customer
+  properties, receivers and deactivation; the price sheet and the note form list deactivated zones
+  too (marked), since their customers still need prices. Migrations shared with `main` keep their
+  numbers and the week's own follow them, because Drizzle skips any migration older than the last
+  one a database applied.
 
 ## 2026-10-29
 
@@ -66,8 +73,30 @@ up without re-reading the whole history.
 - The week 1 demo runs against its own local database (`agrosoy_s1` in `.env.local`), so the
   test data of weeks 2 and 3 (database `agrosoy`) doesn't show up.
 
-## 2026-10-26
+## 2026-10-26 (week 2, branch `feature/week-2`)
 
+- **Everything planned for week 2 is built** (ahead of the 2–6 Nov schedule), on its own branch
+  until it is reviewed and merged into `main`:
+  - **M4 campaigns:** summer and winter, non-overlapping dates, the current one by today's date in
+    Bolivia.
+  - **M3 catalog:** products with line, presentations (container or per liter/kilo), reference
+    prices per campaign and zone with a general fallback.
+  - **M2 rest:** customer page, properties and authorized receivers (deactivated, never deleted),
+    portfolio history when the technician changes, deactivation.
+  - **Import into real records:** sheets turn into customers and products (re-running creates
+    nothing new); tested with `ventas.xlsx` (15 customers, 4-energy and Fulvin).
+  - **Delivery-note drafts (start of M5):** `sales` module, `/notes` list, form and detail. The
+    campaign comes from the date; the customer fills technician and receiver; prices are suggested
+    from the zone's sheet; bonus and sample lines are free; totals in US$, Bs, liters and kilos.
+    Drafts can be edited or discarded; nothing touches debts or stock until confirmation (week 3).
+    Permissions `notes.view` (every role) and `notes.manage` (administration, management,
+    technicians). Tested in the browser: create, edit (10 → 12 units, US$ 625 → 750) and the
+    audit entries.
+  - Fixed on the way: the change log named the property or receiver instead of the customer.
+- **Next (week 3):** confirm notes with numbering and PDF, collections and exchange rates, the
+  account statement from real records, and migrating sales and payments with reconciliation.
+- **Week 2 starts on branch `feature/week-2`** (developer's request); `main` stays as the week 1
+  demo version. CI now checks every branch and publishes the image only from `main`.
 - **M1 completed:** editable permission matrix (`/users/permissions`, stored as differences from
   the defaults, administration fixed, only changed roles saved and audited) and the audit-log
   viewer (`/audit`, newest first, with the user and the name of what changed). `Actor` now carries

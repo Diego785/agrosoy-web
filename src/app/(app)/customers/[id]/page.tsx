@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { EditCustomer } from "@/modules/customers/presentation/edit-customer";
+import { CustomerDetail } from "@/modules/customers/presentation/customer-detail";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
 import { PageHeader } from "@/shared/presentation/app-shell";
 
-export const metadata: Metadata = { title: "Editar cliente" };
+export const metadata: Metadata = { title: "Cliente" };
 
-export default function EditCustomerPage({ params }: PageProps<"/customers/[id]">) {
+export default function CustomerPage({ params }: PageProps<"/customers/[id]">) {
   return (
     <>
-      <PageHeader title="Editar cliente" />
-      <Suspense>
-        <RequirePermission permission="customers.manage">
-          <EditCustomer params={params} />
+      <PageHeader title="Cliente" />
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
+        <RequirePermission permission="customers.view">
+          <CustomerDetail params={params} />
         </RequirePermission>
       </Suspense>
     </>

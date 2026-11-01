@@ -6,8 +6,10 @@ import { DomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { normalizeForComparison } from "@/shared/domain/text";
 import { customerRecord, type CustomerRecord, type ExchangeRateAgreement } from "../domain/customer";
+import { propertyRecord, receiverRecord } from "../domain/customer-contacts";
 import { zoneRecord } from "../domain/zone";
 import type {
+  CustomerDetail,
   CustomerFormData,
   CustomerListItem,
   CustomerRepository,
@@ -20,6 +22,8 @@ import {
   customerIdSchema,
   customerSchema,
   customerSearchSchema,
+  propertySchema,
+  receiverSchema,
   zoneIdSchema,
   zoneSchema,
 } from "./customer-schemas";
@@ -42,6 +46,7 @@ export async function registerCustomer(
   const record = await validCustomer(deps, input);
 
   const created = await deps.customers.insert(record);
+  if (record.technicianId) await deps.customers.assignTechnician(created.id, record.technicianId);
   await deps.audit.record({
     actorId: actor.id,
     action: "customers.register",
@@ -66,6 +71,10 @@ export async function updateCustomer(
   const record = await validCustomer(deps, input, current.zoneId);
 
   await deps.customers.update(id, record);
+  // The portfolio history only changes when the technician does.
+  if ((current.technicianId ?? null) !== (record.technicianId ?? null)) {
+    await deps.customers.assignTechnician(id, record.technicianId ?? null);
+  }
   await deps.audit.record({
     actorId: actor.id,
     action: "customers.update",
@@ -93,16 +102,127 @@ export async function searchCustomers(
   input: unknown,
 ): Promise<{ items: CustomerListItem[]; total: number; page: number; pageSize: number }> {
   assertCan(actor, "customers.view");
-  const { text, zoneId, page } = validateInput(customerSearchSchema, input);
+  const { text, zoneId, status, page } = validateInput(customerSearchSchema, input);
 
   const result = await deps.customers.search({
     text: normalizeForComparison(text),
     zoneId,
+    status,
     preferTechnicianId: actor.role === "sales_technician" ? actor.id : undefined,
     limit: CUSTOMERS_PAGE_SIZE,
     offset: (page - 1) * CUSTOMERS_PAGE_SIZE,
   });
   return { ...result, page, pageSize: CUSTOMERS_PAGE_SIZE };
+}
+
+/** Everything known about a customer, for the customer page. Every role can look customers up. */
+export async function getCustomerDetail(
+  deps: Pick<CustomerDeps, "customers">,
+  actor: Actor,
+  customerId: unknown,
+): Promise<CustomerDetail> {
+  assertCan(actor, "customers.view");
+  const id = validateInput(customerIdSchema, customerId);
+  const customer = await deps.customers.findDetail(id);
+  if (!customer) throw new DomainError("NOT_FOUND", { entity: "customer", id });
+  return customer;
+}
+
+/** Deactivated customers leave searches and new notes but keep their history. */
+export async function setCustomerActive(
+  deps: Pick<CustomerDeps, "customers" | "audit">,
+  actor: Actor,
+  customerId: unknown,
+  active: boolean,
+): Promise<void> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(customerIdSchema, customerId);
+  await deps.customers.setActive(id, active);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: active ? "customers.reactivate" : "customers.deactivate",
+    entityType: "customer",
+    entityId: id,
+    payload: {},
+  });
+}
+
+export async function addCustomerProperty(
+  deps: Pick<CustomerDeps, "customers" | "audit">,
+  actor: Actor,
+  customerId: unknown,
+  input: unknown,
+): Promise<{ id: string }> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(customerIdSchema, customerId);
+  const property = propertyRecord(validateInput(propertySchema, input));
+  const created = await deps.customers.addProperty(id, property);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "customers.add_property",
+    entityType: "customer",
+    entityId: id,
+    payload: { ...property, propertyId: created.id },
+  });
+  return created;
+}
+
+export async function removeCustomerProperty(
+  deps: Pick<CustomerDeps, "customers" | "audit">,
+  actor: Actor,
+  customerId: unknown,
+  propertyId: unknown,
+): Promise<void> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(customerIdSchema, customerId);
+  const property = validateInput(customerIdSchema, propertyId);
+  await deps.customers.deactivateProperty(id, property);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "customers.remove_property",
+    entityType: "customer",
+    entityId: id,
+    payload: { propertyId: property },
+  });
+}
+
+export async function addAuthorizedReceiver(
+  deps: Pick<CustomerDeps, "customers" | "audit">,
+  actor: Actor,
+  customerId: unknown,
+  input: unknown,
+): Promise<{ id: string }> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(customerIdSchema, customerId);
+  const receiver = receiverRecord(validateInput(receiverSchema, input));
+  const created = await deps.customers.addReceiver(id, receiver);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "customers.add_receiver",
+    entityType: "customer",
+    entityId: id,
+    payload: { ...receiver, receiverId: created.id },
+  });
+  return created;
+}
+
+export async function removeAuthorizedReceiver(
+  deps: Pick<CustomerDeps, "customers" | "audit">,
+  actor: Actor,
+  customerId: unknown,
+  receiverId: unknown,
+): Promise<void> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(customerIdSchema, customerId);
+  const receiver = validateInput(customerIdSchema, receiverId);
+  await deps.customers.deactivateReceiver(id, receiver);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "customers.remove_receiver",
+    entityType: "customer",
+    entityId: id,
+    payload: { receiverId: receiver },
+  });
 }
 
 /** Options for the customer form's selects. */

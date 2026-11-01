@@ -9,6 +9,13 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
   "customers.view": { label: "Ver clientes", description: "Buscar clientes y ver sus datos." },
   "customers.manage": { label: "Editar clientes", description: "Registrar y editar clientes y zonas." },
   "statements.view": { label: "Estados de cuenta", description: "Ver la deuda de cualquier cliente." },
+  "catalog.view": { label: "Ver catálogo", description: "Ver productos, precios y campañas." },
+  "catalog.manage": {
+    label: "Editar catálogo",
+    description: "Productos, presentaciones, precios de referencia y campañas.",
+  },
+  "notes.view": { label: "Ver boletas", description: "Buscar boletas y ver su detalle." },
+  "notes.manage": { label: "Registrar boletas", description: "Crear y editar borradores de boletas." },
   "imports.manage": {
     label: "Importar planillas",
     description: "Subir planillas de Excel y revisar sus observaciones.",

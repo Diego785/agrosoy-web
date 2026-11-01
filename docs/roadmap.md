@@ -31,7 +31,8 @@ travel-allowance module move first.
 
 ## Added after Agrosoy's answers (30 Oct 2026)
 
-Each item goes on its week's branch (`main` is week 1) and flows forward by merge.
+Each item goes on its week's branch and flows forward by merge; `main` receives a week once it is
+approved (weeks 1 and 2 by 31 October).
 
 | Week | Added                                                                                                                                                                                                                                                                                                       |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

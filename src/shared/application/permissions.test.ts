@@ -3,7 +3,13 @@ import { effectivePermissions, PERMISSIONS } from "./permissions";
 
 describe("effectivePermissions", () => {
   it("uses the role's defaults without adjustments", () => {
-    expect(effectivePermissions("sales_technician", [])).toEqual(["customers.view", "statements.view"]);
+    expect(effectivePermissions("sales_technician", [])).toEqual([
+      "customers.view",
+      "statements.view",
+      "catalog.view",
+      "notes.view",
+      "notes.manage",
+    ]);
   });
 
   it("applies grants and revocations saved for the role only", () => {
@@ -13,7 +19,7 @@ describe("effectivePermissions", () => {
         { role: "sales_technician", permission: "statements.view", granted: false },
         { role: "warehouse_keeper", permission: "customers.manage", granted: true },
       ]),
-    ).toEqual(["customers.view", "imports.manage"]);
+    ).toEqual(["customers.view", "imports.manage", "catalog.view", "notes.view", "notes.manage"]);
   });
 
   it("never takes anything away from administration", () => {

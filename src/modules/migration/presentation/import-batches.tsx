@@ -15,7 +15,7 @@ import {
 } from "@/shared/presentation/ui/table";
 import { listImportBatches } from "../application/import-use-cases";
 import { migrationDeps } from "./migration-deps";
-import { importReviewPath } from "./migration-routes";
+import { importConversionPath, importReviewPath } from "./migration-routes";
 
 export async function ImportBatches() {
   const actor = await requireActor();
@@ -58,9 +58,14 @@ export async function ImportBatches() {
                   {formatDateTime(batch.importedAt)}
                 </TableCell>
                 <TableCell>
-                  <Link href={statementPath(batch.id)} className="text-sm font-medium hover:underline">
-                    Estado de cuenta
-                  </Link>
+                  <div className="flex flex-col gap-1 text-sm font-medium">
+                    <Link href={statementPath(batch.id)} className="hover:underline">
+                      Estado de cuenta
+                    </Link>
+                    <Link href={importConversionPath(batch.id)} className="hover:underline">
+                      Pasar al sistema
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -79,11 +84,16 @@ export async function ImportBatches() {
               {formatCount(batch.lineCount)} / {formatCount(batch.customerCount)}
             </CardField>
             <CardField label="Importada">{formatDateTime(batch.importedAt)}</CardField>
-            <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <ReviewLink batch={batch} />
-              <Link href={statementPath(batch.id)} className="font-medium hover:underline">
-                Estado de cuenta
-              </Link>
+              <div className="flex gap-4 font-medium">
+                <Link href={statementPath(batch.id)} className="hover:underline">
+                  Estado de cuenta
+                </Link>
+                <Link href={importConversionPath(batch.id)} className="hover:underline">
+                  Pasar al sistema
+                </Link>
+              </div>
             </div>
           </CardListItem>
         ))}
