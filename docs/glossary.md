@@ -1,6 +1,6 @@
 # Glossary
 
-Agrosoy staff speak Spanish; the code speaks English. Use these names in code, database
+Agrosoil staff speak Spanish; the code speaks English. Use these names in code, database
 tables and docs, and the Spanish column in the user interface.
 
 ## People and roles
@@ -53,7 +53,7 @@ tables and docs, and the Spanish column in the user interface.
 | Tipo de cambio            | `exchange_rate`                                                                 | Bolivianos per US dollar, stored on every operation.       |
 | Acuerdo de tipo de cambio | `exchange_rate_agreement`: `fixed` / `daily`                                    | Per customer.                                              |
 | Cargo adicional           | `charge`                                                                        | Added by administration with a concept and a reason (D24). |
-| Concepto del cargo        | `charge_concept`: `interest`, `price_adjustment`, `notarized_contract`, `other` | Codes 079, 080 and 081 of Agrosoy's list.                  |
+| Concepto del cargo        | `charge_concept`: `interest`, `price_adjustment`, `notarized_contract`, `other` | Codes 079, 080 and 081 of Agrosoil's list.                 |
 | Recibo                    | `payment_receipt`                                                               | PDF given for a payment, like the paper receipt (D26).     |
 | Total / a cuenta / saldo  | `balance_before` / payment amount / `balance_after`                             | Kept as they were when the receipt was issued (D27).       |
 | Estado de cuenta          | `account_statement`                                                             | Debt per customer, total and per campaign.                 |
@@ -63,21 +63,21 @@ tables and docs, and the Spanish column in the user interface.
 
 ## Inventory and purchasing
 
-| Spanish (UI)             | English (code)                                    | Notes                                                             |
-| ------------------------ | ------------------------------------------------- | ----------------------------------------------------------------- |
-| Almacén                  | `warehouse`                                       | Central, Cuatro Cañadas and Norte today; more later.              |
-| Producto                 | `product`                                         | Has a name and a line; groups its presentations.                  |
-| Código de producto       | `presentation.code`                               | Agrosoy's code, one per container: "001" Fulvin 40-22 20 L (D23). |
-| Línea                    | `product_line`: `agrochemicals` / `fertilizers`   | Needed for "ventas sin agroquímicos".                             |
-| Presentación             | `presentation`                                    | Container with content and unit, e.g. 20 L can, 50-unit bag.      |
-| Unidad de venta          | `sale_unit`: `per_unit_measure` / `per_container` | Price per liter or kilo, or per container (frasco, bolsa, sobre). |
-| Lote / vencimiento       | `lot` / `expires_on`                              | Tracked per warehouse.                                            |
-| Kardex                   | `stock_movement`                                  | Every stock change, with document, user and date.                 |
-| Traspaso entre almacenes | `warehouse_transfer`                              | Two steps: shipped by origin, received by destination.            |
-| En tránsito              | `in_transit`                                      | Shipped but not yet received.                                     |
-| Conteo físico            | `stock_count`                                     | Blind count; differences become an approved adjustment.           |
-| Ajuste                   | `stock_adjustment`                                | The only manual stock change, approved with a reason.             |
-| Proveedor / compra       | `supplier` / `purchase`                           | A purchase receives stock into the central warehouse.             |
+| Spanish (UI)             | English (code)                                    | Notes                                                              |
+| ------------------------ | ------------------------------------------------- | ------------------------------------------------------------------ |
+| Almacén                  | `warehouse`                                       | Central, Cuatro Cañadas and Norte today; more later.               |
+| Producto                 | `product`                                         | Has a name and a line; groups its presentations.                   |
+| Código de producto       | `presentation.code`                               | Agrosoil's code, one per container: "001" Fulvin 40-22 20 L (D23). |
+| Línea                    | `product_line`: `agrochemicals` / `fertilizers`   | Needed for "ventas sin agroquímicos".                              |
+| Presentación             | `presentation`                                    | Container with content and unit, e.g. 20 L can, 50-unit bag.       |
+| Unidad de venta          | `sale_unit`: `per_unit_measure` / `per_container` | Price per liter or kilo, or per container (frasco, bolsa, sobre).  |
+| Lote / vencimiento       | `lot` / `expires_on`                              | Tracked per warehouse.                                             |
+| Kardex                   | `stock_movement`                                  | Every stock change, with document, user and date.                  |
+| Traspaso entre almacenes | `warehouse_transfer`                              | Two steps: shipped by origin, received by destination.             |
+| En tránsito              | `in_transit`                                      | Shipped but not yet received.                                      |
+| Conteo físico            | `stock_count`                                     | Blind count; differences become an approved adjustment.            |
+| Ajuste                   | `stock_adjustment`                                | The only manual stock change, approved with a reason.              |
+| Proveedor / compra       | `supplier` / `purchase`                           | A purchase receives stock into the central warehouse.              |
 
 ## Travel allowances
 
@@ -94,12 +94,12 @@ tables and docs, and the Spanish column in the user interface.
 | Aprobado / revisado y cancelado | `approved` / `paid`                                                                                    | The report's last two states.                                                                                                                      |
 | Vehículo / encargado            | `vehicle` / `person_in_charge`                                                                         | Maintenance and accessories add up per vehicle and month.                                                                                          |
 
-## Still to confirm with Agrosoy
+## Still to confirm with Agrosoil
 
-| Term                  | Where it appears                              | Question                                                                                                                       |
-| --------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| MP, SV, Agrosoil      | "Observación" column of the sales spreadsheet | What do MP and SV mean? SV rows have price 0 (free of charge?). Agrosoil is the brand on their forms; what marks it in a sale? |
-| Closing a consignment | Meeting, 04:33                                | What closes a consigned delivery: payment, a confirmation, or the end of the campaign?                                         |
+| Term                  | Where it appears                              | Question                                                                                                                         |
+| --------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| MP, SV, Agrosoil      | "Observación" column of the sales spreadsheet | What do MP and SV mean? SV rows have price 0 (free of charge?). Agrosoil is the company itself; what does it mark on a sale row? |
+| Closing a consignment | Meeting, 04:33                                | What closes a consigned delivery: payment, a confirmation, or the end of the campaign?                                           |
 
 Answered on 28 Oct 2026: the three note types share one paper form and number sequence (D19); they
 charge interest, as a concept with its own code (D24).

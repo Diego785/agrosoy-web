@@ -22,9 +22,10 @@ import { Input } from "@/shared/presentation/ui/input";
 import { zoneSchema } from "../application/customer-schemas";
 import type { ZoneListItem } from "../application/ports";
 import { renameZoneAction, setZoneActiveAction } from "./customer-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 /** One zone with its rename and deactivate controls, for administration and management. */
-export function ZoneRow({ zone }: { zone: ZoneListItem }) {
+export const ZoneRow = resetOnLeave(function ZoneRow({ zone }: { zone: ZoneListItem }) {
   const [isEditing, setIsEditing] = useState(false);
   return isEditing ? (
     <RenameZoneForm zone={zone} onDone={() => setIsEditing(false)} />
@@ -39,7 +40,7 @@ export function ZoneRow({ zone }: { zone: ZoneListItem }) {
       </div>
     </div>
   );
-}
+});
 
 export function ZoneName({ zone }: { zone: ZoneListItem }) {
   return (

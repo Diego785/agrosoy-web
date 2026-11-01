@@ -16,7 +16,7 @@ export type StatementTotals = {
 };
 
 /**
- * The columns Agrosoy reads today in its spreadsheets: Entrega, Pago, Dev., Deuda and
+ * The columns Agrosoil reads today in its spreadsheets: Entrega, Pago, Dev., Deuda and
  * "Cancelado"/"Debe". A customer who paid more than they owe also shows as settled, like the sheet.
  */
 export function statementTotals(amounts: {

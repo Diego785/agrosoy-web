@@ -40,12 +40,12 @@ export type SkippedRow = { row: number; reason: "customer_missing" | "product_mi
 const convertSalesSchema = z.object({
   batchId: z.uuid(),
   campaignId: z.uuid({ error: "Elige la campaña de la planilla." }),
-  cutoffDate: z.iso.date({ error: "Elige la fecha de corte." }),
+  cutoffDate: z.iso.date({ error: "Escribe la fecha de corte como dd/mm/aaaa." }),
   defaultExchangeRate: z
     .string()
     .trim()
     .transform((value) => value.replace(",", "."))
-    .pipe(z.string().regex(/^\d+(\.\d{1,4})?$/, { error: "Escribe el tipo de cambio, por ejemplo 6.96." })),
+    .pipe(z.string().regex(/^\d+(\.\d{1,4})?$/, { error: "Escribe el tipo de cambio, por ejemplo 12.00." })),
 });
 
 const undoSchema = z.object({

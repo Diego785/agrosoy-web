@@ -17,9 +17,10 @@ import {
 import { Button } from "@/shared/presentation/ui/button";
 import { discardDraftNoteAction } from "./note-actions";
 import { NOTES_PATH } from "./note-routes";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 /** Drafts can be thrown away; confirmed notes will only be voided (D6). */
-export function DiscardDraftButton({ noteId }: { noteId: string }) {
+export const DiscardDraftButton = resetOnLeave(function DiscardDraftButton({ noteId }: { noteId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isWorking, startWorking] = useTransition();
@@ -57,4 +58,4 @@ export function DiscardDraftButton({ noteId }: { noteId: string }) {
       </AlertDialog>
     </>
   );
-}
+});

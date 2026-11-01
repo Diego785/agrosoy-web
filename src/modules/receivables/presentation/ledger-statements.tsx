@@ -17,6 +17,7 @@ import { CustomerStatement } from "./customer-statement";
 import { PortfolioStatement } from "./portfolio-statement";
 import { statementDeps as deps } from "./statement-deps";
 import { STATEMENTS_PATH, customerStatementPath, customerStatementPdfPath } from "./statement-routes";
+import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -39,31 +40,35 @@ export async function LedgerPortfolio({ searchParams }: { searchParams: SearchPa
 
   return (
     <div className="flex flex-col gap-6">
-      <form action={STATEMENTS_PATH} className="flex flex-wrap gap-2 print:hidden">
-        <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
-          <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
-          {statement.campaigns.map((option) => (
-            <NativeSelectOption key={option.id} value={option.id}>
-              {campaignLabel(option)}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <NativeSelect name="technician" defaultValue={statement.technicianId ?? "all"} aria-label="Técnico">
-          <NativeSelectOption value="all">Todos los técnicos</NativeSelectOption>
-          {technicians.map((technician) => (
-            <NativeSelectOption key={technician.id} value={technician.id}>
-              Cartera de {technician.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <NativeSelect name="status" defaultValue={first(params.status) ?? "all"} aria-label="Estado">
-          <NativeSelectOption value="all">Todos los clientes</NativeSelectOption>
-          <NativeSelectOption value="owing">Solo con deuda</NativeSelectOption>
-        </NativeSelect>
-        <button type="submit" className={buttonVariants({ variant: "outline" })}>
-          Filtrar
-        </button>
-      </form>
+      <ResetOnLeave
+        key={`${campaign?.id ?? ""}|${statement.technicianId ?? "all"}|${first(params.status) ?? "all"}`}
+      >
+        <form action={STATEMENTS_PATH} className="flex flex-wrap gap-2 print:hidden">
+          <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
+            <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
+            {statement.campaigns.map((option) => (
+              <NativeSelectOption key={option.id} value={option.id}>
+                {campaignLabel(option)}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <NativeSelect name="technician" defaultValue={statement.technicianId ?? "all"} aria-label="Técnico">
+            <NativeSelectOption value="all">Todos los técnicos</NativeSelectOption>
+            {technicians.map((technician) => (
+              <NativeSelectOption key={technician.id} value={technician.id}>
+                Cartera de {technician.name}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <NativeSelect name="status" defaultValue={first(params.status) ?? "all"} aria-label="Estado">
+            <NativeSelectOption value="all">Todos los clientes</NativeSelectOption>
+            <NativeSelectOption value="owing">Solo con deuda</NativeSelectOption>
+          </NativeSelect>
+          <button type="submit" className={buttonVariants({ variant: "outline" })}>
+            Filtrar
+          </button>
+        </form>
+      </ResetOnLeave>
       <p className="text-sm text-muted-foreground">
         {campaign ? `Campaña ${campaignLabel(campaign)}` : "Todas las campañas"} · al{" "}
         {formatDate(todayInBolivia())}
@@ -117,19 +122,21 @@ export async function LedgerCustomerStatement({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <form action={`${STATEMENTS_PATH}/${statement.customerId}`} className="flex gap-2 print:hidden">
-            <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
-              <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
-              {statement.campaigns.map((option) => (
-                <NativeSelectOption key={option.id} value={option.id}>
-                  {campaignLabel(option)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-            <button type="submit" className={buttonVariants({ variant: "outline" })}>
-              Ver
-            </button>
-          </form>
+          <ResetOnLeave key={campaign?.id ?? ""}>
+            <form action={`${STATEMENTS_PATH}/${statement.customerId}`} className="flex gap-2 print:hidden">
+              <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
+                <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
+                {statement.campaigns.map((option) => (
+                  <NativeSelectOption key={option.id} value={option.id}>
+                    {campaignLabel(option)}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <button type="submit" className={buttonVariants({ variant: "outline" })}>
+                Ver
+              </button>
+            </form>
+          </ResetOnLeave>
           <PdfActions
             href={customerStatementPdfPath(statement.customerId, campaign?.id)}
             fileName={`estado-de-cuenta-${todayInBolivia()}.pdf`}

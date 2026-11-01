@@ -11,8 +11,8 @@ import {
 import type { ReactElement, ReactNode } from "react";
 import { formatDateTime } from "./format";
 
-// Building blocks for the documents Agrosoy prints or shares (notes, receipts, statements; D12).
-// Helvetica covers the Spanish characters used (á, ñ, º); no logo until Agrosoy provides one.
+// Building blocks for the documents Agrosoil prints or shares (notes, receipts, statements; D12).
+// Helvetica covers the Spanish characters used (á, ñ, º); no logo until Agrosoil provides one.
 
 export const pdfStyles = StyleSheet.create({
   page: { paddingTop: 36, paddingBottom: 48, paddingHorizontal: 36, fontSize: 9, fontFamily: "Helvetica" },
@@ -57,7 +57,7 @@ export function PdfPage({
   children: ReactNode;
 }) {
   return (
-    <Document title={title} author="Agrosoy" creator="Agrosoy">
+    <Document title={title} author="Agrosoil" creator="Agrosoil">
       <Page size="A4" style={pdfStyles.page}>
         <View style={pdfStyles.header}>
           <Text style={pdfStyles.brand}>AGROSOY</Text>

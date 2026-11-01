@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { errorMessage } from "@/shared/presentation/error-messages";
 import { applyActionError } from "@/shared/presentation/form-errors";
@@ -25,11 +25,13 @@ import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/nativ
 import { Textarea } from "@/shared/presentation/ui/textarea";
 import { convertSalesAction, undoSalesConversionAction } from "./conversion-actions";
 import { reconciliationPath } from "./migration-routes";
+import { DateInput } from "@/shared/presentation/date-input";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 type SalesValues = { campaignId: string; cutoffDate: string; defaultExchangeRate: string };
 
 /** Step 3 of the conversion: the sheet's sales and payments into the ledger, or what was done. */
-export function SalesConversion({
+export const SalesConversion = resetOnLeave(function SalesConversion({
   batchId,
   campaigns,
   suggestedCampaignId,
@@ -68,7 +70,7 @@ export function SalesConversion({
       )}
     </section>
   );
-}
+});
 
 function SalesForm({
   batchId,
@@ -87,7 +89,7 @@ function SalesForm({
     defaultValues: {
       campaignId: suggestedCampaignId ?? "",
       cutoffDate: defaultCutoffDate,
-      defaultExchangeRate: "6.96",
+      defaultExchangeRate: "12.00",
     },
   });
   const { errors } = form.formState;
@@ -126,11 +128,10 @@ function SalesForm({
         </Field>
         <Field data-invalid={!!errors.cutoffDate}>
           <FieldLabel htmlFor="cutoffDate">Fecha de corte</FieldLabel>
-          <Input
-            id="cutoffDate"
-            type="date"
-            aria-invalid={!!errors.cutoffDate}
-            {...form.register("cutoffDate")}
+          <Controller
+            control={form.control}
+            name="cutoffDate"
+            render={({ field }) => <DateInput id="cutoffDate" invalid={!!errors.cutoffDate} {...field} />}
           />
           <FieldDescription>La planilla no fecha los pagos del resumen.</FieldDescription>
           <FieldError errors={[errors.cutoffDate]} />
@@ -140,6 +141,7 @@ function SalesForm({
           <Input
             id="defaultExchangeRate"
             inputMode="decimal"
+            selectOnFocus
             aria-invalid={!!errors.defaultExchangeRate}
             {...form.register("defaultExchangeRate")}
           />

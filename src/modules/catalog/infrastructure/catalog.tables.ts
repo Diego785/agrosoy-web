@@ -27,7 +27,7 @@ export const presentations = pgTable(
     productId: uuid()
       .notNull()
       .references(() => products.id),
-    /** Agrosoy's number for this product in this container ("001"), D23. */
+    /** Agrosoil's number for this product in this container ("001"), D23. */
     code: text().notNull(),
     content: numeric({ precision: 12, scale: 3 }).notNull(),
     unit: text({ enum: ["l", "ml", "kg", "g", "u"] }).notNull(),

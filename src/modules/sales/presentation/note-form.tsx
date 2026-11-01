@@ -5,7 +5,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useFieldArray, useForm, useWatch, type UseFormReturn } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { campaignOn } from "@/modules/campaigns/domain/campaign";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
@@ -14,8 +14,10 @@ import { presentationLabel, quantityUnitLabel } from "@/modules/catalog/presenta
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { DateInput } from "@/shared/presentation/date-input";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { formatMoney, formatQuantity, trimDecimalZeros } from "@/shared/presentation/format";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
@@ -27,6 +29,9 @@ import { createDraftNoteAction, updateDraftNoteAction } from "./note-actions";
 import type { NoteFormOptions } from "./note-form-options";
 import { NOTES_PATH, notePath } from "./note-routes";
 
+/** "Cargo o parentesco" when the customer receives in person. */
+const CUSTOMER_RELATIONSHIP = "Titular";
+
 const EMPTY_LINE: NoteLineInput = { presentationId: "", quantity: "", unitPrice: "", freeOfCharge: "" };
 
 type Props = {
@@ -36,7 +41,7 @@ type Props = {
   draft?: { id: string; values: DraftNoteInput };
 };
 
-export function NoteForm({ options, today, draft }: Props) {
+export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }: Props) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({
@@ -87,7 +92,10 @@ export function NoteForm({ options, today, draft }: Props) {
     chooseTechnician(chosen?.technicianId ?? "");
     const rate = chosen?.fixedExchangeRate ?? options.todayRate;
     if (rate) form.setValue("exchangeRate", trimDecimalZeros(rate));
-    if (chosen && !form.getValues("receiverName")) form.setValue("receiverName", chosen.name);
+    // The customer receives unless someone else comes: their data is filled in, and stays editable.
+    form.setValue("receiverName", chosen?.name ?? "");
+    form.setValue("receiverDocumentId", chosen?.taxId ?? "");
+    form.setValue("receiverRelationship", chosen ? CUSTOMER_RELATIONSHIP : "");
   }
 
   /** The technician hands the product over unless someone else was chosen (D26). */
@@ -131,11 +139,10 @@ export function NoteForm({ options, today, draft }: Props) {
         <div className="grid gap-5 sm:grid-cols-3">
           <Field data-invalid={!!errors.noteDate}>
             <FieldLabel htmlFor="noteDate">Fecha</FieldLabel>
-            <Input
-              id="noteDate"
-              type="date"
-              aria-invalid={!!errors.noteDate}
-              {...form.register("noteDate")}
+            <Controller
+              control={form.control}
+              name="noteDate"
+              render={({ field }) => <DateInput id="noteDate" invalid={!!errors.noteDate} {...field} />}
             />
             <span className="text-xs text-muted-foreground">
               {campaign ? `Campaña ${campaignLabel(campaign)}` : "Sin campaña abierta para esta fecha"}
@@ -204,7 +211,8 @@ export function NoteForm({ options, today, draft }: Props) {
             <Input
               id="exchangeRate"
               inputMode="decimal"
-              placeholder="6.96"
+              placeholder="12.00"
+              selectOnFocus
               aria-invalid={!!errors.exchangeRate}
               {...form.register("exchangeRate")}
             />
@@ -239,6 +247,7 @@ export function NoteForm({ options, today, draft }: Props) {
                 <Input
                   className="w-24 text-right"
                   inputMode="decimal"
+                  selectOnFocus
                   placeholder="Cant."
                   aria-label="Cantidad"
                   aria-invalid={!!lineErrors?.quantity}
@@ -250,6 +259,7 @@ export function NoteForm({ options, today, draft }: Props) {
                 <Input
                   className="w-28 text-right"
                   inputMode="decimal"
+                  selectOnFocus
                   placeholder="Precio US$"
                   aria-label="Precio"
                   aria-invalid={!!lineErrors?.unitPrice}
@@ -304,7 +314,7 @@ export function NoteForm({ options, today, draft }: Props) {
 
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
           <Field data-invalid={!!errors.handedOverById}>
-            <FieldLabel htmlFor="handedOverById">Entrega (Agrosoy)</FieldLabel>
+            <FieldLabel htmlFor="handedOverById">Entrega (Agrosoil)</FieldLabel>
             <NativeSelect id="handedOverById" {...form.register("handedOverById")}>
               <NativeSelectOption value="">Sin especificar</NativeSelectOption>
               {options.staff.map((person) => (
@@ -362,7 +372,7 @@ export function NoteForm({ options, today, draft }: Props) {
       </div>
     </form>
   );
-}
+});
 
 function ReceiverFields({
   form,
@@ -379,6 +389,7 @@ function ReceiverFields({
       <legend className="mb-2 text-sm font-medium">Quién recibe</legend>
       {!!customer?.receivers.length && (
         <NativeSelect
+          key={customer.id}
           className="max-w-sm"
           defaultValue=""
           onChange={(event) => onChoose(event.target.value)}

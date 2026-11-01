@@ -9,7 +9,7 @@ export interface CustomerRegistry {
 }
 
 export type PresentationSpec = {
-  /** Agrosoy's code; without one the catalog gives the next free number. */
+  /** Agrosoil's code; without one the catalog gives the next free number. */
   code?: string;
   content: string;
   unit: "l" | "ml" | "kg" | "g" | "u";
@@ -37,19 +37,25 @@ export interface ProductRegistry {
   /** Presentations by code, with the product they belong to. */
   findByCodes(
     codes: string[],
-  ): Promise<Map<string, ExistingPresentation & { productKey: string; productName: string }>>;
+  ): Promise<
+    Map<string, ExistingPresentation & { productId: string; productKey: string; productName: string }>
+  >;
   create(input: {
     name: string;
     line: "agrochemicals" | "fertilizers";
     presentations: PresentationSpec[];
   }): Promise<{ id: string }>;
   addPresentation(productId: string, presentation: PresentationSpec): Promise<void>;
+  /** Gives the product another name and keeps its line. */
+  rename(productId: string, name: string): Promise<void>;
 }
 
 /** The campaign's general reference prices (no zone), written through the catalog's use case. */
 export interface GeneralPrices {
   /** Throws DomainError "NOT_FOUND" for an unknown campaign, even without prices. */
   save(campaignId: string, prices: { presentationId: string; price: string }[]): Promise<void>;
+  /** The campaign's general prices now, by presentation id ("7.80"). */
+  current(campaignId: string): Promise<Map<string, string>>;
 }
 
 export interface TechnicianOptions {

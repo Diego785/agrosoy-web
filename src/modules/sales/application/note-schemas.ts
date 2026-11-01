@@ -37,12 +37,12 @@ export const noteLineSchema = z.object({
 
 export const draftNoteSchema = z
   .object({
-    noteDate: z.iso.date({ error: "Elige la fecha." }),
+    noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
     customerId: z.uuid({ error: "Elige el cliente." }),
     propertyId: z.union([z.literal(""), z.uuid()]).optional(),
     technicianId: z.union([z.literal(""), z.uuid()]).optional(),
     paymentTerms: z.enum(PAYMENT_TERMS, { error: "Elige contado o crédito." }),
-    exchangeRate: decimal(4, "Escribe el tipo de cambio, por ejemplo 6.96."),
+    exchangeRate: decimal(4, "Escribe el tipo de cambio, por ejemplo 12.00."),
     receiverName: z
       .string()
       .trim()
@@ -138,7 +138,7 @@ const optionalDecimal = (decimals: number, message: string) =>
 const paperNumberField = z.union([z.literal(""), noteNumber("Escribe el número impreso, por ejemplo 1250.")]);
 
 export const returnSchema = z.object({
-  noteDate: z.iso.date({ error: "Elige la fecha." }),
+  noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
   /** Who brought the product back. */
   receiverName: z
     .string()
@@ -159,8 +159,8 @@ export const returnSchema = z.object({
 
 export const transferSchema = z
   .object({
-    noteDate: z.iso.date({ error: "Elige la fecha." }),
-    exchangeRate: decimal(4, "Escribe el tipo de cambio, por ejemplo 6.96."),
+    noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
+    exchangeRate: decimal(4, "Escribe el tipo de cambio, por ejemplo 12.00."),
     observations: optionalText(500),
     paperNumber: paperNumberField,
     lines: z

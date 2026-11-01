@@ -17,8 +17,9 @@ import {
   removeReceiverAction,
   setCustomerActiveAction,
 } from "./customer-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-export function AddPropertyForm({ customerId }: { customerId: string }) {
+export const AddPropertyForm = resetOnLeave(function AddPropertyForm({ customerId }: { customerId: string }) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({ resolver: zodResolver(propertySchema), defaultValues: { name: "", location: "" } });
@@ -55,9 +56,9 @@ export function AddPropertyForm({ customerId }: { customerId: string }) {
       <FieldError errors={[errors.name ?? errors.location ?? errors.root]} />
     </form>
   );
-}
+});
 
-export function AddReceiverForm({ customerId }: { customerId: string }) {
+export const AddReceiverForm = resetOnLeave(function AddReceiverForm({ customerId }: { customerId: string }) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({
@@ -98,7 +99,7 @@ export function AddReceiverForm({ customerId }: { customerId: string }) {
       <FieldError errors={[errors.name ?? errors.documentId ?? errors.relationship ?? errors.root]} />
     </form>
   );
-}
+});
 
 export function RemovePropertyButton({
   customerId,

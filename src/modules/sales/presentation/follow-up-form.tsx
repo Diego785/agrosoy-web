@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
@@ -24,6 +24,8 @@ import { Textarea } from "@/shared/presentation/ui/textarea";
 import type { ReturnInput, TransferInput } from "../application/note-schemas";
 import { registerReturnAction, registerTransferAction } from "./note-actions";
 import { notePath } from "./note-routes";
+import { DateInput } from "@/shared/presentation/date-input";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 export type FollowUpFormLine = {
   id: string;
@@ -50,7 +52,7 @@ type Values = {
  * Returns and campaign transfers share this form: one row per delivered line with what is left,
  * and the quantity to give back or move (prices too, for a transfer).
  */
-export function FollowUpForm({
+export const FollowUpForm = resetOnLeave(function FollowUpForm({
   mode,
   noteId,
   lines,
@@ -144,6 +146,7 @@ export function FollowUpForm({
                 <TableCell>
                   <Input
                     inputMode="decimal"
+                    selectOnFocus
                     aria-label={`Cantidad de ${line.label}`}
                     readOnly={blocked}
                     className={blocked ? "bg-muted/50" : undefined}
@@ -156,6 +159,7 @@ export function FollowUpForm({
                   <TableCell>
                     <Input
                       inputMode="decimal"
+                      selectOnFocus
                       aria-label={`Precio nuevo de ${line.label}`}
                       readOnly={blocked}
                       className={blocked ? "bg-muted/50" : undefined}
@@ -189,11 +193,10 @@ export function FollowUpForm({
         <div className="grid gap-5 sm:grid-cols-3">
           <Field data-invalid={!!errors.noteDate}>
             <FieldLabel htmlFor="noteDate">Fecha</FieldLabel>
-            <Input
-              id="noteDate"
-              type="date"
-              aria-invalid={!!errors.noteDate}
-              {...form.register("noteDate")}
+            <Controller
+              control={form.control}
+              name="noteDate"
+              render={({ field }) => <DateInput id="noteDate" invalid={!!errors.noteDate} {...field} />}
             />
             <FieldError errors={[errors.noteDate]} />
           </Field>
@@ -203,6 +206,7 @@ export function FollowUpForm({
               <Input
                 id="exchangeRate"
                 inputMode="decimal"
+                selectOnFocus
                 aria-invalid={!!errors.exchangeRate}
                 {...form.register("exchangeRate")}
               />
@@ -237,7 +241,7 @@ export function FollowUpForm({
         {isPaper && (
           <Field data-invalid={!!errors.paperNumber} className="max-w-40">
             <FieldLabel htmlFor="paperNumber">Número impreso</FieldLabel>
-            <Input id="paperNumber" inputMode="numeric" {...form.register("paperNumber")} />
+            <Input id="paperNumber" inputMode="numeric" selectOnFocus {...form.register("paperNumber")} />
             <FieldError errors={[errors.paperNumber]} />
           </Field>
         )}
@@ -254,7 +258,7 @@ export function FollowUpForm({
       </div>
     </form>
   );
-}
+});
 
 /** Quantity × price while typing; zero until both are readable. */
 function valueOf(quantity: string | undefined, price: string | undefined): Money {

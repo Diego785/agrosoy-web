@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
 import { applyActionError } from "@/shared/presentation/form-errors";
@@ -16,8 +16,10 @@ import { Textarea } from "@/shared/presentation/ui/textarea";
 import { chargeSchema, type ChargeInput } from "../application/collection-schemas";
 import { recordChargeAction } from "./collection-actions";
 import { CHARGES_PATH } from "./collection-routes";
+import { DateInput } from "@/shared/presentation/date-input";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-export function ChargeForm({
+export const ChargeForm = resetOnLeave(function ChargeForm({
   customers,
   campaigns,
   today,
@@ -82,11 +84,10 @@ export function ChargeForm({
           </Field>
           <Field data-invalid={!!errors.chargeDate}>
             <FieldLabel htmlFor="chargeDate">Fecha</FieldLabel>
-            <Input
-              id="chargeDate"
-              type="date"
-              aria-invalid={!!errors.chargeDate}
-              {...form.register("chargeDate")}
+            <Controller
+              control={form.control}
+              name="chargeDate"
+              render={({ field }) => <DateInput id="chargeDate" invalid={!!errors.chargeDate} {...field} />}
             />
             <FieldError errors={[errors.chargeDate]} />
           </Field>
@@ -95,6 +96,7 @@ export function ChargeForm({
             <Input
               id="amount"
               inputMode="decimal"
+              selectOnFocus
               aria-invalid={!!errors.amount}
               {...form.register("amount")}
             />
@@ -123,4 +125,4 @@ export function ChargeForm({
       </div>
     </form>
   );
-}
+});

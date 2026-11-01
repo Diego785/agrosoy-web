@@ -27,13 +27,14 @@ import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/nativ
 import { Textarea } from "@/shared/presentation/ui/textarea";
 import type { ConfirmNoteInput, NextNoteNumberInput, VoidNoteInput } from "../application/note-schemas";
 import { confirmNoteAction, setNextNoteNumberAction, voidNoteAction } from "./note-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 // The server validates everything; these forms only show its answers next to the fields.
 
 /** Confirming can also fail on the note's own date, which isn't an input here. */
 type ConfirmFormValues = Required<ConfirmNoteInput> & { noteDate?: string };
 
-export function ConfirmNoteButton({
+export const ConfirmNoteButton = resetOnLeave(function ConfirmNoteButton({
   noteId,
   total,
   exchangeRate,
@@ -161,6 +162,7 @@ export function ConfirmNoteButton({
                 <Input
                   id="paperNumber"
                   inputMode="numeric"
+                  selectOnFocus
                   className="max-w-40"
                   aria-invalid={!!errors.paperNumber}
                   {...form.register("paperNumber")}
@@ -185,9 +187,15 @@ export function ConfirmNoteButton({
       </AlertDialog>
     </>
   );
-}
+});
 
-export function VoidNoteButton({ noteId, number }: { noteId: string; number: number }) {
+export const VoidNoteButton = resetOnLeave(function VoidNoteButton({
+  noteId,
+  number,
+}: {
+  noteId: string;
+  number: number;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isWorking, startWorking] = useTransition();
@@ -235,9 +243,9 @@ export function VoidNoteButton({ noteId, number }: { noteId: string; number: num
       </AlertDialog>
     </>
   );
-}
+});
 
-export function NextNumberForm({ nextNumber }: { nextNumber: number }) {
+export const NextNumberForm = resetOnLeave(function NextNumberForm({ nextNumber }: { nextNumber: number }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, startSaving] = useTransition();
@@ -278,6 +286,7 @@ export function NextNumberForm({ nextNumber }: { nextNumber: number }) {
           <Input
             id="nextNumber"
             inputMode="numeric"
+            selectOnFocus
             className="max-w-32"
             aria-invalid={!!errors.nextNumber}
             {...form.register("nextNumber")}
@@ -294,4 +303,4 @@ export function NextNumberForm({ nextNumber }: { nextNumber: number }) {
       </Field>
     </form>
   );
-}
+});

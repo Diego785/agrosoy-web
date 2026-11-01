@@ -23,8 +23,9 @@ import { Input } from "@/shared/presentation/ui/input";
 import { Textarea } from "@/shared/presentation/ui/textarea";
 import type { DailyRateInput, VoidReasonInput } from "../application/collection-schemas";
 import { setDailyRateAction, voidChargeAction, voidPaymentAction } from "./collection-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-export function VoidPaymentButton({
+export const VoidPaymentButton = resetOnLeave(function VoidPaymentButton({
   paymentId,
   receiptNumber,
 }: {
@@ -39,9 +40,9 @@ export function VoidPaymentButton({
       run={(input) => voidPaymentAction(paymentId, input)}
     />
   );
-}
+});
 
-export function VoidChargeButton({ chargeId }: { chargeId: string }) {
+export const VoidChargeButton = resetOnLeave(function VoidChargeButton({ chargeId }: { chargeId: string }) {
   return (
     <VoidButton
       title="¿Anular este cargo?"
@@ -50,7 +51,7 @@ export function VoidChargeButton({ chargeId }: { chargeId: string }) {
       run={(input) => voidChargeAction(chargeId, input)}
     />
   );
-}
+});
 
 function VoidButton({
   title,
@@ -110,7 +111,13 @@ function VoidButton({
 }
 
 /** The day's rate for `daily` customers: shown, and editable by administration. */
-export function DailyRateForm({ today, rate }: { today: string; rate: string | null }) {
+export const DailyRateForm = resetOnLeave(function DailyRateForm({
+  today,
+  rate,
+}: {
+  today: string;
+  rate: string | null;
+}) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(rate === null);
   const [isSaving, startSaving] = useTransition();
@@ -151,7 +158,8 @@ export function DailyRateForm({ today, rate }: { today: string; rate: string | n
           <Input
             id="dailyRate"
             inputMode="decimal"
-            placeholder="6.96"
+            selectOnFocus
+            placeholder="12.00"
             className="max-w-32"
             aria-invalid={!!errors.rate}
             {...form.register("rate")}
@@ -169,4 +177,4 @@ export function DailyRateForm({ today, rate }: { today: string; rate: string | n
       </Field>
     </form>
   );
-}
+});

@@ -17,6 +17,7 @@ import { TemporaryPasswordNotice } from "./temporary-password-notice";
 import type { WorkZoneOption } from "./edit-user";
 import { createUserAction } from "./user-actions";
 import { USERS_PATH } from "./identity-routes";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 const EMPTY: CreateUserInput = {
   name: "",
@@ -33,7 +34,7 @@ const DUPLICATE_MESSAGES = {
   email: "Ese correo ya pertenece a otro usuario.",
 };
 
-export function CreateUserForm({ zones }: { zones: WorkZoneOption[] }) {
+export const CreateUserForm = resetOnLeave(function CreateUserForm({ zones }: { zones: WorkZoneOption[] }) {
   const [created, setCreated] = useState<{ username: string; password: string }>();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({ resolver: zodResolver(createUserSchema), defaultValues: EMPTY });
@@ -150,4 +151,4 @@ export function CreateUserForm({ zones }: { zones: WorkZoneOption[] }) {
       </div>
     </form>
   );
-}
+});

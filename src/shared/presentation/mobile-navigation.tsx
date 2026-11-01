@@ -23,7 +23,7 @@ export function MobileNavigation({ children }: { children: ReactNode }) {
       </SheetTrigger>
       <SheetContent>
         <div className="flex h-14 items-center justify-between border-b px-4">
-          <SheetTitle>Agrosoy</SheetTitle>
+          <SheetTitle>Agrosoil</SheetTitle>
           <SheetClose render={<Button variant="ghost" size="icon" aria-label="Cerrar menú" />}>
             <XIcon aria-hidden />
           </SheetClose>

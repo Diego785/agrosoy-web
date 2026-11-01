@@ -88,7 +88,7 @@ export function NotePdf({ note }: { note: NoteView }) {
       <View style={pdfStyles.signatures}>
         <View style={pdfStyles.signature}>
           <Text>{note.type === "return" ? "Recibí conforme" : "Entregué conforme"}</Text>
-          <Text style={pdfStyles.muted}>{note.technician?.name ?? "Agrosoy"}</Text>
+          <Text style={pdfStyles.muted}>{note.technician?.name ?? "Agrosoil"}</Text>
         </View>
         <View style={pdfStyles.signature}>
           <Text>{note.type === "return" ? "Devolví conforme" : "Recibí conforme"}</Text>

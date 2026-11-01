@@ -19,7 +19,7 @@ const optionalText = (max: number) =>
 
 const optionalId = z.union([z.literal(""), z.uuid()]).optional();
 
-export const exchangeRateField = decimal(4, "Escribe el tipo de cambio, por ejemplo 6.96.");
+export const exchangeRateField = decimal(4, "Escribe el tipo de cambio, por ejemplo 12.00.");
 
 /** How the customer paid; also what a cash note asks for when it is confirmed. */
 export const paymentMethodFields = {
@@ -32,7 +32,7 @@ export const paymentMethodFields = {
 export const paymentSchema = z
   .object({
     customerId: z.uuid({ error: "Elige el cliente." }),
-    paymentDate: z.iso.date({ error: "Elige la fecha." }),
+    paymentDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
     amount: decimal(2, "Escribe el monto, por ejemplo 1500 o 1500.50."),
     exchangeRate: exchangeRateField,
     ...paymentMethodFields,
@@ -60,7 +60,7 @@ export const paymentSchema = z
 export const chargeSchema = z.object({
   customerId: z.uuid({ error: "Elige el cliente." }),
   campaignId: z.uuid({ error: "Elige la campaña." }),
-  chargeDate: z.iso.date({ error: "Elige la fecha." }),
+  chargeDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
   amount: decimal(2, "Escribe el monto en US$, por ejemplo 120.50."),
   reason: z
     .string()
@@ -78,7 +78,7 @@ export const voidReasonSchema = z.object({
 });
 
 export const dailyRateSchema = z.object({
-  rateDate: z.iso.date({ error: "Elige la fecha." }),
+  rateDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
   rate: exchangeRateField,
 });
 

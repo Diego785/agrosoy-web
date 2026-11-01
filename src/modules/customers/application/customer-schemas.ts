@@ -29,7 +29,7 @@ export const customerSchema = z
   .refine(
     (data) => data.exchangeRateKind === "daily" || /^\d+(\.\d{1,4})?$/.test(data.fixedExchangeRate ?? ""),
     {
-      error: "Escribe el tipo de cambio fijo, por ejemplo 6.96.",
+      error: "Escribe el tipo de cambio fijo, por ejemplo 12.00.",
       path: ["fixedExchangeRate"],
     },
   );

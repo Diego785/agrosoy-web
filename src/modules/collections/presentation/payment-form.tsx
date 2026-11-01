@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
@@ -21,6 +21,8 @@ import { PAYMENT_METHODS } from "../domain/payment";
 import { recordPaymentAction } from "./collection-actions";
 import { CURRENCY_LABELS, METHOD_LABELS } from "./collection-labels";
 import { NEW_PAYMENT_PATH, PAYMENTS_PATH, newPaymentPath, paymentPath } from "./collection-routes";
+import { DateInput } from "@/shared/presentation/date-input";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 export type PaymentFormProps = {
   customers: { id: string; code: number; name: string }[];
@@ -37,7 +39,13 @@ export type PaymentFormProps = {
   todayRate: string | null;
 };
 
-export function PaymentForm({ customers, customer, campaigns, today, todayRate }: PaymentFormProps) {
+export const PaymentForm = resetOnLeave(function PaymentForm({
+  customers,
+  customer,
+  campaigns,
+  today,
+  todayRate,
+}: PaymentFormProps) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const suggestedRate = customer?.fixedExchangeRate ?? todayRate;
@@ -105,11 +113,12 @@ export function PaymentForm({ customers, customer, campaigns, today, todayRate }
             <div className="grid gap-5 sm:grid-cols-3">
               <Field data-invalid={!!errors.paymentDate}>
                 <FieldLabel htmlFor="paymentDate">Fecha</FieldLabel>
-                <Input
-                  id="paymentDate"
-                  type="date"
-                  aria-invalid={!!errors.paymentDate}
-                  {...form.register("paymentDate")}
+                <Controller
+                  control={form.control}
+                  name="paymentDate"
+                  render={({ field }) => (
+                    <DateInput id="paymentDate" invalid={!!errors.paymentDate} {...field} />
+                  )}
                 />
                 <FieldError errors={[errors.paymentDate]} />
               </Field>
@@ -125,6 +134,7 @@ export function PaymentForm({ customers, customer, campaigns, today, todayRate }
                 <Input
                   id="amount"
                   inputMode="decimal"
+                  selectOnFocus
                   aria-invalid={!!errors.amount}
                   {...form.register("amount")}
                 />
@@ -135,6 +145,7 @@ export function PaymentForm({ customers, customer, campaigns, today, todayRate }
                 <Input
                   id="exchangeRate"
                   inputMode="decimal"
+                  selectOnFocus
                   aria-invalid={!!errors.exchangeRate}
                   {...form.register("exchangeRate")}
                 />
@@ -260,7 +271,7 @@ export function PaymentForm({ customers, customer, campaigns, today, todayRate }
       )}
     </form>
   );
-}
+});
 
 function Balances({ balances }: { balances: NonNullable<PaymentFormProps["customer"]>["balances"] }) {
   const owing = balances.filter((row) => Number(row.balance) !== 0);

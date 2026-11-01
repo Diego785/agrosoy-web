@@ -11,7 +11,7 @@ export default function ImportProductsPage() {
     <>
       <PageHeader
         title="Importar lista de productos"
-        description="La lista de Agrosoy con sus códigos y precios en dólares (PRODUCTOS.xlsx)."
+        description="La lista de Agrosoil con sus códigos y precios en dólares (PRODUCTOS.xlsx)."
       />
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-muted/60" />}>
         <RequirePermission permission="catalog.manage">

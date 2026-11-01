@@ -22,6 +22,7 @@ import {
 } from "@/shared/presentation/format";
 import { PdfActions } from "@/shared/presentation/pdf-actions";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
@@ -89,17 +90,19 @@ export async function NotesTable({
       ) : (
         <p className="text-sm text-muted-foreground">La próxima boleta será la N.º {nextNumber}.</p>
       )}
-      <form action={NOTES_PATH} className="flex gap-2">
-        <NativeSelect name="status" defaultValue={status} aria-label="Estado">
-          <NativeSelectOption value="">Todas</NativeSelectOption>
-          <NativeSelectOption value="draft">Borradores</NativeSelectOption>
-          <NativeSelectOption value="confirmed">Confirmadas</NativeSelectOption>
-          <NativeSelectOption value="voided">Anuladas</NativeSelectOption>
-        </NativeSelect>
-        <button type="submit" className={buttonVariants({ variant: "outline" })}>
-          Filtrar
-        </button>
-      </form>
+      <ResetOnLeave key={status}>
+        <form action={NOTES_PATH} className="flex gap-2">
+          <NativeSelect name="status" defaultValue={status} aria-label="Estado">
+            <NativeSelectOption value="">Todas</NativeSelectOption>
+            <NativeSelectOption value="draft">Borradores</NativeSelectOption>
+            <NativeSelectOption value="confirmed">Confirmadas</NativeSelectOption>
+            <NativeSelectOption value="voided">Anuladas</NativeSelectOption>
+          </NativeSelect>
+          <button type="submit" className={buttonVariants({ variant: "outline" })}>
+            Filtrar
+          </button>
+        </form>
+      </ResetOnLeave>
       {items.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No hay boletas.</p>
       ) : (
@@ -287,8 +290,8 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
           {note.receiver.relationship && ` (${note.receiver.relationship})`}
           {note.receiver.documentId && ` · CI ${note.receiver.documentId}`}
         </Item>
-        {/* On a return the customer's person hands over and Agrosoy's receives (D26). */}
-        <Item label={isDelivery ? "Entrega" : "Recibe (Agrosoy)"}>
+        {/* On a return the customer's person hands over and Agrosoil's receives (D26). */}
+        <Item label={isDelivery ? "Entrega" : "Recibe (Agrosoil)"}>
           {note.handedOverBy &&
             [note.handedOverBy.name, note.handedOverBy.position].filter(Boolean).join(" · ")}
         </Item>

@@ -7,7 +7,7 @@ import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import { ProductListForm } from "./product-list-form";
 
-/** Agrosoy's product list (PRODUCTOS.xlsx) into the catalog, with its prices for one campaign. */
+/** Agrosoil's product list (PRODUCTOS.xlsx) into the catalog, with its prices for one campaign. */
 export async function ProductListImport() {
   const actor = await requireActor();
   const campaigns = await listCampaigns({ campaigns: drizzleCampaignRepository(getDb()) }, actor);

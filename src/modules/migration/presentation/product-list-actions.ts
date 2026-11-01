@@ -25,7 +25,8 @@ export async function previewProductListAction(
 ): Promise<ActionResult<ProductListPreview>> {
   return runAction(async () => {
     const actor = await requireActor();
-    return previewProductList(productListDeps(getDb(), actor), actor, await fileFrom(formData));
+    const input = { ...(await fileFrom(formData)), campaignId: formData.get("campaignId") ?? undefined };
+    return previewProductList(productListDeps(getDb(), actor), actor, input);
   });
 }
 

@@ -9,7 +9,7 @@ describe("newUserAccount", () => {
       newUserAccount({
         name: "  Favio   Añez ",
         username: " FAnez ",
-        email: " Favio@Agrosoy.com ",
+        email: " Favio@Agrosoil.com ",
         role: "sales_technician",
         position: " Ejecutivo  de ventas ",
         documentId: " 4567891 sc ",
@@ -18,7 +18,7 @@ describe("newUserAccount", () => {
     ).toEqual({
       name: "Favio Añez",
       username: "fanez",
-      email: "favio@agrosoy.com",
+      email: "favio@agrosoil.com",
       role: "sales_technician",
       position: "Ejecutivo de ventas",
       documentId: "4567891 SC",

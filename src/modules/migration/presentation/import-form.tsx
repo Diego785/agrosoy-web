@@ -7,8 +7,9 @@ import { Button } from "@/shared/presentation/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { importWorkbookAction } from "./import-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-export function ImportForm() {
+export const ImportForm = resetOnLeave(function ImportForm() {
   const [error, setError] = useState<string>();
   const [isImporting, startImporting] = useTransition();
 
@@ -65,4 +66,4 @@ export function ImportForm() {
       {error && <FieldError>{error}</FieldError>}
     </form>
   );
-}
+});

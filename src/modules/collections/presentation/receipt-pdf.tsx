@@ -17,7 +17,7 @@ function optional(label: string, value: string | null): [string, string][] {
   return value ? [[label, value]] : [];
 }
 
-/** The receipt Agrosoy hands over for a payment, with where it was applied. */
+/** The receipt Agrosoil hands over for a payment, with where it was applied. */
 export function ReceiptPdf({ payment }: { payment: PaymentView }) {
   return (
     <PdfPage
@@ -65,7 +65,7 @@ export function ReceiptPdf({ payment }: { payment: PaymentView }) {
         <View style={pdfStyles.signature}>
           <Text>Recibí conforme</Text>
           <Text style={pdfStyles.muted}>
-            Agrosoy{payment.recorded.byName ? ` · ${payment.recorded.byName}` : ""}
+            Agrosoil{payment.recorded.byName ? ` · ${payment.recorded.byName}` : ""}
           </Text>
         </View>
       </View>
