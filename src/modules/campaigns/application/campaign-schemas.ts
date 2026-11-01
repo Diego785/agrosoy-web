@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { SEASONS } from "../domain/campaign";
 
-const isoDate = z.iso.date({ error: "Elige una fecha." });
+const isoDate = z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." });
 
 export const campaignSchema = z
   .object({

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { NewProductForm } from "@/modules/catalog/presentation/product-forms";
+import { NewProduct } from "@/modules/catalog/presentation/catalog-pages";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
 import { PageHeader } from "@/shared/presentation/app-shell";
 
@@ -11,11 +11,11 @@ export default function NewProductPage() {
     <>
       <PageHeader
         title="Crear producto"
-        description="Cada presentación lleva el código de Agrosoy; si lo dejas vacío, toma el siguiente número libre."
+        description="Cada presentación lleva el código de Agrosoil. Se propone el siguiente número libre y puedes cambiarlo."
       />
       <Suspense>
         <RequirePermission permission="catalog.manage">
-          <NewProductForm />
+          <NewProduct />
         </RequirePermission>
       </Suspense>
     </>

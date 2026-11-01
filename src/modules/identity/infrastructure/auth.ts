@@ -32,7 +32,7 @@ export function createAuth(
   { withNextCookies = true }: { withNextCookies?: boolean } = {},
 ) {
   return betterAuth({
-    appName: "Agrosoy",
+    appName: "Agrosoil",
     secret: config.secret,
     baseURL: config.baseURL,
     database: drizzleAdapter(db, {

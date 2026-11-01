@@ -4,7 +4,7 @@ import { CONTENT_UNITS, PRODUCT_LINES, SALE_UNITS } from "../domain/product";
 // Shared by the forms and the use cases; the messages are shown next to the fields.
 
 export const presentationSchema = z.object({
-  /** Agrosoy's code ("001"); empty takes the next free number. */
+  /** Agrosoil's code ("001"); empty takes the next free number. */
   code: z
     .string()
     .trim()

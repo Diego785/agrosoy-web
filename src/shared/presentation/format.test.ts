@@ -6,6 +6,8 @@ import {
   formatQuantity,
   formatRate,
   formatUsd,
+  maskTypedDate,
+  parseTypedDate,
   trimDecimalZeros,
 } from "./format";
 
@@ -33,5 +35,30 @@ describe("Bolivian display formats", () => {
     expect(trimDecimalZeros("200.000")).toBe("200");
     expect(trimDecimalZeros("100")).toBe("100");
     expect(trimDecimalZeros("10.500")).toBe("10.5");
+  });
+});
+
+describe("typed dates (dd/mm/aaaa)", () => {
+  it.each([
+    ["01112026", "01/11/2026"],
+    ["0111", "01/11"],
+    ["01", "01"],
+    ["01/", "01"],
+    ["1/", "01"],
+    ["1/11/26", "01/11/26"],
+    ["01/11/2026999", "01/11/2026"],
+    ["ab01-11", "01/11"],
+  ])("shapes %j as %j", (typed, shown) => {
+    expect(maskTypedDate(typed)).toBe(shown);
+  });
+
+  it("reads whole, real dates only", () => {
+    expect(parseTypedDate("01/11/2026")).toBe("2026-11-01");
+    expect(parseTypedDate("1/11/26")).toBe("2026-11-01");
+    expect(parseTypedDate("29/02/2028")).toBe("2028-02-29");
+    expect(parseTypedDate("29/02/2027")).toBeUndefined();
+    expect(parseTypedDate("31/04/2026")).toBeUndefined();
+    expect(parseTypedDate("01/11")).toBeUndefined();
+    expect(parseTypedDate("")).toBeUndefined();
   });
 });

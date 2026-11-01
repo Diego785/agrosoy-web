@@ -10,8 +10,9 @@ import { Field, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { zoneSchema } from "../application/customer-schemas";
 import { createZoneAction } from "./customer-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-export function CreateZoneForm() {
+export const CreateZoneForm = resetOnLeave(function CreateZoneForm() {
   const [isSaving, startSaving] = useTransition();
   const form = useForm({ resolver: zodResolver(zoneSchema), defaultValues: { name: "" } });
   const { errors } = form.formState;
@@ -43,4 +44,4 @@ export function CreateZoneForm() {
       </Field>
     </form>
   );
-}
+});

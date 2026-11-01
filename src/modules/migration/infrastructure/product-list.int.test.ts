@@ -23,12 +23,12 @@ async function summerCampaign() {
   return id;
 }
 
-const file = async (options?: { fulvinPrice?: number }) => ({
+const file = async (options?: Parameters<typeof productListWorkbook>[0]) => ({
   fileName: "PRODUCTOS.xlsx",
   content: await productListWorkbook(options),
 });
 
-describe("importing Agrosoy's product list", () => {
+describe("importing Agrosoil's product list", () => {
   it("previews the list against an empty catalog", async () => {
     const preview = await previewProductList(deps(), admin, await file());
     expect(preview.counts).toEqual({
@@ -37,12 +37,14 @@ describe("importing Agrosoy's product list", () => {
       existing: 0,
       conflicts: 0,
       prices: 4,
+      priceChanges: 0,
+      renamed: 0,
     });
     expect(preview.skipped.map((row) => [row.code, row.reason])).toEqual([["079", "CHARGE_CONCEPT"]]);
     expect(await listProducts(catalogDeps(testDb), admin, { text: "" })).toEqual([]);
   });
 
-  it("creates products with Agrosoy's codes and the campaign's general prices; again, nothing new", async () => {
+  it("creates products with Agrosoil's codes and the campaign's general prices; again, nothing new", async () => {
     const campaignId = await summerCampaign();
     await importProductList(deps(), admin, { ...(await file()), campaignId });
 
@@ -68,6 +70,65 @@ describe("importing Agrosoy's product list", () => {
     });
     expect(again).toMatchObject({ newProducts: 0, newPresentations: 0, existing: 5 });
     expect((await priceSheet(catalogDeps(testDb), admin, { campaignId }))[1]?.price).toBe("7.50");
+  });
+
+  it("shows which prices change against the chosen campaign, and applies them", async () => {
+    const campaignId = await summerCampaign();
+    await importProductList(deps(), admin, { ...(await file()), campaignId });
+
+    const changed = { ...(await file({ fulvinPrice: 7.9 })), campaignId };
+    const preview = await previewProductList(deps(), admin, changed);
+    expect(preview.rows.find((row) => row.code === "001")?.plan).toMatchObject({
+      status: "existing",
+      priceChange: { from: "7.80" },
+      renamedFrom: null,
+    });
+    expect(preview.rows.find((row) => row.code === "002")?.plan).toMatchObject({ priceChange: null });
+    expect(preview.counts).toMatchObject({ existing: 5, priceChanges: 1, renamed: 0 });
+
+    await importProductList(deps(), admin, changed);
+    const prices = await priceSheet(catalogDeps(testDb), admin, { campaignId });
+    expect(prices.find((row) => row.presentation.code === "001")?.price).toBe("7.90");
+  });
+
+  it("renames a product when the list gives all its presentations a new name", async () => {
+    const campaignId = await summerCampaign();
+    await importProductList(deps(), admin, { ...(await file()), campaignId });
+
+    const renamed = {
+      ...(await file({ labels: { "001": "Fulvin Max(20lts.)", "002": "Fulvin Max(5lts.)" } })),
+      campaignId,
+    };
+    const preview = await previewProductList(deps(), admin, renamed);
+    expect(preview.rows.find((row) => row.code === "001")?.plan).toMatchObject({
+      status: "existing",
+      renamedFrom: "Fulvin 40-22",
+      nameKept: null,
+    });
+    expect(preview.counts).toMatchObject({ newProducts: 0, existing: 5, conflicts: 0, renamed: 1 });
+
+    await importProductList(deps(), admin, renamed);
+    const products = await listProducts(catalogDeps(testDb), admin, { text: "fulvin" });
+    expect(products.map((p) => [p.name, p.presentations.map((x) => x.code)])).toEqual([
+      ["Fulvin Max", ["001", "002"]],
+    ]);
+  });
+
+  it("keeps the name when only some presentations of a product are renamed", async () => {
+    const campaignId = await summerCampaign();
+    await importProductList(deps(), admin, { ...(await file()), campaignId });
+
+    const preview = await previewProductList(deps(), admin, {
+      ...(await file({ labels: { "001": "Fulvin Max(20lts.)" }, fulvinPrice: 8 })),
+      campaignId,
+    });
+    expect(preview.rows.find((row) => row.code === "001")?.plan).toMatchObject({
+      status: "existing",
+      renamedFrom: null,
+      nameKept: "other_names",
+      priceChange: { from: "7.80" },
+    });
+    expect(preview.counts).toMatchObject({ renamed: 0, conflicts: 0 });
   });
 
   it("leaves out codes that belong to another presentation", async () => {

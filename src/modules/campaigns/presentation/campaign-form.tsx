@@ -4,9 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { DateInput } from "@/shared/presentation/date-input";
 import { applyActionError } from "@/shared/presentation/form-errors";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
@@ -18,7 +20,7 @@ import { createCampaignAction, updateCampaignAction } from "./campaign-actions";
 import { SEASON_LABELS } from "./campaign-labels";
 import { CAMPAIGNS_PATH } from "./campaign-routes";
 
-export function CampaignForm({ campaign }: { campaign?: Campaign }) {
+export const CampaignForm = resetOnLeave(function CampaignForm({ campaign }: { campaign?: Campaign }) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({
@@ -63,22 +65,31 @@ export function CampaignForm({ campaign }: { campaign?: Campaign }) {
           </Field>
           <Field data-invalid={!!errors.year}>
             <FieldLabel htmlFor="year">Año en que empieza</FieldLabel>
-            <Input id="year" inputMode="numeric" aria-invalid={!!errors.year} {...form.register("year")} />
+            <Input
+              id="year"
+              inputMode="numeric"
+              selectOnFocus
+              aria-invalid={!!errors.year}
+              {...form.register("year")}
+            />
             <FieldError errors={[errors.year]} />
           </Field>
           <Field data-invalid={!!errors.startsOn}>
             <FieldLabel htmlFor="startsOn">Desde</FieldLabel>
-            <Input
-              id="startsOn"
-              type="date"
-              aria-invalid={!!errors.startsOn}
-              {...form.register("startsOn")}
+            <Controller
+              control={form.control}
+              name="startsOn"
+              render={({ field }) => <DateInput id="startsOn" invalid={!!errors.startsOn} {...field} />}
             />
             <FieldError errors={[errors.startsOn]} />
           </Field>
           <Field data-invalid={!!errors.endsOn}>
             <FieldLabel htmlFor="endsOn">Hasta</FieldLabel>
-            <Input id="endsOn" type="date" aria-invalid={!!errors.endsOn} {...form.register("endsOn")} />
+            <Controller
+              control={form.control}
+              name="endsOn"
+              render={({ field }) => <DateInput id="endsOn" invalid={!!errors.endsOn} {...field} />}
+            />
             <FieldError errors={[errors.endsOn]} />
           </Field>
         </div>
@@ -94,4 +105,4 @@ export function CampaignForm({ campaign }: { campaign?: Campaign }) {
       </div>
     </form>
   );
-}
+});

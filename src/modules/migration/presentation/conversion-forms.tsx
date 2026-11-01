@@ -19,8 +19,13 @@ import {
 } from "@/shared/presentation/ui/table";
 import type { ConversionPreview, ProductGroup } from "../application/conversion";
 import { convertCustomersAction, convertProductsAction } from "./conversion-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-export function CustomerConversion({ preview }: { preview: ConversionPreview }) {
+export const CustomerConversion = resetOnLeave(function CustomerConversion({
+  preview,
+}: {
+  preview: ConversionPreview;
+}) {
   const router = useRouter();
   const [technicianId, setTechnicianId] = useState(preview.suggestedTechnicianId ?? "");
   const [isWorking, startWorking] = useTransition();
@@ -87,11 +92,15 @@ export function CustomerConversion({ preview }: { preview: ConversionPreview }) 
       )}
     </section>
   );
-}
+});
 
 type Decision = { line: string; saleUnit: string };
 
-export function ProductConversion({ preview }: { preview: ConversionPreview }) {
+export const ProductConversion = resetOnLeave(function ProductConversion({
+  preview,
+}: {
+  preview: ConversionPreview;
+}) {
   const router = useRouter();
   const pending = preview.products.filter((group) => group.presentations.some((p) => !p.exists));
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
@@ -220,7 +229,7 @@ export function ProductConversion({ preview }: { preview: ConversionPreview }) {
       )}
     </section>
   );
-}
+});
 
 function isDecided(group: ProductGroup, decision: Decision | undefined): boolean {
   return !!decision?.saleUnit && (!!group.existingId || !!decision.line);

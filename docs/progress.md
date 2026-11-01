@@ -3,6 +3,24 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-01
+
+- **The client is Agrosoil**, not Agrosoy: renamed in every screen, page title, document and doc.
+  Technical names stay (`agrosoy-web`, databases, containers, staging) until a planned change.
+  Exchange-rate examples say 12.00, the current rate, instead of 6.96.
+- **Corrections from the developer's review of week 2** (`feature/week-2`):
+  - **Dates as dd/mm/aaaa** in campaigns and notes, typed or chosen in the calendar (D31).
+  - **New presentations propose the next free code** (new product, "Otra presentación", adding
+    one on a product); codes, amounts, quantities and rates select their whole value on tap.
+  - **Products list shows prices:** one line per presentation with the general price of the
+    current campaign; zone prices stay on the prices page.
+  - **Importing the list again updates prices and names by code** and shows each change before
+    saving (D23). The developer's test file had saved 7.90; the prices page showed the old value
+    because the hidden screen kept it.
+  - **Screens start clean** after leaving them, and filters show what the list applies (D31).
+  - **Choosing a customer on a note fills who receives** with the customer's name, NIT/CI and
+    "Titular", still editable.
+
 ## 2026-10-31
 
 - **Week 2 merged into `main`** (developer's approval), after `main` → `feature/week-2`; week 3
@@ -10,24 +28,24 @@ up without re-reading the whole history.
 - **Small screens:** from 768px the modules sit in a sidebar; below, the header's menu button
   opens them in a drawer. Tables become one card per row (customers, users, change log, imports,
   statements, products, campaigns, notes).
-- **Week 2's additions from Agrosoy's answers are built** (`feature/week-2`):
-  - **Codes per presentation (D23):** Agrosoy's numbers ("001"), padded to three digits and
+- **Week 2's additions from Agrosoil's answers are built** (`feature/week-2`):
+  - **Codes per presentation (D23):** Agrosoil's numbers ("001"), padded to three digits and
     unique; an empty code takes the next free one. The product's own number is gone. Migration
     `0011_presentation_codes` numbers existing presentations in creation order.
   - **Pieces** ("u", a bag of 50 sheets), outside the liter and kilo totals.
   - **Inactive products and presentations:** deactivated and reactivated, never deleted; they
     leave new notes and price sheets. The product list filters by status and finds codes.
   - **Product list import:** Productos > "Importar lista" reads `PRODUCTOS.xlsx` into a preview
-    (new, existing, conflicts, findings to review) and then into products with Agrosoy's codes and
+    (new, existing, conflicts, findings to review) and then into products with Agrosoil's codes and
     the chosen campaign's general prices. Again creates nothing new. Checked with the real list:
     78 presentations of 57 products; the 3 "OTROS" rows are charge concepts (week 3).
   - **Copy prices from the previous campaign** on the price sheet: fills only empty prices and
     saves nothing until "Guardar precios".
   - **Notes:** who hands the product over (any active user, the technician by default) and the
     optional carrier (company, vehicle, driver's CI). Migration `0012_note_carrier`.
-- **Next:** the customer list import when Agrosoy sends it; week 3 receives these changes with
+- **Next:** the customer list import when Agrosoil sends it; week 3 receives these changes with
   its migrations renumbered after `0012`.
-- **The zone of work is chosen from the zones** (the customers' zones; Agrosoy's technicians work
+- **The zone of work is chosen from the zones** (the customers' zones; Agrosoil's technicians work
   in the same two). Migration `0006_user_work_zone` replaces the text column with a reference;
   deactivated zones stay on the technicians who had them and show as "(desactivada)".
 - In development, a schema change can leave the hot-reloaded database client with stale column
@@ -37,11 +55,11 @@ up without re-reading the whole history.
 
 ## 2026-10-30
 
-- **Agrosoy's answers and documents mapped into the design** (decisions D23–D30, glossary, domain
+- **Agrosoil's answers and documents mapped into the design** (decisions D23–D30, glossary, domain
   model, roadmap): photos of the paper note (one form and one number sequence for delivery, return
   and transfer) and of the cash receipt, the product list (`PRODUCTOS.xlsx`: 81 codes per
   container, prices per liter/kilo or container, "OTROS" codes that are charge concepts) and the
-  weekly travel-expense spreadsheet. Agrosoy won't share its full sales spreadsheets and will enter
+  weekly travel-expense spreadsheet. Agrosoil won't share its full sales spreadsheets and will enter
   its own opening debts, so manual opening data becomes the main way to go live (D29). Customers
   arrive next.
 - Answered: shared note numbering (D19) and interest (D24). Still open: MP/SV and what closes a
@@ -177,7 +195,7 @@ up without re-reading the whole history.
   layer rules, Prettier with the Tailwind plugin, Vitest (unit project), `pnpm check`, GitHub Actions CI,
   `.githooks/commit-msg` that strips AI co-author lines, `CLAUDE.md` with the working rules.
 - **0.3 · Design docs**: glossary, domain model, decisions D1–D16 and
-  the roadmap. Open questions for Agrosoy are listed at the end of the glossary.
+  the roadmap. Open questions for Agrosoil are listed at the end of the glossary.
 - **0.2 · Repository:** Next.js 16.4 base in the private repo `SOLUTI0N-TECH/agrosoy-web`.
 - **0.1 · Clean start:** the first exploratory scaffold was removed; it is rebuilt step by step
   following the roadmap.

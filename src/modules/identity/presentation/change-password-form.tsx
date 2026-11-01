@@ -13,10 +13,11 @@ import { changeOwnPasswordSchema, type ChangeOwnPasswordInput } from "../applica
 import { MIN_PASSWORD_LENGTH } from "../domain/user-account";
 import { HOME_PATH } from "./identity-routes";
 import { changeOwnPasswordAction } from "./user-actions";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 const EMPTY: ChangeOwnPasswordInput = { currentPassword: "", newPassword: "", confirmation: "" };
 
-export function ChangePasswordForm() {
+export const ChangePasswordForm = resetOnLeave(function ChangePasswordForm() {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({ resolver: zodResolver(changeOwnPasswordSchema), defaultValues: EMPTY });
@@ -91,4 +92,4 @@ export function ChangePasswordForm() {
       </Button>
     </form>
   );
-}
+});

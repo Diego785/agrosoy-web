@@ -47,6 +47,44 @@ export function formatDate(isoDate: string): string {
   return `${day}/${month}/${year}`;
 }
 
+/**
+ * What is typed in a date field, shaped as "dd/mm/aaaa": "01112026" → "01/11/2026". A slash closes
+ * a part early ("1/" is day 01), and a slash only shows once something follows it, so backspace
+ * can remove it.
+ */
+export function maskTypedDate(raw: string): string {
+  const parts = ["", "", ""];
+  const sizes = [2, 2, 4];
+  let part = 0;
+  for (const char of raw) {
+    if (char === "/") {
+      if (part < 2 && parts[part]) {
+        parts[part] = parts[part]!.padStart(2, "0");
+        part++;
+      }
+    } else if (/\d/.test(char)) {
+      if (parts[part]!.length === sizes[part]!) {
+        if (part === 2) break;
+        part++;
+      }
+      parts[part] += char;
+    }
+  }
+  const [day, month, year] = parts;
+  return [day, month, year].filter((value, index) => index === 0 || value).join("/");
+}
+
+/** "01/11/2026" (or "1/11/26") as "2026-11-01"; undefined when it isn't a whole, real date. */
+export function parseTypedDate(text: string): string | undefined {
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(text.trim());
+  if (!match) return undefined;
+  const [, day, month, shortOrLongYear] = match;
+  const year = Number(shortOrLongYear!.length === 2 ? `20${shortOrLongYear}` : shortOrLongYear);
+  const date = new Date(Date.UTC(year, Number(month) - 1, Number(day)));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== Number(month) - 1) return undefined;
+  return date.toISOString().slice(0, 10);
+}
+
 const dateTime = new Intl.DateTimeFormat("es-BO", {
   dateStyle: "short",
   timeStyle: "short",

@@ -4,7 +4,7 @@ import type { ActionError } from "./action-result";
 const MESSAGES: Record<ActionError["code"], string> = {
   INVALID_AMOUNT: "El monto no es válido. Usa punto para los decimales, por ejemplo 1250.50.",
   INVALID_QUANTITY: "La cantidad no es válida. Admite hasta 3 decimales.",
-  INVALID_EXCHANGE_RATE: "El tipo de cambio no es válido, por ejemplo 6.96.",
+  INVALID_EXCHANGE_RATE: "El tipo de cambio no es válido, por ejemplo 12.00.",
   VALIDATION_FAILED: "Revisa los campos marcados.",
   NOT_FOUND: "No encontramos ese registro. Puede que lo hayan cambiado; recarga la página.",
   DUPLICATE: "Ya existe un registro con esos datos.",

@@ -20,6 +20,7 @@ import {
   trimDecimalZeros,
 } from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
@@ -65,17 +66,19 @@ export async function NotesTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <form action={NOTES_PATH} className="flex gap-2">
-        <NativeSelect name="status" defaultValue={status} aria-label="Estado">
-          <NativeSelectOption value="">Todas</NativeSelectOption>
-          <NativeSelectOption value="draft">Borradores</NativeSelectOption>
-          <NativeSelectOption value="confirmed">Confirmadas</NativeSelectOption>
-          <NativeSelectOption value="voided">Anuladas</NativeSelectOption>
-        </NativeSelect>
-        <button type="submit" className={buttonVariants({ variant: "outline" })}>
-          Filtrar
-        </button>
-      </form>
+      <ResetOnLeave key={status}>
+        <form action={NOTES_PATH} className="flex gap-2">
+          <NativeSelect name="status" defaultValue={status} aria-label="Estado">
+            <NativeSelectOption value="">Todas</NativeSelectOption>
+            <NativeSelectOption value="draft">Borradores</NativeSelectOption>
+            <NativeSelectOption value="confirmed">Confirmadas</NativeSelectOption>
+            <NativeSelectOption value="voided">Anuladas</NativeSelectOption>
+          </NativeSelect>
+          <button type="submit" className={buttonVariants({ variant: "outline" })}>
+            Filtrar
+          </button>
+        </form>
+      </ResetOnLeave>
       {items.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No hay boletas.</p>
       ) : (

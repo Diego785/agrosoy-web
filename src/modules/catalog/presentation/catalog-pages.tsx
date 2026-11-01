@@ -10,7 +10,10 @@ import { requireActor } from "@/modules/identity/presentation/current-user";
 import { can } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
+import type { Actor } from "@/shared/application/actor";
 import { todayInBolivia } from "@/shared/presentation/business-date";
+import { formatMoney } from "@/shared/presentation/format";
+import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
@@ -25,7 +28,7 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import type { ProductView } from "../application/catalog-ports";
-import { getProduct, listProducts, priceSheet } from "../application/catalog-use-cases";
+import { getProduct, listProducts, nextPresentationCode, priceSheet } from "../application/catalog-use-cases";
 import { PRODUCT_LINES } from "../domain/product";
 import { catalogDeps } from "./catalog-deps";
 import { LINE_LABELS, contentLabel, priceUnitLabel } from "./catalog-labels";
@@ -34,11 +37,14 @@ import { PriceSheetForm } from "./price-sheet-form";
 import {
   AddPresentationForm,
   EditProductForm,
+  NewProductForm,
   PresentationStatusButton,
   ProductStatusButton,
 } from "./product-forms";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+const formatPrice = (price: string | null | undefined) => (price ? formatMoney(price) : "—");
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -48,38 +54,48 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
   const text = first(params.q)?.trim() ?? "";
   const line = first(params.line) ?? "";
   const status = first(params.status) === "inactive" ? "inactive" : "active";
-  const products = await listProducts(catalogDeps(getDb()), actor, {
-    text,
-    line: line || undefined,
-    status,
-  });
+  const db = getDb();
+  const [products, prices] = await Promise.all([
+    listProducts(catalogDeps(db), actor, { text, line: line || undefined, status }),
+    currentGeneralPrices(actor),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
-      <form action={PRODUCTS_PATH} className="flex flex-wrap gap-2">
-        <Input
-          name="q"
-          defaultValue={text}
-          placeholder="Nombre o código"
-          aria-label="Buscar producto"
-          className="max-w-xs"
-        />
-        <NativeSelect name="line" defaultValue={line} aria-label="Línea">
-          <NativeSelectOption value="">Todas las líneas</NativeSelectOption>
-          {PRODUCT_LINES.map((option) => (
-            <NativeSelectOption key={option} value={option}>
-              {LINE_LABELS[option]}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <NativeSelect name="status" defaultValue={status} aria-label="Estado">
-          <NativeSelectOption value="active">Activos</NativeSelectOption>
-          <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
-        </NativeSelect>
-        <button type="submit" className={buttonVariants({ variant: "outline" })}>
-          Buscar
-        </button>
-      </form>
+      <ResetOnLeave key={`${text}|${line}|${status}`}>
+        <form action={PRODUCTS_PATH} className="flex flex-wrap gap-2">
+          <Input
+            name="q"
+            defaultValue={text}
+            placeholder="Nombre o código"
+            aria-label="Buscar producto"
+            className="max-w-xs"
+          />
+          <NativeSelect name="line" defaultValue={line} aria-label="Línea">
+            <NativeSelectOption value="">Todas las líneas</NativeSelectOption>
+            {PRODUCT_LINES.map((option) => (
+              <NativeSelectOption key={option} value={option}>
+                {LINE_LABELS[option]}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <NativeSelect name="status" defaultValue={status} aria-label="Estado">
+            <NativeSelectOption value="active">Activos</NativeSelectOption>
+            <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
+          </NativeSelect>
+          <button type="submit" className={buttonVariants({ variant: "outline" })}>
+            Buscar
+          </button>
+        </form>
+      </ResetOnLeave>
+      {prices && (
+        <p className="text-sm text-muted-foreground">
+          Precios generales de {prices.label}, en US$.{" "}
+          <Link href={PRICES_PATH} className="font-medium text-foreground hover:underline">
+            Ver por zona o cambiarlos
+          </Link>
+        </p>
+      )}
       {products.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
           {text || line
@@ -96,7 +112,7 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
                 <TableRow>
                   <TableHead>Producto</TableHead>
                   <TableHead>Línea</TableHead>
-                  <TableHead>Presentaciones (código y contenido)</TableHead>
+                  <TableHead>Presentaciones{prices ? `, con precio de ${prices.label}` : ""}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -109,7 +125,10 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
                     </TableCell>
                     <TableCell>{LINE_LABELS[product.line]}</TableCell>
                     <TableCell className="whitespace-normal">
-                      <PresentationList presentations={product.presentations} />
+                      <PresentationList
+                        presentations={product.presentations}
+                        prices={prices?.byPresentation}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -125,7 +144,7 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
                   </Link>
                   <span className="text-xs text-muted-foreground">{LINE_LABELS[product.line]}</span>
                 </div>
-                <PresentationList presentations={product.presentations} />
+                <PresentationList presentations={product.presentations} prices={prices?.byPresentation} />
               </CardListItem>
             ))}
           </CardList>
@@ -135,20 +154,64 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
   );
 }
 
-function PresentationList({ presentations }: { presentations: ProductView["presentations"] }) {
+/** One line per presentation: code, content and, with a campaign, its general price. */
+function PresentationList({
+  presentations,
+  prices,
+}: {
+  presentations: ProductView["presentations"];
+  prices?: Map<string, string>;
+}) {
   if (presentations.length === 0) {
     return <span className="text-muted-foreground">Sin presentaciones activas</span>;
   }
   return (
-    <span className="flex flex-wrap gap-x-3 gap-y-1">
-      {presentations.map((presentation) => (
-        <span key={presentation.id} className="tabular-nums">
-          <span className="mr-1 font-mono text-xs text-muted-foreground">{presentation.code}</span>
-          {contentLabel(presentation)}
-        </span>
-      ))}
-    </span>
+    <ul className="flex max-w-md flex-col gap-1">
+      {presentations.map((presentation) => {
+        const price = prices?.get(presentation.id);
+        return (
+          <li key={presentation.id} className="flex items-baseline gap-3 tabular-nums">
+            <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">{presentation.code}</span>
+            <span className="min-w-16">{contentLabel(presentation)}</span>
+            {prices && (
+              <span className="ml-auto text-right">
+                {price ? (
+                  <>
+                    {formatMoney(price)}{" "}
+                    <span className="text-xs text-muted-foreground">por {priceUnitLabel(presentation)}</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">sin precio</span>
+                )}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
+}
+
+/**
+ * The general reference prices of the campaign running today (or the latest one), shown in the
+ * products list. Zone prices stay on the prices page.
+ */
+async function currentGeneralPrices(actor: Actor) {
+  const db = getDb();
+  const campaigns = await listCampaigns({ campaigns: drizzleCampaignRepository(db) }, actor);
+  const campaign = campaignOn(campaigns, todayInBolivia()) ?? campaigns[0];
+  if (!campaign) return undefined;
+  const sheet = await priceSheet(catalogDeps(db), actor, { campaignId: campaign.id });
+  return {
+    label: campaignLabel(campaign),
+    byPresentation: new Map(sheet.flatMap((row) => (row.price ? [[row.presentation.id, row.price]] : []))),
+  };
+}
+
+/** The new product form, proposing the first free code. */
+export async function NewProduct() {
+  const actor = await requireActor();
+  return <NewProductForm nextCode={await nextPresentationCode(catalogDeps(getDb()), actor)} />;
 }
 
 export async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -160,6 +223,7 @@ export async function ProductDetail({ params }: { params: Promise<{ id: string }
     throw error;
   });
   const canEdit = can(actor, "catalog.manage");
+  const nextCode = canEdit ? await nextPresentationCode(catalogDeps(getDb()), actor) : "";
 
   return (
     <div className="flex max-w-3xl flex-col gap-8">
@@ -171,7 +235,8 @@ export async function ProductDetail({ params }: { params: Promise<{ id: string }
       )}
       <div className="flex flex-wrap items-start justify-between gap-4">
         {canEdit ? (
-          <EditProductForm product={product} />
+          // Keyed by what it shows, so a change made elsewhere (an import) replaces stale values.
+          <EditProductForm key={`${product.name}|${product.line}`} product={product} />
         ) : (
           <p>
             <span className="text-lg font-semibold">{product.name}</span> · {LINE_LABELS[product.line]}
@@ -203,7 +268,7 @@ export async function ProductDetail({ params }: { params: Promise<{ id: string }
             </li>
           ))}
         </ul>
-        {canEdit && <AddPresentationForm productId={product.id} />}
+        {canEdit && <AddPresentationForm key={nextCode} productId={product.id} nextCode={nextCode} />}
       </section>
     </div>
   );
@@ -245,26 +310,28 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
 
   return (
     <div className="flex flex-col gap-6">
-      <form action={PRICES_PATH} className="flex flex-wrap gap-2">
-        <NativeSelect name="campaign" defaultValue={campaign.id} aria-label="Campaña">
-          {campaigns.map((option) => (
-            <NativeSelectOption key={option.id} value={option.id}>
-              {campaignLabel(option)}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <NativeSelect name="zone" defaultValue={zoneId} aria-label="Zona">
-          <NativeSelectOption value="">Precio general (todas las zonas)</NativeSelectOption>
-          {zones.map((zone) => (
-            <NativeSelectOption key={zone.id} value={zone.id}>
-              {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <button type="submit" className={buttonVariants({ variant: "outline" })}>
-          Ver
-        </button>
-      </form>
+      <ResetOnLeave key={`${campaign.id}|${zoneId}`}>
+        <form action={PRICES_PATH} className="flex flex-wrap gap-2">
+          <NativeSelect name="campaign" defaultValue={campaign.id} aria-label="Campaña">
+            {campaigns.map((option) => (
+              <NativeSelectOption key={option.id} value={option.id}>
+                {campaignLabel(option)}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <NativeSelect name="zone" defaultValue={zoneId} aria-label="Zona">
+            <NativeSelectOption value="">Precio general (todas las zonas)</NativeSelectOption>
+            {zones.map((zone) => (
+              <NativeSelectOption key={zone.id} value={zone.id}>
+                {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <button type="submit" className={buttonVariants({ variant: "outline" })}>
+            Ver
+          </button>
+        </form>
+      </ResetOnLeave>
       {zoneId && (
         <p className="text-sm text-muted-foreground">
           Deja vacío el precio de la zona para usar el general (se muestra en gris).
@@ -295,7 +362,9 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
         <p className="text-sm text-muted-foreground">Todavía no hay productos.</p>
       ) : canEdit ? (
         <PriceSheetForm
-          key={`${campaign.id}:${zoneId}:${copyFrom?.id ?? ""}`}
+          // The saved prices are part of the key: after an import or a save elsewhere, the sheet
+          // starts again from what is stored instead of keeping what it showed before.
+          key={`${campaign.id}:${zoneId}:${copyFrom?.id ?? ""}:${sheet.map((row) => row.price ?? "").join(",")}`}
           campaignId={campaign.id}
           zoneId={zoneId}
           rows={sheet.map((row) => ({
@@ -329,7 +398,10 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
                 <TableCell>{row.product.name}</TableCell>
                 <TableCell>{contentLabel(row.presentation)}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {row.price ?? generalByPresentation.get(row.presentation.id) ?? "—"}
+                  {formatPrice(row.price ?? generalByPresentation.get(row.presentation.id))}{" "}
+                  <span className="text-xs text-muted-foreground">
+                    por {priceUnitLabel(row.presentation)}
+                  </span>
                 </TableCell>
               </TableRow>
             ))}

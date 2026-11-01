@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { errorMessage } from "@/shared/presentation/error-messages";
+import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button } from "@/shared/presentation/ui/button";
 import { Input } from "@/shared/presentation/ui/input";
 import {
@@ -31,7 +32,7 @@ export type PriceRow = {
   generalPrice: string | null;
 };
 
-export function PriceSheetForm({
+export const PriceSheetForm = resetOnLeave(function PriceSheetForm({
   campaignId,
   zoneId,
   rows,
@@ -91,6 +92,7 @@ export function PriceSheetForm({
                 <div className="flex items-center gap-2">
                   <Input
                     inputMode="decimal"
+                    selectOnFocus
                     className="w-24 text-right"
                     value={prices.get(row.presentationId) ?? ""}
                     placeholder={row.generalPrice ?? ""}
@@ -115,4 +117,4 @@ export function PriceSheetForm({
       </Button>
     </div>
   );
-}
+});

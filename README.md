@@ -1,6 +1,6 @@
-# Agrosoy Web
+# Agrosoil Web
 
-Sales, accounts receivable and warehouse inventory system for Agrosoy, an agricultural
+Sales, accounts receivable and warehouse inventory system for Agrosoil, an agricultural
 inputs distributor in Bolivia. Built by SolutionTech.
 
 The user interface is in Spanish (Bolivia); code, docs and commits are in English.
