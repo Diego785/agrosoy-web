@@ -28,6 +28,7 @@ function uniqueNumber<T>(write: () => Promise<T>): Promise<T> {
     throw error;
   });
 }
+const handedOverBy = alias(users, "handed_over_by");
 
 export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
   async function insertLines(noteId: string, note: DraftNote) {
@@ -86,6 +87,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           voiderName: voider.name,
           originalNumber: originalNote.number,
           originalCampaign: { season: originalCampaign.season, year: originalCampaign.year },
+          handedOverBy: { id: handedOverBy.id, name: handedOverBy.name, position: handedOverBy.position },
         })
         .from(deliveryNotes)
         .innerJoin(customers, eq(customers.id, deliveryNotes.customerId))
@@ -96,6 +98,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         .leftJoin(voider, sql`${voider.id}::text = ${deliveryNotes.voidedBy}`)
         .leftJoin(originalNote, eq(originalNote.id, deliveryNotes.originalNoteId))
         .leftJoin(originalCampaign, eq(originalCampaign.id, originalNote.campaignId))
+        .leftJoin(handedOverBy, eq(handedOverBy.id, deliveryNotes.handedOverById))
         .where(eq(deliveryNotes.id, id));
       if (!row) return undefined;
 
@@ -144,6 +147,12 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           name: note.receiverName,
           documentId: note.receiverDocumentId,
           relationship: note.receiverRelationship,
+        },
+        handedOverBy: row.handedOverBy?.id ? row.handedOverBy : null,
+        carrier: {
+          name: note.carrierName,
+          vehicle: note.carrierVehicle,
+          documentId: note.carrierDocumentId,
         },
         observations: note.observations,
         taxInvoiceNumber: note.taxInvoiceNumber,
@@ -368,6 +377,10 @@ function headerRow(note: DraftNote) {
     receiverName: note.receiver.name,
     receiverDocumentId: note.receiver.documentId,
     receiverRelationship: note.receiver.relationship,
+    handedOverById: note.handedOverById,
+    carrierName: note.carrier.name,
+    carrierVehicle: note.carrier.vehicle,
+    carrierDocumentId: note.carrier.documentId,
     observations: note.observations,
     taxInvoiceNumber: note.taxInvoiceNumber,
   };

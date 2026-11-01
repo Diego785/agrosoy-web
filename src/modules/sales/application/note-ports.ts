@@ -1,6 +1,6 @@
 import type { ContentUnit, SaleUnit } from "@/modules/catalog/domain/product";
 import type { Season } from "@/modules/campaigns/domain/campaign";
-import type { DraftNote, FreeReason, ImportedNote, PaymentTerms } from "../domain/delivery-note";
+import type { Carrier, DraftNote, FreeReason, ImportedNote, PaymentTerms } from "../domain/delivery-note";
 import type { FollowUpNote, NoteType, OriginalLine } from "../domain/follow-up";
 
 export type NoteStatus = "draft" | "confirmed" | "voided";
@@ -35,6 +35,8 @@ export type NoteView = {
   paymentTerms: PaymentTerms;
   exchangeRate: string;
   receiver: { name: string; documentId: string | null; relationship: string | null };
+  handedOverBy: { id: string; name: string; position: string | null } | null;
+  carrier: Carrier;
   observations: string | null;
   taxInvoiceNumber: string | null;
   lines: NoteLineView[];
@@ -98,6 +100,8 @@ export interface NoteLookups {
   /** The open or closed campaign containing the date. */
   campaignOn(isoDate: string): Promise<{ id: string; status: "open" | "closed" } | undefined>;
   isActiveTechnician(id: string): Promise<boolean>;
+  /** Any active user can hand the product over (technician, warehouse keeper…). */
+  isActiveUser(id: string): Promise<boolean>;
   /** Which of these presentations exist and are active. */
   activePresentations(ids: string[]): Promise<Set<string>>;
 }

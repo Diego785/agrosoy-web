@@ -1,26 +1,16 @@
-import {
-  boolean,
-  integer,
-  numeric,
-  pgTable,
-  text,
-  timestamp,
-  unique,
-  uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { boolean, numeric, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { zones } from "@/modules/customers/infrastructure/customers.tables";
 import { id, timestamps } from "@/shared/infrastructure/db/columns";
 
 export const PRODUCT_NAME_KEY = "products_comparison_name_key";
 export const PRESENTATION_KEY = "presentations_product_content_key";
+export const PRESENTATION_CODE_KEY = "presentations_code_key";
 
 export const products = pgTable(
   "products",
   {
     id: id(),
-    code: integer().notNull().unique().generatedAlwaysAsIdentity(),
     name: text().notNull(),
     comparisonName: text().notNull(),
     line: text({ enum: ["agrochemicals", "fertilizers"] }).notNull(),
@@ -37,13 +27,18 @@ export const presentations = pgTable(
     productId: uuid()
       .notNull()
       .references(() => products.id),
+    /** Agrosoy's number for this product in this container ("001"), D23. */
+    code: text().notNull(),
     content: numeric({ precision: 12, scale: 3 }).notNull(),
-    unit: text({ enum: ["l", "ml", "kg", "g"] }).notNull(),
+    unit: text({ enum: ["l", "ml", "kg", "g", "u"] }).notNull(),
     saleUnit: text({ enum: ["container", "measure"] }).notNull(),
     isActive: boolean().notNull().default(true),
     ...timestamps,
   },
-  (table) => [uniqueIndex(PRESENTATION_KEY).on(table.productId, table.content, table.unit)],
+  (table) => [
+    uniqueIndex(PRESENTATION_KEY).on(table.productId, table.content, table.unit),
+    uniqueIndex(PRESENTATION_CODE_KEY).on(table.code),
+  ],
 );
 
 /** US$ per sale unit. A null zone is the general price, used where a zone has none of its own. */

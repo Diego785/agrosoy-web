@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { actorWithRole } from "@test/actors";
 import { draftInput, noteDeps, seedNoteFixtures } from "@test/note-fixtures";
+import { newUserAccount } from "@/modules/identity/domain/user-account";
+import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
+import { testDb } from "@test/test-database";
 import {
   createDraftNote,
   discardDraftNote,
@@ -86,6 +89,46 @@ describe("draft delivery notes", () => {
     ).rejects.toMatchObject({
       code: "VALIDATION_FAILED",
       details: { fieldErrors: { noteDate: [expect.any(String)], propertyId: [expect.any(String)] } },
+    });
+  });
+
+  it("records who hands the product over and the carrier", async () => {
+    const ids = await seedNoteFixtures();
+    const users = drizzleUserDirectory(testDb);
+    const { id: keeperId } = await users.create(
+      newUserAccount({
+        name: "Mario Rojas",
+        username: "mrojas",
+        role: "warehouse_keeper",
+        position: "Encargado de almacén",
+      }),
+      "temporary-password",
+    );
+    const { id } = await createDraftNote(
+      deps(),
+      admin,
+      draftInput(ids, {
+        handedOverById: keeperId,
+        carrierName: "Transportes Chiquitano",
+        carrierVehicle: "Volvo 2345-XYZ",
+        carrierDocumentId: "4567890 sc",
+      }),
+    );
+    expect(await getNote(deps(), admin, id)).toMatchObject({
+      handedOverBy: { id: keeperId, name: "Mario Rojas", position: "Encargado de almacén" },
+      carrier: { name: "Transportes Chiquitano", vehicle: "Volvo 2345-XYZ", documentId: "4567890 SC" },
+    });
+
+    const { id: plain } = await createDraftNote(deps(), admin, draftInput(ids));
+    expect(await getNote(deps(), admin, plain)).toMatchObject({
+      handedOverBy: null,
+      carrier: { name: null, vehicle: null, documentId: null },
+    });
+    await expect(
+      createDraftNote(deps(), admin, draftInput(ids, { handedOverById: crypto.randomUUID() })),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { handedOverById: [expect.any(String)] } },
     });
   });
 

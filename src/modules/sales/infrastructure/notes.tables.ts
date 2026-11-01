@@ -55,6 +55,12 @@ export const deliveryNotes = pgTable(
     receiverName: text().notNull(),
     receiverDocumentId: text(),
     receiverRelationship: text(),
+    /** Agrosoy's person who hands the product over: the technician by default (D26). */
+    handedOverById: uuid().references(() => users.id),
+    /** Optional transport, printed on the note: company or driver, vehicle, driver's CI. */
+    carrierName: text(),
+    carrierVehicle: text(),
+    carrierDocumentId: text(),
     observations: text(),
     taxInvoiceNumber: text(),
     createdBy: text().notNull(),

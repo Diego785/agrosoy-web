@@ -4,6 +4,12 @@ import { CONTENT_UNITS, PRODUCT_LINES, SALE_UNITS } from "../domain/product";
 // Shared by the forms and the use cases; the messages are shown next to the fields.
 
 export const presentationSchema = z.object({
+  /** Agrosoy's code ("001"); empty takes the next free number. */
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{0,6}$/, { error: "El código lleva solo números, por ejemplo 051." })
+    .optional(),
   content: z
     .string()
     .trim()
@@ -39,6 +45,13 @@ export const newProductSchema = z
       new Set(data.presentations.map((p) => `${Number(p.content)}${p.unit}`)).size ===
       data.presentations.length,
     { error: "Hay presentaciones repetidas.", path: ["presentations"] },
+  )
+  .refine(
+    (data) => {
+      const codes = data.presentations.flatMap((p) => (p.code ? [Number(p.code)] : []));
+      return new Set(codes).size === codes.length;
+    },
+    { error: "Hay códigos repetidos.", path: ["presentations"] },
   );
 
 export type NewProductInput = z.input<typeof newProductSchema>;
@@ -50,6 +63,7 @@ export type ProductInput = z.input<typeof productSchema>;
 export const productSearchSchema = z.object({
   text: z.string().trim().max(100).catch(""),
   line: z.enum(PRODUCT_LINES).optional().catch(undefined),
+  status: z.enum(["active", "inactive"]).catch("active"),
 });
 
 export const priceSheetSchema = z.object({

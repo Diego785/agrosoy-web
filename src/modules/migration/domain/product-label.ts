@@ -6,7 +6,7 @@ export type ParsedProductLabel = {
   key: string;
   /** Decimal string, "1.5" */
   content: string;
-  unit: "l" | "ml" | "kg" | "g";
+  unit: "l" | "ml" | "kg" | "g" | "u";
 };
 
 const UNITS: Record<string, ParsedProductLabel["unit"]> = {
@@ -25,6 +25,12 @@ const UNITS: Record<string, ParsedProductLabel["unit"]> = {
   gr: "g",
   grs: "g",
   gramos: "g",
+  u: "u",
+  un: "u",
+  und: "u",
+  unid: "u",
+  unidad: "u",
+  unidades: "u",
 };
 
 const LABEL = /^(.*?)\s*\(\s*(\d+(?:[.,]\d+)?)\s*([a-zñ]+)\.?\s*\)\s*$/i;

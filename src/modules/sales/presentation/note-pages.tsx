@@ -21,6 +21,7 @@ import {
   trimDecimalZeros,
 } from "@/shared/presentation/format";
 import { PdfActions } from "@/shared/presentation/pdf-actions";
+import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
@@ -102,41 +103,64 @@ export async function NotesTable({
       {items.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No hay boletas.</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-24">N.º</TableHead>
-              <TableHead className="w-28">Fecha</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Pago</TableHead>
-              <TableHead className="text-right">Total US$</TableHead>
-              <TableHead>Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          <WideOnly>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-24">N.º</TableHead>
+                  <TableHead className="w-28">Fecha</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Pago</TableHead>
+                  <TableHead className="text-right">Total US$</TableHead>
+                  <TableHead>Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((note) => (
+                  <TableRow key={note.id}>
+                    <TableCell className="tabular-nums">
+                      <Link href={notePath(note.id)} className="font-medium hover:underline">
+                        {note.number ?? "Sin número"}
+                      </Link>
+                      {note.type !== "delivery" && (
+                        <span className="ml-2 text-xs text-muted-foreground">{TYPE_TITLES[note.type]}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="tabular-nums">{formatDate(note.noteDate)}</TableCell>
+                    <TableCell>{note.customerName}</TableCell>
+                    <TableCell>{note.paymentTerms === "cash" ? "Contado" : "Crédito"}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatMoney(note.total)}</TableCell>
+                    <TableCell>
+                      <Badge variant={note.status === "draft" ? "outline" : "secondary"}>
+                        {STATUS_LABELS[note.status]}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </WideOnly>
+          <CardList label="Boletas">
             {items.map((note) => (
-              <TableRow key={note.id}>
-                <TableCell className="tabular-nums">
+              <CardListItem key={note.id}>
+                <div className="flex items-center justify-between gap-3">
                   <Link href={notePath(note.id)} className="font-medium hover:underline">
-                    {note.number ?? "Sin número"}
+                    {note.number ? `N.º ${note.number}` : "Sin número"} · {note.customerName}
                   </Link>
-                  {note.type !== "delivery" && (
-                    <span className="ml-2 text-xs text-muted-foreground">{TYPE_TITLES[note.type]}</span>
-                  )}
-                </TableCell>
-                <TableCell className="tabular-nums">{formatDate(note.noteDate)}</TableCell>
-                <TableCell>{note.customerName}</TableCell>
-                <TableCell>{note.paymentTerms === "cash" ? "Contado" : "Crédito"}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMoney(note.total)}</TableCell>
-                <TableCell>
                   <Badge variant={note.status === "draft" ? "outline" : "secondary"}>
                     {STATUS_LABELS[note.status]}
                   </Badge>
-                </TableCell>
-              </TableRow>
+                </div>
+                <span className="text-muted-foreground tabular-nums">
+                  {note.type !== "delivery" && `${TYPE_TITLES[note.type]} · `}
+                  {formatDate(note.noteDate)} · {note.paymentTerms === "cash" ? "Contado" : "Crédito"}
+                </span>
+                <CardField label="Total US$">{formatMoney(note.total)}</CardField>
+              </CardListItem>
             ))}
-          </TableBody>
-        </Table>
+          </CardList>
+        </>
       )}
       <p className="text-sm text-muted-foreground">{total === 1 ? "1 boleta" : `${total} boletas`}</p>
     </div>
@@ -263,6 +287,20 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
           {note.receiver.relationship && ` (${note.receiver.relationship})`}
           {note.receiver.documentId && ` · CI ${note.receiver.documentId}`}
         </Item>
+        {/* On a return the customer's person hands over and Agrosoy's receives (D26). */}
+        <Item label={isDelivery ? "Entrega" : "Recibe (Agrosoy)"}>
+          {note.handedOverBy &&
+            [note.handedOverBy.name, note.handedOverBy.position].filter(Boolean).join(" · ")}
+        </Item>
+        <Item label="Transporte">
+          {[
+            note.carrier.name,
+            note.carrier.vehicle,
+            note.carrier.documentId && `CI ${note.carrier.documentId}`,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </Item>
         <Item label="Observaciones">{note.observations}</Item>
         {note.confirmed && (
           <Item label="Confirmada">
@@ -272,43 +310,70 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
         )}
       </dl>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Producto</TableHead>
-            <TableHead className="text-right">Cantidad</TableHead>
-            <TableHead className="text-right">Precio US$</TableHead>
-            <TableHead className="text-right">Total US$</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {note.lines.map((line, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                {line.productName} · {contentLabel(line)}
-                {line.freeOfCharge && (
-                  <Badge variant="outline" className="ml-2">
-                    {FREE_LABELS[line.freeOfCharge]}
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">{formatQuantity(line.quantity)}</TableCell>
-              <TableCell className="text-right tabular-nums">
-                {line.freeOfCharge ? "—" : `${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">{formatMoney(line.total)}</TableCell>
+      <WideOnly>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Producto</TableHead>
+              <TableHead className="text-right">Cantidad</TableHead>
+              <TableHead className="text-right">Precio US$</TableHead>
+              <TableHead className="text-right">Total US$</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell colSpan={3}>Total (Bs {formatMoney(bob.toDecimalString())})</TableCell>
-            <TableCell className="text-right font-semibold tabular-nums">
-              {formatMoney(total.toDecimalString())}
-            </TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {note.lines.map((line, index) => (
+              <TableRow key={index}>
+                <TableCell>
+                  {line.productName} · {contentLabel(line)}
+                  {line.freeOfCharge && (
+                    <Badge variant="outline" className="ml-2">
+                      {FREE_LABELS[line.freeOfCharge]}
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{formatQuantity(line.quantity)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {line.freeOfCharge ? "—" : `${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{formatMoney(line.total)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={3}>Total (Bs {formatMoney(bob.toDecimalString())})</TableCell>
+              <TableCell className="text-right font-semibold tabular-nums">
+                {formatMoney(total.toDecimalString())}
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+      </WideOnly>
+      <CardList label="Productos">
+        {note.lines.map((line, index) => (
+          <CardListItem key={index}>
+            <span>
+              {line.productName} · {contentLabel(line)}
+              {line.freeOfCharge && (
+                <Badge variant="outline" className="ml-2">
+                  {FREE_LABELS[line.freeOfCharge]}
+                </Badge>
+              )}
+            </span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {formatQuantity(line.quantity)}
+              {line.freeOfCharge ? "" : ` × ${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
+            </span>
+            <CardField label="Total US$">{formatMoney(line.total)}</CardField>
+          </CardListItem>
+        ))}
+        <CardListItem className="bg-muted/50">
+          <CardField label="Total US$">
+            <span className="font-semibold">{formatMoney(total.toDecimalString())}</span>
+          </CardField>
+          <CardField label="Equivale a Bs">{formatMoney(bob.toDecimalString())}</CardField>
+        </CardListItem>
+      </CardList>
 
       {followUps.length > 0 && (
         <section className="flex flex-col gap-2">
@@ -360,6 +425,10 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
           receiverName: note.receiver.name,
           receiverDocumentId: note.receiver.documentId ?? "",
           receiverRelationship: note.receiver.relationship ?? "",
+          handedOverById: note.handedOverBy?.id ?? "",
+          carrierName: note.carrier.name ?? "",
+          carrierVehicle: note.carrier.vehicle ?? "",
+          carrierDocumentId: note.carrier.documentId ?? "",
           observations: note.observations ?? "",
           taxInvoiceNumber: note.taxInvoiceNumber ?? "",
           lines: note.lines.map((line) => ({

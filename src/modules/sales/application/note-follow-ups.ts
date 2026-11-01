@@ -186,6 +186,9 @@ function followUpHeader(
     propertyId: original.property?.id ?? null,
     technicianId: original.technician?.id ?? null,
     paymentTerms: original.paymentTerms,
+    // Who receives a return for Agrosoy and the carrier aren't asked yet; the form adds them later.
+    handedOverById: null,
+    carrier: { name: null, vehicle: null, documentId: null },
     observations: optionalText(data.observations) ?? null,
   };
 }

@@ -26,10 +26,14 @@ export type DraftNote = {
   paymentTerms: PaymentTerms;
   exchangeRate: ExchangeRate;
   receiver: { name: string; documentId: string | null; relationship: string | null };
+  handedOverById: string | null;
+  carrier: Carrier;
   observations: string | null;
   taxInvoiceNumber: string | null;
   lines: NoteLine[];
 };
+
+export type Carrier = { name: string | null; vehicle: string | null; documentId: string | null };
 
 export function noteLine(input: {
   presentationId: string;
