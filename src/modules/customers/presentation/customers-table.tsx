@@ -4,6 +4,7 @@ import { getDb } from "@/shared/infrastructure/db/client";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
+import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import {
   Table,
   TableBody,
@@ -70,36 +71,65 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
             : "Todavía no hay clientes registrados."}
         </p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-20">Código</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>NIT / CI</TableHead>
-              <TableHead>Zona</TableHead>
-              <TableHead>Técnico</TableHead>
-              <TableHead>Teléfono</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          <WideOnly>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-20">Código</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>NIT / CI</TableHead>
+                  <TableHead>Zona</TableHead>
+                  <TableHead>Técnico</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((customer) => (
+                  <TableRow key={customer.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatCustomerCode(customer.code)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={customerPath(customer.id)} className="hover:underline">
+                        {customer.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{customer.taxId ?? "—"}</TableCell>
+                    <TableCell>{customer.zoneName ?? "—"}</TableCell>
+                    <TableCell>{customer.technicianName ?? "—"}</TableCell>
+                    <TableCell>{customer.phone ?? "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </WideOnly>
+          <CardList label="Clientes">
             {items.map((customer) => (
-              <TableRow key={customer.id}>
-                <TableCell className="font-mono text-xs text-muted-foreground">
-                  {formatCustomerCode(customer.code)}
-                </TableCell>
-                <TableCell className="font-medium">
-                  <Link href={customerPath(customer.id)} className="hover:underline">
+              <CardListItem key={customer.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <Link href={customerPath(customer.id)} className="font-medium hover:underline">
                     {customer.name}
                   </Link>
-                </TableCell>
-                <TableCell>{customer.taxId ?? "—"}</TableCell>
-                <TableCell>{customer.zoneName ?? "—"}</TableCell>
-                <TableCell>{customer.technicianName ?? "—"}</TableCell>
-                <TableCell>{customer.phone ?? "—"}</TableCell>
-              </TableRow>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {formatCustomerCode(customer.code)}
+                  </span>
+                </div>
+                <span className="text-muted-foreground">
+                  {[customer.zoneName, customer.technicianName].filter(Boolean).join(" · ") ||
+                    "Sin zona ni técnico"}
+                </span>
+                {(customer.taxId || customer.phone) && (
+                  <span className="text-muted-foreground">
+                    {[customer.taxId && `NIT/CI ${customer.taxId}`, customer.phone]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                )}
+              </CardListItem>
             ))}
-          </TableBody>
-        </Table>
+          </CardList>
+        </>
       )}
 
       <footer className="flex items-center justify-between text-sm text-muted-foreground">

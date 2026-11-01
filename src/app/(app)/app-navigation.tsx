@@ -11,10 +11,10 @@ import {
   WalletIcon,
   type LucideIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { getCurrentUser, requireActor } from "@/modules/identity/presentation/current-user";
 import { UserMenu } from "@/modules/identity/presentation/user-menu";
 import { can, type Permission } from "@/shared/application/permissions";
+import { NavigationLinks } from "@/shared/presentation/navigation-links";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
 
 type NavigationItem = { label: string; href: string; icon: LucideIcon; permission?: Permission };
@@ -37,27 +37,20 @@ export async function AppNavigation() {
   const actor = await requireActor({ allowPendingPasswordChange: true });
   const items = NAVIGATION.filter((item) => !item.permission || can(actor, item.permission));
 
-  return (
-    <nav aria-label="Módulos" className="flex gap-1 overflow-x-auto p-2 md:flex-col md:p-3">
-      {items.map(({ label, href, icon: Icon }) => (
-        <Link
-          key={href}
-          href={href}
-          className="flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-        >
-          <Icon className="size-4" aria-hidden />
-          {label}
-        </Link>
-      ))}
-    </nav>
-  );
+  // Icons are rendered here: a component can't be passed to a client component, an element can.
+  const links = items.map(({ label, href, icon: Icon }) => ({
+    label,
+    href,
+    icon: <Icon className="size-4" aria-hidden />,
+  }));
+  return <NavigationLinks links={links} />;
 }
 
 export function AppNavigationSkeleton() {
   return (
-    <div className="flex gap-2 p-2 md:flex-col md:p-3" aria-hidden>
+    <div className="flex flex-col gap-2 p-3" aria-hidden>
       {[0, 1, 2].map((item) => (
-        <div key={item} className="h-9 w-28 animate-pulse rounded-md bg-muted md:w-full" />
+        <div key={item} className="h-9 w-full animate-pulse rounded-md bg-muted" />
       ))}
     </div>
   );

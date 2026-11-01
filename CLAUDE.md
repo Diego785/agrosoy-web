@@ -16,8 +16,10 @@ Sales, accounts receivable and warehouse inventory system for Agrosoy (Bolivia).
 
 - Follow the roadmap steps in order. Each week's work goes on a `feature/week-N` branch; `main`
   keeps the version shown in the last demo and receives the branch once the developer approves it.
-- A change goes on the branch of the week it belongs to (`main` is week 1) and reaches the later
-  weeks by merging forward: `main` → `feature/week-2` → `feature/week-3`. Never merge backwards.
+- A change goes on the branch of the week it belongs to and reaches the later weeks by merging
+  forward: `main` → `feature/week-2` → `feature/week-3`. `main` holds the approved weeks (1 and 2
+  since 31 October); week 2's last items still go on `feature/week-2` and reach `main` the same
+  way. Only an approved week merges into `main`; nothing else merges backwards.
 - Each commit leaves `main` working: `corepack pnpm check` passes before committing.
 - End every session by adding an entry to `docs/progress.md`.
 
