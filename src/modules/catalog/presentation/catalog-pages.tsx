@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
-import { campaignOn } from "@/modules/campaigns/domain/campaign";
+import { campaignOn, previousCampaign } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { listAllZones } from "@/modules/customers/application/customer-use-cases";
@@ -230,12 +230,18 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
   const campaign = requested ?? campaignOn(campaigns, todayInBolivia()) ?? campaigns[0]!;
   const zoneId = zones.some((zone) => zone.id === first(params.zone)) ? (first(params.zone) ?? "") : "";
   const deps = catalogDeps(db);
-  const [sheet, general] = await Promise.all([
+  const canEdit = can(actor, "catalog.manage");
+  const previous = previousCampaign(campaigns, campaign);
+  const copyFrom = canEdit && previous && first(params.copyFrom) === previous.id ? previous : undefined;
+  const [sheet, general, copied] = await Promise.all([
     priceSheet(deps, actor, { campaignId: campaign.id, zoneId }),
     zoneId ? priceSheet(deps, actor, { campaignId: campaign.id }) : Promise.resolve([]),
+    copyFrom ? priceSheet(deps, actor, { campaignId: copyFrom.id, zoneId }) : Promise.resolve([]),
   ]);
   const generalByPresentation = new Map(general.map((row) => [row.presentation.id, row.price]));
-  const canEdit = can(actor, "catalog.manage");
+  // Copied prices only fill the empty ones; nothing is saved until "Guardar precios".
+  const copiedByPresentation = new Map(copied.map((row) => [row.presentation.id, row.price]));
+  const filled = sheet.filter((row) => !row.price && copiedByPresentation.get(row.presentation.id)).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -264,11 +270,32 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
           Deja vacío el precio de la zona para usar el general (se muestra en gris).
         </p>
       )}
+      {canEdit && previous && sheet.length > 0 && !copyFrom && (
+        <Link
+          href={`${PRICES_PATH}?${new URLSearchParams({ campaign: campaign.id, zone: zoneId, copyFrom: previous.id })}`}
+          className={buttonVariants({ variant: "outline", size: "sm", className: "self-start" })}
+        >
+          Copiar precios de {campaignLabel(previous)}
+        </Link>
+      )}
+      {copyFrom && (
+        <p className="rounded-lg border border-dashed px-4 py-3 text-sm">
+          {filled === 0
+            ? `${campaignLabel(copyFrom)} no tiene precios para los productos que aquí están vacíos.`
+            : `Se completaron ${filled === 1 ? "1 precio" : `${filled} precios`} con los de ${campaignLabel(copyFrom)}. Revísalos y guarda; los que ya tenían precio no cambiaron.`}{" "}
+          <Link
+            href={`${PRICES_PATH}?${new URLSearchParams({ campaign: campaign.id, zone: zoneId })}`}
+            className="font-medium hover:underline"
+          >
+            Descartar
+          </Link>
+        </p>
+      )}
       {sheet.length === 0 ? (
         <p className="text-sm text-muted-foreground">Todavía no hay productos.</p>
       ) : canEdit ? (
         <PriceSheetForm
-          key={`${campaign.id}:${zoneId}`}
+          key={`${campaign.id}:${zoneId}:${copyFrom?.id ?? ""}`}
           campaignId={campaign.id}
           zoneId={zoneId}
           rows={sheet.map((row) => ({
@@ -279,7 +306,7 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
             content: row.presentation.content,
             unit: row.presentation.unit,
             saleUnit: row.presentation.saleUnit,
-            price: row.price ?? "",
+            price: row.price ?? copiedByPresentation.get(row.presentation.id) ?? "",
             generalPrice: generalByPresentation.get(row.presentation.id) ?? null,
           }))}
         />

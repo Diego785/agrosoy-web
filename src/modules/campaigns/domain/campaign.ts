@@ -27,6 +27,19 @@ export function overlaps(a: CampaignPeriod, b: CampaignPeriod): boolean {
   return a.startsOn <= b.endsOn && b.startsOn <= a.endsOn;
 }
 
+/** The campaign that ended right before this one started, whose prices are the usual start. */
+export function previousCampaign<T extends CampaignPeriod & { id: string }>(
+  campaigns: readonly T[],
+  campaign: T,
+): T | undefined {
+  return campaigns
+    .filter((other) => other.endsOn < campaign.startsOn)
+    .reduce<T | undefined>(
+      (latest, other) => (!latest || other.startsOn > latest.startsOn ? other : latest),
+      undefined,
+    );
+}
+
 export function campaignOn<T extends CampaignPeriod>(
   campaigns: readonly T[],
   isoDate: string,
