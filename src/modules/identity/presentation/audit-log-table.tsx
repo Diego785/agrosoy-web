@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { formatCount, formatDateTime } from "@/shared/presentation/format";
+import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
 import { isRole } from "@/shared/domain/role";
 import { buttonVariants } from "@/shared/presentation/ui/button";
@@ -13,6 +14,7 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import { listAuditEntries } from "../application/audit-use-cases";
+import type { AuditLogEntry } from "../application/ports";
 import { drizzleAuditLogReader } from "../infrastructure/drizzle-audit-log-reader";
 import { requireActor } from "./current-user";
 import { AUDIT_PATH } from "./identity-routes";
@@ -54,35 +56,43 @@ export async function AuditLogTable({
   }
   return (
     <div className="flex flex-col gap-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-40">Fecha y hora</TableHead>
-            <TableHead className="w-48">Usuario</TableHead>
-            <TableHead>Cambio</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((entry) => (
-            <TableRow key={entry.id}>
-              <TableCell className="text-sm text-muted-foreground tabular-nums">
-                {formatDateTime(entry.occurredAt)}
-              </TableCell>
-              <TableCell>{entry.actorName ?? "Instalación"}</TableCell>
-              <TableCell>
-                {ACTION_LABELS[entry.action] ?? entry.action}{" "}
-                {entry.entityLabel && entry.action !== "identity.change_own_password" && (
-                  <span className="font-medium">
-                    {entry.entityType === "role" && isRole(entry.entityLabel)
-                      ? ROLE_LABELS[entry.entityLabel]
-                      : entry.entityLabel}
-                  </span>
-                )}
-              </TableCell>
+      <WideOnly>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-40">Fecha y hora</TableHead>
+              <TableHead className="w-48">Usuario</TableHead>
+              <TableHead>Cambio</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {items.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell className="text-sm text-muted-foreground tabular-nums">
+                  {formatDateTime(entry.occurredAt)}
+                </TableCell>
+                <TableCell>{entry.actorName ?? "Instalación"}</TableCell>
+                <TableCell>
+                  <ChangeDescription entry={entry} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </WideOnly>
+      <CardList label="Cambios">
+        {items.map((entry) => (
+          <CardListItem key={entry.id}>
+            <span>
+              <ChangeDescription entry={entry} />
+            </span>
+            <span className="text-muted-foreground">
+              {entry.actorName ?? "Instalación"} ·{" "}
+              <span className="tabular-nums">{formatDateTime(entry.occurredAt)}</span>
+            </span>
+          </CardListItem>
+        ))}
+      </CardList>
       <footer className="flex items-center justify-between text-sm text-muted-foreground">
         <span>{formatCount(total)} cambios</span>
         {lastPage > 1 && (
@@ -110,5 +120,20 @@ export async function AuditLogTable({
         )}
       </footer>
     </div>
+  );
+}
+
+function ChangeDescription({ entry }: { entry: AuditLogEntry }) {
+  return (
+    <>
+      {ACTION_LABELS[entry.action] ?? entry.action}{" "}
+      {entry.entityLabel && entry.action !== "identity.change_own_password" && (
+        <span className="font-medium">
+          {entry.entityType === "role" && isRole(entry.entityLabel)
+            ? ROLE_LABELS[entry.entityLabel]
+            : entry.entityLabel}
+        </span>
+      )}
+    </>
   );
 }

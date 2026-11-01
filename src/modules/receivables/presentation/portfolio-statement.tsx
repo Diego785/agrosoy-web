@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Money } from "@/shared/domain/money";
 import { formatMoney, formatPerMille, formatUsd } from "@/shared/presentation/format";
+import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import {
   Table,
   TableBody,
@@ -37,50 +38,82 @@ export function PortfolioStatement({
         />
       </Figures>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Cliente</TableHead>
-            <TableHead className="text-right">Entrega</TableHead>
-            <TableHead className="text-right">Pago</TableHead>
-            <TableHead className="text-right">Dev.</TableHead>
-            <TableHead className="text-right">Deuda</TableHead>
-            <TableHead>Estado</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {statement.customers.map((customer) => (
-            <TableRow key={customer.key}>
-              <TableCell className="font-medium">
-                <Link href={customerHref(customer.key)} className="hover:underline">
-                  {customer.name}
-                </Link>
-              </TableCell>
-              <Amount value={customer.totals.delivered} />
-              <Amount value={customer.totals.paid} />
-              <Amount value={customer.totals.returned} />
-              <Amount value={customer.totals.balance} strong />
-              <TableCell>
-                <StatusBadge status={customer.totals.status} />
-              </TableCell>
+      <WideOnly>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Cliente</TableHead>
+              <TableHead className="text-right">Entrega</TableHead>
+              <TableHead className="text-right">Pago</TableHead>
+              <TableHead className="text-right">Dev.</TableHead>
+              <TableHead className="text-right">Deuda</TableHead>
+              <TableHead>Estado</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell>
-              Total · {statement.customers.length} clientes, {owing} con deuda
-            </TableCell>
-            <Amount value={totals.delivered} />
-            <Amount value={totals.paid} />
-            <Amount value={totals.returned} />
-            <Amount value={totals.balance} strong />
-            <TableCell />
-          </TableRow>
-        </TableFooter>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {statement.customers.map((customer) => (
+              <TableRow key={customer.key}>
+                <TableCell className="font-medium">
+                  <Link href={customerHref(customer.key)} className="hover:underline">
+                    {customer.name}
+                  </Link>
+                </TableCell>
+                <Amount value={customer.totals.delivered} />
+                <Amount value={customer.totals.paid} />
+                <Amount value={customer.totals.returned} />
+                <Amount value={customer.totals.balance} strong />
+                <TableCell>
+                  <StatusBadge status={customer.totals.status} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell>
+                Total · {statement.customers.length} clientes, {owing} con deuda
+              </TableCell>
+              <Amount value={totals.delivered} />
+              <Amount value={totals.paid} />
+              <Amount value={totals.returned} />
+              <Amount value={totals.balance} strong />
+              <TableCell />
+            </TableRow>
+          </TableFooter>
+        </Table>
+      </WideOnly>
+      <CardList label="Clientes de la planilla">
+        {statement.customers.map((customer) => (
+          <CardListItem key={customer.key}>
+            <div className="flex items-baseline justify-between gap-3">
+              <Link href={customerHref(customer.key)} className="font-medium hover:underline">
+                {customer.name}
+              </Link>
+              <StatusBadge status={customer.totals.status} />
+            </div>
+            <CardField label="Entrega">{amountText(customer.totals.delivered)}</CardField>
+            <CardField label="Pago">{amountText(customer.totals.paid)}</CardField>
+            <CardField label="Devolución">{amountText(customer.totals.returned)}</CardField>
+            <CardField label="Deuda">
+              <span className="font-semibold">{amountText(customer.totals.balance)}</span>
+            </CardField>
+          </CardListItem>
+        ))}
+        <CardListItem className="bg-muted/50 font-medium">
+          <span>
+            Total · {statement.customers.length} clientes, {owing} con deuda
+          </span>
+          <CardField label="Deuda">
+            <span className="font-semibold">{amountText(totals.balance)}</span>
+          </CardField>
+        </CardListItem>
+      </CardList>
     </div>
   );
+}
+
+function amountText(value: string): string {
+  return Money.parse(value).isZero() ? "—" : formatMoney(value);
 }
 
 function Amount({ value, strong = false }: { value: string; strong?: boolean }) {
