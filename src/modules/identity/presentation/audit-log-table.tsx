@@ -53,6 +53,7 @@ const ACTION_LABELS: Record<string, string> = {
   "catalog.deactivate_presentation": "Desactivó una presentación de",
   "catalog.reactivate_presentation": "Reactivó una presentación de",
   "catalog.save_prices": "Actualizó precios de referencia",
+  "migration.import_product_list": "Importó la lista de productos",
   "sales.create_draft": "Creó un borrador de boleta",
   "sales.update_draft": "Editó un borrador de boleta",
   "sales.discard_draft": "Descartó un borrador de boleta",

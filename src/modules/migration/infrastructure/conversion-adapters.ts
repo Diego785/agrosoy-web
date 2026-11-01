@@ -1,6 +1,10 @@
-import { inArray } from "drizzle-orm";
-import { addPresentation, createProduct } from "@/modules/catalog/application/catalog-use-cases";
-import { drizzleProductRepository } from "@/modules/catalog/infrastructure/drizzle-catalog-repositories";
+import { eq, inArray } from "drizzle-orm";
+import { addPresentation, createProduct, savePrices } from "@/modules/catalog/application/catalog-use-cases";
+import { catalogLookups } from "@/modules/catalog/infrastructure/catalog-lookups";
+import {
+  drizzlePriceRepository,
+  drizzleProductRepository,
+} from "@/modules/catalog/infrastructure/drizzle-catalog-repositories";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
 import { registerCustomer } from "@/modules/customers/application/customer-use-cases";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -10,8 +14,15 @@ import { identityTechnicianLookup } from "@/modules/customers/infrastructure/ide
 import type { Actor } from "@/shared/application/actor";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
-import type { CustomerRegistry, ExistingProduct, ProductRegistry } from "../application/conversion-ports";
+import type {
+  CustomerRegistry,
+  ExistingProduct,
+  GeneralPrices,
+  ProductRegistry,
+} from "../application/conversion-ports";
 import type { ConversionDeps } from "../application/conversion";
+import type { ProductListDeps } from "../application/product-list-import";
+import { exceljsWorkbookReader } from "./exceljs-workbook-reader";
 import { drizzleImportRepository } from "./drizzle-import-repository";
 
 /**
@@ -49,8 +60,38 @@ export function conversionDeps(executor: DbExecutor, actor: Actor): ConversionDe
     },
   };
 
-  const catalogDeps = { products: drizzleProductRepository(executor), audit };
-  const productRegistry: ProductRegistry = {
+  return {
+    imports: drizzleImportRepository(executor),
+    customers: customerRegistry,
+    products: productRegistry(executor, actor),
+    technicians: identityTechnicianLookup(executor),
+    audit,
+  };
+}
+
+/** Agrosoy's product list: the catalog's products and its general reference prices. */
+export function productListDeps(executor: DbExecutor, actor: Actor): ProductListDeps {
+  const audit = drizzleAuditTrail(executor);
+  const prices: GeneralPrices = {
+    save(campaignId, rows) {
+      return savePrices(
+        {
+          products: drizzleProductRepository(executor),
+          prices: drizzlePriceRepository(executor),
+          lookups: catalogLookups(executor),
+          audit,
+        },
+        actor,
+        { campaignId, zoneId: "", prices: rows },
+      );
+    },
+  };
+  return { workbooks: exceljsWorkbookReader, products: productRegistry(executor, actor), prices, audit };
+}
+
+function productRegistry(executor: DbExecutor, actor: Actor): ProductRegistry {
+  const catalogDeps = { products: drizzleProductRepository(executor), audit: drizzleAuditTrail(executor) };
+  return {
     async findByKeys(keys) {
       if (keys.length === 0) return new Map();
       const productRows = await executor
@@ -63,8 +104,11 @@ export function conversionDeps(executor: DbExecutor, actor: Actor): ConversionDe
           : await executor
               .select({
                 productId: presentations.productId,
+                id: presentations.id,
+                code: presentations.code,
                 content: presentations.content,
                 unit: presentations.unit,
+                saleUnit: presentations.saleUnit,
               })
               .from(presentations)
               // Deactivated presentations count too: adding them again would repeat them.
@@ -82,10 +126,27 @@ export function conversionDeps(executor: DbExecutor, actor: Actor): ConversionDe
             name: row.name,
             presentations: presentationRows
               .filter((presentation) => presentation.productId === row.id)
-              .map(({ content, unit }) => ({ content, unit })),
+              .map(({ id, code, content, unit, saleUnit }) => ({ id, code, content, unit, saleUnit })),
           },
         ]),
       );
+    },
+    async findByCodes(codes) {
+      if (codes.length === 0) return new Map();
+      const rows = await executor
+        .select({
+          id: presentations.id,
+          code: presentations.code,
+          content: presentations.content,
+          unit: presentations.unit,
+          saleUnit: presentations.saleUnit,
+          productKey: products.comparisonName,
+          productName: products.name,
+        })
+        .from(presentations)
+        .innerJoin(products, eq(products.id, presentations.productId))
+        .where(inArray(presentations.code, codes));
+      return new Map(rows.map((row) => [row.code, row]));
     },
     create(input) {
       return createProduct(catalogDeps, actor, input);
@@ -93,13 +154,5 @@ export function conversionDeps(executor: DbExecutor, actor: Actor): ConversionDe
     async addPresentation(productId, presentation) {
       await addPresentation(catalogDeps, actor, productId, presentation);
     },
-  };
-
-  return {
-    imports: drizzleImportRepository(executor),
-    customers: customerRegistry,
-    products: productRegistry,
-    technicians: identityTechnicianLookup(executor),
-    audit,
   };
 }

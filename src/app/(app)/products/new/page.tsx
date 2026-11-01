@@ -9,7 +9,10 @@ export const metadata: Metadata = { title: "Crear producto" };
 export default function NewProductPage() {
   return (
     <>
-      <PageHeader title="Crear producto" description="El código se asigna automáticamente." />
+      <PageHeader
+        title="Crear producto"
+        description="Cada presentación lleva el código de Agrosoy; si lo dejas vacío, toma el siguiente número libre."
+      />
       <Suspense>
         <RequirePermission permission="catalog.manage">
           <NewProductForm />
