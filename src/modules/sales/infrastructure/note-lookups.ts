@@ -4,6 +4,7 @@ import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/dr
 import { presentations } from "@/modules/catalog/infrastructure/catalog.tables";
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
 import { identityTechnicianLookup } from "@/modules/customers/infrastructure/identity-technician-lookup";
+import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import type { NoteLookups } from "../application/note-ports";
 
@@ -30,6 +31,10 @@ export function noteLookups(executor: DbExecutor): NoteLookups {
 
     isActiveTechnician(id) {
       return identityTechnicianLookup(executor).isActiveTechnician(id);
+    },
+
+    async isActiveUser(id) {
+      return (await drizzleUserDirectory(executor).findById(id))?.active === true;
     },
 
     async activePresentations(ids) {

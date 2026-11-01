@@ -172,6 +172,19 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
           {note.receiver.relationship && ` (${note.receiver.relationship})`}
           {note.receiver.documentId && ` · CI ${note.receiver.documentId}`}
         </Item>
+        <Item label="Entrega">
+          {note.handedOverBy &&
+            [note.handedOverBy.name, note.handedOverBy.position].filter(Boolean).join(" · ")}
+        </Item>
+        <Item label="Transporte">
+          {[
+            note.carrier.name,
+            note.carrier.vehicle,
+            note.carrier.documentId && `CI ${note.carrier.documentId}`,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </Item>
         <Item label="Observaciones">{note.observations}</Item>
       </dl>
 
@@ -246,6 +259,10 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
           receiverName: note.receiver.name,
           receiverDocumentId: note.receiver.documentId ?? "",
           receiverRelationship: note.receiver.relationship ?? "",
+          handedOverById: note.handedOverBy?.id ?? "",
+          carrierName: note.carrier.name ?? "",
+          carrierVehicle: note.carrier.vehicle ?? "",
+          carrierDocumentId: note.carrier.documentId ?? "",
           observations: note.observations ?? "",
           taxInvoiceNumber: note.taxInvoiceNumber ?? "",
           lines: note.lines.map((line) => ({

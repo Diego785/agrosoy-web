@@ -110,6 +110,9 @@ async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNot
   if (data.technicianId && !(await lookups.isActiveTechnician(data.technicianId))) {
     fail("technicianId", "Elige un técnico de venta activo.");
   }
+  if (data.handedOverById && !(await lookups.isActiveUser(data.handedOverById))) {
+    fail("handedOverById", "Elige un usuario activo.");
+  }
   const available = await lookups.activePresentations(data.lines.map((line) => line.presentationId));
   data.lines.forEach((line, index) => {
     if (!available.has(line.presentationId))
@@ -130,6 +133,12 @@ async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNot
       name: data.receiverName,
       documentId: optionalText(data.receiverDocumentId) ?? null,
       relationship: optionalText(data.receiverRelationship) ?? null,
+    },
+    handedOverById: data.handedOverById || null,
+    carrier: {
+      name: optionalText(data.carrierName) ?? null,
+      vehicle: optionalText(data.carrierVehicle) ?? null,
+      documentId: optionalText(data.carrierDocumentId)?.toUpperCase() ?? null,
     },
     observations: optionalText(data.observations) ?? null,
     taxInvoiceNumber: optionalText(data.taxInvoiceNumber) ?? null,

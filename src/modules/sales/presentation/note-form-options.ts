@@ -12,6 +12,7 @@ import {
 } from "@/modules/customers/infrastructure/customers.tables";
 import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { identityTechnicianLookup } from "@/modules/customers/infrastructure/identity-technician-lookup";
+import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import type { Actor } from "@/shared/application/actor";
 import { assertCan } from "@/shared/application/permissions";
 import { getDb } from "@/shared/infrastructure/db/client";
@@ -25,7 +26,7 @@ export type NoteFormOptions = Awaited<ReturnType<typeof loadNoteFormOptions>>;
 export async function loadNoteFormOptions(actor: Actor) {
   assertCan(actor, "notes.manage");
   const db = getDb();
-  const [customerRows, propertyRows, receiverRows, products, campaigns, zones, technicians] =
+  const [customerRows, propertyRows, receiverRows, products, campaigns, zones, technicians, users] =
     await Promise.all([
       db
         .select({
@@ -61,6 +62,7 @@ export async function loadNoteFormOptions(actor: Actor) {
       listCampaigns({ campaigns: drizzleCampaignRepository(db) }, actor),
       listAllZones({ zones: drizzleZoneRepository(db) }, actor),
       identityTechnicianLookup(db).listActive(),
+      drizzleUserDirectory(db).list(),
     ]);
 
   const openCampaigns = campaigns.filter((campaign) => campaign.status === "open");
@@ -87,6 +89,8 @@ export async function loadNoteFormOptions(actor: Actor) {
     ),
     campaigns: openCampaigns,
     technicians,
+    /** Who can hand the product over: any active user, shown with their position. */
+    staff: users.filter((user) => user.active).map(({ id, name, position }) => ({ id, name, position })),
     prices,
   };
 }

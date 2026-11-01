@@ -53,6 +53,10 @@ export function NoteForm({ options, today, draft }: Props) {
         receiverName: "",
         receiverDocumentId: "",
         receiverRelationship: "",
+        handedOverById: "",
+        carrierName: "",
+        carrierVehicle: "",
+        carrierDocumentId: "",
         observations: "",
         taxInvoiceNumber: "",
         lines: [EMPTY_LINE],
@@ -80,9 +84,18 @@ export function NoteForm({ options, today, draft }: Props) {
   function chooseCustomer(id: string) {
     const chosen = options.customers.find((option) => option.id === id);
     form.setValue("propertyId", "");
-    form.setValue("technicianId", chosen?.technicianId ?? "");
+    chooseTechnician(chosen?.technicianId ?? "");
     if (chosen?.fixedExchangeRate) form.setValue("exchangeRate", trimDecimalZeros(chosen.fixedExchangeRate));
     if (chosen && !form.getValues("receiverName")) form.setValue("receiverName", chosen.name);
+  }
+
+  /** The technician hands the product over unless someone else was chosen (D26). */
+  function chooseTechnician(technicianId: string) {
+    const handedOver = form.getValues("handedOverById");
+    if (!handedOver || handedOver === form.getValues("technicianId")) {
+      form.setValue("handedOverById", technicianId);
+    }
+    form.setValue("technicianId", technicianId);
   }
 
   function chooseReceiver(receiverId: string) {
@@ -164,7 +177,11 @@ export function NoteForm({ options, today, draft }: Props) {
           </Field>
           <Field data-invalid={!!errors.technicianId}>
             <FieldLabel htmlFor="technicianId">Técnico de venta</FieldLabel>
-            <NativeSelect id="technicianId" {...form.register("technicianId")}>
+            <NativeSelect
+              id="technicianId"
+              {...form.register("technicianId")}
+              onChange={(event) => chooseTechnician(event.target.value)}
+            >
               <NativeSelectOption value="">Sin técnico</NativeSelectOption>
               {options.technicians.map((technician) => (
                 <NativeSelectOption key={technician.id} value={technician.id}>
@@ -283,6 +300,41 @@ export function NoteForm({ options, today, draft }: Props) {
         </fieldset>
 
         <ReceiverFields form={form} customer={customer} onChoose={chooseReceiver} />
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
+          <Field data-invalid={!!errors.handedOverById}>
+            <FieldLabel htmlFor="handedOverById">Entrega (Agrosoy)</FieldLabel>
+            <NativeSelect id="handedOverById" {...form.register("handedOverById")}>
+              <NativeSelectOption value="">Sin especificar</NativeSelectOption>
+              {options.staff.map((person) => (
+                <NativeSelectOption key={person.id} value={person.id}>
+                  {person.position ? `${person.name} · ${person.position}` : person.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <FieldError errors={[errors.handedOverById]} />
+          </Field>
+          <fieldset className="flex flex-col gap-3">
+            <legend className="mb-2 text-sm font-medium">Transporte (opcional)</legend>
+            <div className="grid gap-5 sm:grid-cols-3">
+              <Field data-invalid={!!errors.carrierName}>
+                <FieldLabel htmlFor="carrierName">Empresa o transportista</FieldLabel>
+                <Input id="carrierName" {...form.register("carrierName")} />
+                <FieldError errors={[errors.carrierName]} />
+              </Field>
+              <Field data-invalid={!!errors.carrierVehicle}>
+                <FieldLabel htmlFor="carrierVehicle">Vehículo o placa</FieldLabel>
+                <Input id="carrierVehicle" {...form.register("carrierVehicle")} />
+                <FieldError errors={[errors.carrierVehicle]} />
+              </Field>
+              <Field data-invalid={!!errors.carrierDocumentId}>
+                <FieldLabel htmlFor="carrierDocumentId">CI del conductor</FieldLabel>
+                <Input id="carrierDocumentId" {...form.register("carrierDocumentId")} />
+                <FieldError errors={[errors.carrierDocumentId]} />
+              </Field>
+            </div>
+          </fieldset>
+        </div>
 
         <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
           <Field data-invalid={!!errors.observations}>
