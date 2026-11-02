@@ -31,6 +31,7 @@ import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import { formatCount } from "@/shared/presentation/format";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
+import { FiguresSkeleton, Loading, Skeleton } from "@/shared/presentation/skeletons";
 
 const SHORTCUTS: readonly {
   title: string;
@@ -162,6 +163,31 @@ export async function HomeDashboard() {
         </section>
       )}
     </div>
+  );
+}
+
+/** The home page while it loads: the green greeting, the shortcuts and the figures. */
+export function HomeDashboardSkeleton() {
+  return (
+    <Loading label="Cargando inicio" className="gap-8">
+      <div aria-hidden className="flex flex-col gap-2.5 rounded-2xl bg-sidebar px-6 py-7 md:px-8">
+        <Skeleton className="h-3.5 w-48 bg-white/15" />
+        <Skeleton className="h-8 w-64 bg-white/20" />
+        <Skeleton className="h-3.5 w-56 bg-white/15" />
+      </div>
+      <div aria-hidden className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((index) => (
+          <div key={index} className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-xs">
+            <Skeleton className="size-11 shrink-0 rounded-xl" />
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <FiguresSkeleton />
+    </Loading>
   );
 }
 

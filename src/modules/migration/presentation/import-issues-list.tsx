@@ -5,6 +5,7 @@ import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatDate, formatUsd } from "@/shared/presentation/format";
+import { Loading, Skeleton } from "@/shared/presentation/skeletons";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { importIssues } from "../application/import-use-cases";
 import type { ImportIssue, ImportIssueCode } from "../domain/sales-sheet";
@@ -118,5 +119,37 @@ export async function ImportIssuesList({ params }: { params: Promise<{ batchId: 
         </section>
       )}
     </div>
+  );
+}
+
+/** The sheet's findings while they load: the sheet line and the "Observaciones" card. */
+export function ImportIssuesListSkeleton() {
+  return (
+    <Loading label="Cargando observaciones" className="max-w-3xl">
+      <div aria-hidden className="flex h-5 flex-wrap items-center gap-2">
+        <Skeleton className="size-4" />
+        <Skeleton className="h-3.5 w-36" />
+        <Skeleton className="h-3.5 w-20" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+      <div aria-hidden className="rounded-xl border bg-card shadow-xs">
+        <div className="border-b px-5 py-3.5">
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <ul className="divide-y">
+          {[0, 1, 2, 3, 4, 5].map((index) => (
+            <li key={index} className="flex gap-4 px-5 py-3">
+              <span className="w-24 shrink-0 pt-0.5">
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
+                <Skeleton className="h-3.5 w-full max-w-md" />
+                {index % 2 === 0 && <Skeleton className="h-3 w-32" />}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Loading>
   );
 }

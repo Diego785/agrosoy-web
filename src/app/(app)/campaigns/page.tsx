@@ -2,7 +2,7 @@ import { PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { CampaignsTable } from "@/modules/campaigns/presentation/campaign-pages";
+import { CampaignsTable, CampaignsTableSkeleton } from "@/modules/campaigns/presentation/campaign-pages";
 import { NEW_CAMPAIGN_PATH } from "@/modules/campaigns/presentation/campaign-routes";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
 import { PageHeader } from "@/shared/presentation/app-shell";
@@ -27,7 +27,7 @@ export default function CampaignsPage() {
           </Suspense>
         }
       />
-      <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-muted/60" />}>
+      <Suspense fallback={<CampaignsTableSkeleton />}>
         <RequirePermission permission="catalog.view">
           <CampaignsTable />
         </RequirePermission>

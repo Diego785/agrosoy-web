@@ -6,6 +6,7 @@ import { getDb } from "@/shared/infrastructure/db/client";
 import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatCount, formatDateTime } from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { CardListSkeleton, Loading, Skeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import {
@@ -93,6 +94,44 @@ export async function ImportBatches() {
         ))}
       </CardList>
     </section>
+  );
+}
+
+/**
+ * The imports page while it loads. The upload form waits in the same `<Suspense>` as the list (both
+ * need the permission), so this draws the form card above the imported sheets.
+ */
+export function ImportBatchesSkeleton() {
+  return (
+    <Loading label="Cargando planillas" className="gap-6">
+      <div aria-hidden className="flex max-w-2xl flex-col gap-2 rounded-xl border bg-card p-5 shadow-xs">
+        <Skeleton className="my-0.5 h-3.5 w-44" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-9 max-w-sm flex-1 rounded-lg" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        </div>
+        <div className="flex flex-col gap-1.5 py-0.5">
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-2/3" />
+        </div>
+      </div>
+      <div aria-hidden className="flex flex-col gap-3">
+        <Skeleton className="my-0.5 h-4 w-36" />
+        <TableSkeleton
+          rows={4}
+          columns={[
+            { shape: "stacked" },
+            { shape: "short" },
+            { shape: "code", align: "right" },
+            { shape: "code", align: "right" },
+            { shape: "badge" },
+            { shape: "text" },
+            { shape: "tags" },
+          ]}
+        />
+        <CardListSkeleton rows={3} lines={3} tags />
+      </div>
+    </Loading>
   );
 }
 

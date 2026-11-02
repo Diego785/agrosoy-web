@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ProductDetail } from "@/modules/catalog/presentation/catalog-pages";
+import { ProductDetail, ProductDetailSkeleton } from "@/modules/catalog/presentation/catalog-pages";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
 import { PageHeader } from "@/shared/presentation/app-shell";
 
@@ -10,7 +10,7 @@ export default function ProductPage({ params }: PageProps<"/products/[id]">) {
   return (
     <>
       <PageHeader back={{ href: "/products", label: "Productos" }} title="Producto" />
-      <Suspense>
+      <Suspense fallback={<ProductDetailSkeleton />}>
         <RequirePermission permission="catalog.view">
           <ProductDetail params={params} />
         </RequirePermission>

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
-import { PortfolioStatementPreview } from "@/modules/migration/presentation/statement-preview";
+import {
+  PortfolioStatementPreview,
+  PortfolioStatementPreviewSkeleton,
+} from "@/modules/migration/presentation/statement-preview";
 import { PrintButton } from "@/modules/receivables/presentation/print-button";
 import { PageHeader } from "@/shared/presentation/app-shell";
 
@@ -15,7 +18,7 @@ export default function PortfolioStatementPage({ params }: PageProps<"/statement
         title="Estado de cuenta"
         actions={<PrintButton />}
       />
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
+      <Suspense fallback={<PortfolioStatementPreviewSkeleton />}>
         <RequirePermission permission="statements.view">
           <PortfolioStatementPreview params={params} />
         </RequirePermission>

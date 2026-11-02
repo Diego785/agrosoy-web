@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ZonesList } from "@/modules/customers/presentation/zones-list";
+import { ZonesList, ZonesListSkeleton } from "@/modules/customers/presentation/zones-list";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
 import { PageHeader } from "@/shared/presentation/app-shell";
 
@@ -14,7 +14,7 @@ export default function ZonesPage() {
         title="Zonas"
         description="Zonas de venta para agrupar a los clientes."
       />
-      <Suspense>
+      <Suspense fallback={<ZonesListSkeleton />}>
         <RequirePermission permission="customers.view">
           <ZonesList />
         </RequirePermission>

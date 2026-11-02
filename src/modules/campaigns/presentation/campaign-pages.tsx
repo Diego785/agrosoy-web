@@ -10,6 +10,13 @@ import { todayInBolivia } from "@/shared/presentation/business-date";
 import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatDate } from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import {
+  CardListSkeleton,
+  FieldsSkeleton,
+  Loading,
+  Skeleton,
+  TableSkeleton,
+} from "@/shared/presentation/skeletons";
 import { Badge } from "@/shared/presentation/ui/badge";
 import {
   Table,
@@ -140,6 +147,25 @@ export async function CampaignsTable() {
   );
 }
 
+/** The campaigns while they load, laid out like `CampaignsTable`; there are only a few a year. */
+export function CampaignsTableSkeleton() {
+  return (
+    <Loading label="Cargando campañas">
+      <TableSkeleton
+        rows={4}
+        columns={[
+          { shape: "icon" },
+          { shape: "short" },
+          { shape: "short" },
+          { shape: "badge" },
+          { shape: "chevron", className: "w-10" },
+        ]}
+      />
+      <CardListSkeleton rows={4} leading="icon" lines={1} />
+    </Loading>
+  );
+}
+
 export async function EditCampaign({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const actor = await requireActor();
@@ -151,4 +177,27 @@ export async function EditCampaign({ params }: { params: Promise<{ id: string }>
     },
   );
   return <CampaignForm campaign={campaign} />;
+}
+
+/** The campaign form while it loads, section by section like `CampaignForm`. */
+export function CampaignFormSkeleton() {
+  return (
+    <Loading label="Cargando formulario">
+      <div
+        aria-hidden
+        className="flex max-w-xl flex-col divide-y overflow-hidden rounded-xl border bg-card shadow-xs"
+      >
+        {[0, 1].map((section) => (
+          <div key={section} className="flex flex-col gap-4 p-5">
+            <Skeleton className="my-0.5 h-4 w-24" />
+            <FieldsSkeleton rows={[2]} />
+          </div>
+        ))}
+        <div className="flex gap-3 bg-muted/30 px-5 py-4">
+          <Skeleton className="h-9 w-32 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+        </div>
+      </div>
+    </Loading>
+  );
 }

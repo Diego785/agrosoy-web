@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
 import { campaignOn, previousCampaign } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
@@ -25,6 +26,15 @@ import {
 import { EmptyState } from "@/shared/presentation/empty-state";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
 import { SearchInput } from "@/shared/presentation/search-input";
+import {
+  CardListSkeleton,
+  FieldsSkeleton,
+  FiltersSkeleton,
+  ListFooterSkeleton,
+  Loading,
+  Skeleton,
+  TableSkeleton,
+} from "@/shared/presentation/skeletons";
 import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
@@ -215,6 +225,27 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
   );
 }
 
+/** The products list while it loads, laid out like `ProductsTable`. */
+export function ProductsTableSkeleton() {
+  return (
+    <Loading label="Cargando productos">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FiltersSkeleton selects={2} />
+        <Skeleton className="h-8 w-64 rounded-full" />
+      </div>
+      <TableSkeleton
+        columns={[
+          { shape: "icon", className: "w-[34%]" },
+          { shape: "tags" },
+          { shape: "chevron", className: "w-10" },
+        ]}
+      />
+      <CardListSkeleton leading="icon" lines={1} tags />
+      <ListFooterSkeleton />
+    </Loading>
+  );
+}
+
 /**
  * The general reference prices of the campaign running today (or the latest one), shown in the
  * products list. Zone prices stay on the prices page.
@@ -235,6 +266,57 @@ async function currentGeneralPrices(actor: Actor) {
 export async function NewProduct() {
   const actor = await requireActor();
   return <NewProductForm nextCode={await nextPresentationCode(catalogDeps(getDb()), actor)} />;
+}
+
+/** The new product form while it loads, laid out like `NewProductForm` with one presentation. */
+export function NewProductSkeleton() {
+  return (
+    <Loading label="Cargando formulario">
+      <div
+        aria-hidden
+        className="flex max-w-3xl flex-col divide-y overflow-hidden rounded-xl border bg-card shadow-xs"
+      >
+        <div className="flex flex-col gap-4 p-5">
+          <Skeleton className="my-0.5 h-4 w-28" />
+          <NameAndLineSkeleton />
+        </div>
+        <div className="flex flex-col p-5">
+          <Skeleton className="mt-0.5 mb-4.5 h-4 w-28" />
+          <div className="flex flex-col gap-3">
+            <PresentationFieldsSkeleton />
+            <Skeleton className="h-7 w-36 rounded-lg" />
+          </div>
+        </div>
+        <div className="flex gap-3 bg-muted/30 px-5 py-4">
+          <Skeleton className="h-9 w-32 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+        </div>
+      </div>
+    </Loading>
+  );
+}
+
+/** The product field and the narrower line field, side by side as both product forms show them. */
+function NameAndLineSkeleton() {
+  return (
+    <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
+      <FieldsSkeleton rows={[1]} />
+      <FieldsSkeleton rows={[1]} />
+    </div>
+  );
+}
+
+/** Code, content, unit and price unit, as `PresentationFields` lines them up. */
+function PresentationFieldsSkeleton({ children }: { children?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Skeleton className="h-9 w-28 rounded-lg" />
+      <Skeleton className="h-9 w-24 rounded-lg" />
+      <Skeleton className="h-9 w-24 rounded-lg" />
+      <Skeleton className="h-9 w-40 rounded-lg" />
+      {children}
+    </div>
+  );
 }
 
 export async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -330,6 +412,64 @@ export async function ProductDetail({ params }: { params: Promise<{ id: string }
         )}
       </section>
     </div>
+  );
+}
+
+/** A product's page while it loads, laid out like `ProductDetail` for who may edit it. */
+export function ProductDetailSkeleton() {
+  return (
+    <Loading label="Cargando producto" className="max-w-4xl gap-6">
+      <div aria-hidden className="rounded-xl border bg-card shadow-xs">
+        <div className="flex flex-wrap items-start justify-between gap-4 p-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <Skeleton className="size-12 shrink-0 rounded-xl" />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <Skeleton className="my-0.5 h-6 w-56 max-w-[50vw]" />
+                <Skeleton className="h-5 w-14 rounded-full" />
+              </div>
+              <Skeleton className="mt-1.5 h-4 w-40" />
+            </div>
+          </div>
+          <Skeleton className="h-7 w-24 rounded-lg" />
+        </div>
+        <div className="border-t p-5">
+          <div className="flex max-w-3xl flex-col gap-4">
+            <Skeleton className="my-0.5 h-4 w-28" />
+            <NameAndLineSkeleton />
+            <Skeleton className="h-9 w-48 rounded-lg" />
+          </div>
+        </div>
+      </div>
+
+      <div aria-hidden className="overflow-hidden rounded-xl border bg-card shadow-xs">
+        <div className="flex items-center gap-2 border-b px-5 py-3.5">
+          <Skeleton className="my-0.5 h-4 w-28" />
+          <Skeleton className="h-5 w-7 rounded-full" />
+        </div>
+        <ul className="divide-y">
+          {[0, 1, 2].map((row) => (
+            <li key={row} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
+              <span className="w-12 shrink-0">
+                <Skeleton className="h-3 w-10" />
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </span>
+              <Skeleton className="h-5 w-14 rounded-full" />
+              <Skeleton className="h-7 w-24 rounded-lg" />
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-col gap-2 border-t bg-muted/30 px-5 py-4">
+          <Skeleton className="my-0.5 h-4 w-40" />
+          <PresentationFieldsSkeleton>
+            <Skeleton className="h-9 w-28 rounded-lg" />
+          </PresentationFieldsSkeleton>
+        </div>
+      </div>
+    </Loading>
   );
 }
 
@@ -472,5 +612,36 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
         </Table>
       )}
     </div>
+  );
+}
+
+/**
+ * The price sheet while it loads, laid out like `PriceSheet` for who may edit it: the campaign and
+ * zone selects, the copy button, the sheet with its price fields and the save button.
+ */
+export function PriceSheetSkeleton() {
+  return (
+    <Loading label="Cargando precios">
+      <div aria-hidden className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-9 w-36 rounded-lg" />
+          <Skeleton className="h-9 w-64 rounded-lg" />
+          <Skeleton className="h-9 w-12 rounded-lg" />
+        </div>
+        <Skeleton className="h-9 w-56 rounded-lg" />
+      </div>
+      {/* "block": unlike the lists, the sheet stays a table on phones. */}
+      <TableSkeleton
+        className="block"
+        columns={[
+          { shape: "code", className: "w-16" },
+          { shape: "text" },
+          { shape: "short" },
+          { shape: "short" },
+          { shape: "input", className: "w-48" },
+        ]}
+      />
+      <Skeleton className="h-9 w-40 self-start rounded-lg" />
+    </Loading>
   );
 }

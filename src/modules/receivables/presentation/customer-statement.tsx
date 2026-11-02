@@ -2,6 +2,7 @@ import { Money } from "@/shared/domain/money";
 import { formatDate, formatMoney, formatQuantity, formatRate, formatUsd } from "@/shared/presentation/format";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { CardListSkeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import {
   Table,
   TableBody,
@@ -12,7 +13,14 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import type { CustomerStatementView, StatementLineView } from "../application/statement-view";
-import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
+import {
+  Figure,
+  Figures,
+  StatementFiguresSkeleton,
+  SourceNotice,
+  SourceNoticeSkeleton,
+  StatusBadge,
+} from "./statement-parts";
 
 const UNDATED: Record<Exclude<StatementLineView["kind"], "delivery">, string> = {
   payment: "Pagos según el resumen de la planilla (sin fecha)",
@@ -133,6 +141,31 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
           </CardField>
         </CardListItem>
       </CardList>
+    </div>
+  );
+}
+
+/** `CustomerStatement` while it loads: the source, the four figures and the movements. */
+export function CustomerStatementSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-6">
+      <SourceNoticeSkeleton />
+      <StatementFiguresSkeleton />
+      <TableSkeleton
+        rows={9}
+        columns={[
+          { shape: "short" },
+          { shape: "code" },
+          { shape: "text" },
+          { shape: "code", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "code", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+        ]}
+      />
+      <CardListSkeleton lines={3} />
     </div>
   );
 }

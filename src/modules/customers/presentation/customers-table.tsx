@@ -9,6 +9,13 @@ import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsi
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
 import {
+  CardListSkeleton,
+  FiltersSkeleton,
+  ListFooterSkeleton,
+  Loading,
+  TableSkeleton,
+} from "@/shared/presentation/skeletons";
+import {
   Table,
   TableBody,
   TableCell,
@@ -183,11 +190,24 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** The customers list while it loads, laid out like `CustomersTable`. */
 export function CustomersTableSkeleton() {
   return (
-    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Cargando clientes">
-      <div className="h-9 max-w-md animate-pulse rounded-lg bg-muted" />
-      <div className="h-80 animate-pulse rounded-xl bg-muted/60" />
-    </div>
+    <Loading label="Cargando clientes">
+      <FiltersSkeleton selects={2} />
+      <TableSkeleton
+        columns={[
+          { shape: "code", className: "w-20" },
+          { shape: "text" },
+          { shape: "short" },
+          { shape: "text" },
+          { shape: "text" },
+          { shape: "short" },
+          { shape: "chevron", className: "w-10" },
+        ]}
+      />
+      <CardListSkeleton lines={3} />
+      <ListFooterSkeleton />
+    </Loading>
   );
 }

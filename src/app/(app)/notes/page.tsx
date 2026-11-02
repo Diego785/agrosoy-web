@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
-import { NotesTable } from "@/modules/sales/presentation/note-pages";
+import { NotesTable, NotesTableSkeleton } from "@/modules/sales/presentation/note-pages";
 import { NEW_NOTE_PATH } from "@/modules/sales/presentation/note-routes";
 import { PageHeader } from "@/shared/presentation/app-shell";
 import { buttonVariants } from "@/shared/presentation/ui/button";
@@ -27,7 +27,7 @@ export default function NotesPage({ searchParams }: PageProps<"/notes">) {
           </Suspense>
         }
       />
-      <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-muted/60" />}>
+      <Suspense fallback={<NotesTableSkeleton />}>
         <RequirePermission permission="notes.view">
           <NotesTable searchParams={searchParams} />
         </RequirePermission>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Money } from "@/shared/domain/money";
 import { formatMoney, formatPerMille, formatUsd } from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { CardListSkeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import {
   Table,
   TableBody,
@@ -13,7 +14,14 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import type { PortfolioStatementView } from "../application/statement-view";
-import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
+import {
+  Figure,
+  Figures,
+  StatementFiguresSkeleton,
+  SourceNotice,
+  SourceNoticeSkeleton,
+  StatusBadge,
+} from "./statement-parts";
 
 /** The summary Agrosoil keeps next to each sheet: Cliente, Entrega, Pago, Dev., Deuda and status. */
 export function PortfolioStatement({
@@ -123,6 +131,29 @@ export function PortfolioStatement({
           </CardField>
         </CardListItem>
       </CardList>
+    </div>
+  );
+}
+
+/** `PortfolioStatement` while it loads: the source, the four figures and the customers. */
+export function PortfolioStatementSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-6">
+      <SourceNoticeSkeleton />
+      <StatementFiguresSkeleton />
+      <TableSkeleton
+        rows={9}
+        columns={[
+          { shape: "text" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "badge" },
+          { shape: "chevron", className: "w-10" },
+        ]}
+      />
+      <CardListSkeleton lines={3} />
     </div>
   );
 }

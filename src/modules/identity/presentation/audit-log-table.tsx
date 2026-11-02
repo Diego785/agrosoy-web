@@ -6,6 +6,7 @@ import { Badge } from "@/shared/presentation/ui/badge";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
+import { ListFooterSkeleton, Loading, Skeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import { isRole } from "@/shared/domain/role";
 import {
   Table,
@@ -134,6 +135,36 @@ export async function AuditLogTable({
         noun={["cambio", "cambios"]}
       />
     </div>
+  );
+}
+
+/** The change log while it loads, laid out like `AuditLogTable`. */
+export function AuditLogTableSkeleton() {
+  return (
+    <Loading label="Cargando registro de cambios">
+      <TableSkeleton
+        columns={[
+          { shape: "short", className: "w-44" },
+          { shape: "text", className: "w-48" },
+          { shape: "badge", className: "w-32" },
+          { shape: "text" },
+        ]}
+      />
+      {/* Built here instead of `CardListSkeleton`: each card starts with the area badge and the time. */}
+      <ul aria-hidden className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs md:hidden">
+        {Array.from({ length: 5 }, (_, row) => (
+          <li key={row} className="flex flex-col gap-1.5 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+          </li>
+        ))}
+      </ul>
+      <ListFooterSkeleton />
+    </Loading>
   );
 }
 

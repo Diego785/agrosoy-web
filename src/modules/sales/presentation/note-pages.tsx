@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { cn } from "cn";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { contentLabel, priceUnitLabel } from "@/modules/catalog/presentation/catalog-labels";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
@@ -24,6 +25,14 @@ import { EmptyState } from "@/shared/presentation/empty-state";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
+import {
+  CardListSkeleton,
+  FiltersSkeleton,
+  ListFooterSkeleton,
+  Loading,
+  Skeleton,
+  TableSkeleton,
+} from "@/shared/presentation/skeletons";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
@@ -167,6 +176,28 @@ export async function NotesTable({
         noun={["boleta", "boletas"]}
       />
     </div>
+  );
+}
+
+/** The notes list while it loads, laid out like `NotesTable`. */
+export function NotesTableSkeleton() {
+  return (
+    <Loading label="Cargando boletas">
+      <FiltersSkeleton search={false} selects={1} />
+      <TableSkeleton
+        columns={[
+          { shape: "short", className: "w-28" },
+          { shape: "short", className: "w-28" },
+          { shape: "text" },
+          { shape: "short" },
+          { shape: "short", align: "right" },
+          { shape: "badge" },
+          { shape: "chevron", className: "w-10" },
+        ]}
+      />
+      <CardListSkeleton lines={2} />
+      <ListFooterSkeleton />
+    </Loading>
   );
 }
 
@@ -371,6 +402,73 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
   );
 }
 
+/** A note while it loads: header card, products with their total, and delivery, like `NoteDetail`. */
+export function NoteDetailSkeleton() {
+  return (
+    <Loading label="Cargando boleta" className="max-w-5xl gap-6">
+      <div aria-hidden className="overflow-hidden rounded-xl border bg-card shadow-xs">
+        <div className="flex flex-col gap-2 border-b p-5">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-7 w-36" />
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-3.5 w-20" />
+            <Skeleton className="h-3.5 w-28" />
+          </div>
+        </div>
+        <div className="grid gap-6 p-5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-14" />
+            <Skeleton className="h-5 w-44" />
+            <Skeleton className="h-3 w-12" />
+          </div>
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
+            {[0, 1, 2, 3, 4].map((index) => (
+              <ItemSkeleton key={index} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div aria-hidden className="flex flex-col gap-3">
+        <Skeleton className="my-0.5 h-4 w-20" />
+        <TableSkeleton
+          rows={3}
+          columns={[
+            { shape: "text" },
+            { shape: "short", align: "right" },
+            { shape: "text", align: "right" },
+            { shape: "short", align: "right" },
+          ]}
+        />
+        <CardListSkeleton rows={3} lines={2} />
+        <div className="flex w-full max-w-72 flex-col gap-1 self-end rounded-xl border bg-card px-5 py-4 shadow-xs sm:min-w-72">
+          <div className="flex h-8 items-center justify-between gap-6">
+            <Skeleton className="h-3.5 w-16" />
+            <Skeleton className="h-7 w-28" />
+          </div>
+          <div className="flex h-5 items-center justify-between gap-6">
+            <Skeleton className="h-3.5 w-24" />
+            <Skeleton className="h-3.5 w-20" />
+          </div>
+        </div>
+      </div>
+
+      <div aria-hidden className="rounded-xl border bg-card shadow-xs">
+        <div className="border-b px-5 py-3.5">
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <div className="grid gap-x-6 gap-y-4 p-5 sm:grid-cols-3">
+          <ItemSkeleton />
+          <ItemSkeleton />
+          <ItemSkeleton />
+          <ItemSkeleton className="sm:col-span-3" />
+        </div>
+      </div>
+    </Loading>
+  );
+}
+
 export async function NewNote() {
   const actor = await requireActor();
   const options = await loadNoteFormOptions(actor);
@@ -420,6 +518,108 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
         },
       }}
     />
+  );
+}
+
+/** The note form while its options load: the same five cards and buttons as `NoteForm`. */
+export function NoteFormSkeleton() {
+  return (
+    <Loading label="Cargando formulario de boleta" className="max-w-5xl gap-6">
+      <FormSectionSkeleton>
+        <div className="grid gap-5 sm:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <FieldSkeleton />
+            <Skeleton className="my-0.5 h-3 w-32" />
+          </div>
+          <FieldSkeleton className="sm:col-span-2" />
+          <FieldSkeleton />
+          <FieldSkeleton />
+          <FieldSkeleton />
+          <FieldSkeleton />
+        </div>
+      </FormSectionSkeleton>
+
+      <FormSectionSkeleton>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
+          <Skeleton className="h-9 w-64 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+          <Skeleton className="h-3 w-10" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+          <Skeleton className="h-9 w-32 rounded-lg" />
+          <Skeleton className="ml-auto h-4 w-16" />
+        </div>
+        <Skeleton className="h-7 w-32 rounded-lg" />
+        <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-2 border-t pt-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-6 w-36" />
+        </div>
+      </FormSectionSkeleton>
+
+      <FormSectionSkeleton>
+        <div className="grid gap-5 sm:grid-cols-3">
+          <FieldSkeleton />
+          <FieldSkeleton />
+          <FieldSkeleton />
+        </div>
+      </FormSectionSkeleton>
+
+      <FormSectionSkeleton>
+        <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
+          <FieldSkeleton />
+          <div className="flex flex-col gap-3">
+            <Skeleton className="mb-2 h-3.5 w-36" />
+            <div className="grid gap-5 sm:grid-cols-3">
+              <FieldSkeleton />
+              <FieldSkeleton />
+              <FieldSkeleton />
+            </div>
+          </div>
+        </div>
+      </FormSectionSkeleton>
+
+      <FormSectionSkeleton>
+        <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
+          <FieldSkeleton tall />
+          <FieldSkeleton />
+        </div>
+      </FormSectionSkeleton>
+
+      <div aria-hidden className="flex flex-wrap items-center gap-3">
+        <Skeleton className="h-9 w-36 rounded-lg" />
+        <Skeleton className="h-9 w-20 rounded-lg" />
+      </div>
+    </Loading>
+  );
+}
+
+/** `FormSection` of the note form: a white card with a small title. */
+function FormSectionSkeleton({ children }: { children: ReactNode }) {
+  return (
+    <div aria-hidden className="rounded-xl border bg-card p-5 shadow-xs">
+      <div className="mb-4 py-0.5">
+        <Skeleton className="h-4 w-32" />
+      </div>
+      <div className="flex flex-col gap-4">{children}</div>
+    </div>
+  );
+}
+
+function FieldSkeleton({ className, tall = false }: { className?: string; tall?: boolean }) {
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      <Skeleton className="my-0.5 h-3.5 w-24" />
+      <Skeleton className={cn("w-full rounded-lg", tall ? "h-16" : "h-9")} />
+    </div>
+  );
+}
+
+/** An `Item` of the note's facts: a small label over its value. */
+function ItemSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex flex-col gap-1", className)}>
+      <Skeleton className="my-0.5 h-3 w-20" />
+      <Skeleton className="my-0.5 h-4 w-32" />
+    </div>
   );
 }
 

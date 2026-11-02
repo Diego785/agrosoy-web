@@ -5,6 +5,7 @@ import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzl
 import { getDb } from "@/shared/infrastructure/db/client";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
+import { Loading, Skeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import { Badge } from "@/shared/presentation/ui/badge";
 import {
   Table,
@@ -173,12 +174,39 @@ export function UserStatus({ user }: { user: UserSummary }) {
   return <Badge variant="success">Activo</Badge>;
 }
 
+/** The users list while it loads, laid out like `UsersTable`. */
 export function UsersTableSkeleton() {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Cargando usuarios">
-      {Array.from({ length: 5 }, (_, row) => (
-        <div key={row} className="h-14 animate-pulse rounded-xl bg-muted/60" />
-      ))}
-    </div>
+    <Loading label="Cargando usuarios">
+      <TableSkeleton
+        columns={[
+          { shape: "avatar" },
+          { shape: "code" },
+          { shape: "text" },
+          { shape: "badge" },
+          // The row menu shows only its icon, the size of the chevron.
+          { shape: "chevron", className: "w-12" },
+          { shape: "chevron", className: "w-10" },
+        ]}
+      />
+      {/* Built here instead of `CardListSkeleton`: each card ends with the status badge under the name. */}
+      <ul aria-hidden className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs md:hidden">
+        {Array.from({ length: 5 }, (_, row) => (
+          <li key={row} className="flex flex-col gap-3 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-9 shrink-0 rounded-full" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <Skeleton className="size-4" />
+            </div>
+            <div className="pl-12">
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Loading>
   );
 }

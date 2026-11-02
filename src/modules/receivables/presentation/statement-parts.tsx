@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Skeleton } from "@/shared/presentation/skeletons";
 import { Badge } from "@/shared/presentation/ui/badge";
 import type { StatementSource, StatementTotalsView } from "../application/statement-view";
 
@@ -52,6 +53,31 @@ export function Figure({
     >
       <dt className="text-xs tracking-wide text-muted-foreground uppercase">{label}</dt>
       <dd className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+/** `SourceNotice` while it loads: the source, its campaign and the preview badge. */
+export function SourceNoticeSkeleton() {
+  return (
+    <div aria-hidden className="flex h-5 flex-wrap items-center gap-2">
+      <Skeleton className="h-3.5 w-40" />
+      <Skeleton className="h-3.5 w-20" />
+      <Skeleton className="h-5 w-56 rounded-full" />
+    </div>
+  );
+}
+
+/** `Figures` with four `Figure` cards while they load. */
+export function StatementFiguresSkeleton() {
+  return (
+    <div aria-hidden className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {[0, 1, 2, 3].map((index) => (
+        <div key={index} className="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-xs">
+          <Skeleton className="my-0.5 h-3 w-20" />
+          <Skeleton className="my-0.5 h-6 w-28" />
+        </div>
+      ))}
     </div>
   );
 }

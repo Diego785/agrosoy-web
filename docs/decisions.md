@@ -359,7 +359,8 @@ tables and sections as white cards. Every list shows an empty state with an icon
 next; rows with a detail page open with a click anywhere on the row. The products list shows one row
 per product with its presentations as tags (code, content, price; a dashed tag when it has no price),
 at most four and "+N más", so every row has the same height. The home page greets the user with
-shortcuts and the counts they are allowed to see.
+shortcuts and the counts they are allowed to see. While a screen loads it shows a skeleton with
+the same layout as its content, built from `shared/presentation/skeletons.tsx`.
 
 **Why:** a management system is used all day; the client should recognise their brand in it and find
 it calm and orderly. Color carries meaning (action, status), so it stays scarce.

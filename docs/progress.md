@@ -12,6 +12,9 @@ up without re-reading the whole history.
   a branded login and a home page with shortcuts and counts; tables, lists, badges, buttons and
   fields restyled for every screen. The products list shows presentations as tags with their price,
   one row per product. "Precios" joins the menu.
+- **Loading skeletons** on every screen, shaped like its content (same cards, columns and form
+  rows) from `shared/presentation/skeletons.tsx`, so nothing jumps when the data arrives. Header
+  buttons still wait for permissions. The products page drops its "Precios" button (now in the menu).
 
 ## 2026-11-01
 
