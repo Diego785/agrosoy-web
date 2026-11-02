@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { getDb } from "@/shared/infrastructure/db/client";
-import { buttonVariants } from "@/shared/presentation/ui/button";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
-import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
+import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
 import {
   Table,
   TableBody,
@@ -45,36 +44,31 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
 
   return (
     <div className="flex flex-col gap-4">
-      {/* A plain GET form: works before JavaScript loads and the URL can be shared. Keyed by the
-          search, so it always shows the one applied (D31). */}
-      <ResetOnLeave key={`${text}|${zoneId ?? ""}|${status}`}>
-        <form action={CUSTOMERS_PATH} className="flex flex-wrap gap-2">
-          <Input
-            name="q"
-            defaultValue={text}
-            placeholder="Nombre, código o NIT/CI"
-            aria-label="Buscar cliente"
-            className="max-w-xs"
-          />
-          {zones.length > 0 && (
-            <NativeSelect name="zone" defaultValue={zoneId ?? ""} aria-label="Zona">
-              <NativeSelectOption value="">Todas las zonas</NativeSelectOption>
-              {zones.map((zone) => (
-                <NativeSelectOption key={zone.id} value={zone.id}>
-                  {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          )}
-          <NativeSelect name="status" defaultValue={status} aria-label="Estado">
-            <NativeSelectOption value="active">Activos</NativeSelectOption>
-            <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
+      {/* Applied as it changes, with the filters in the URL so it can be shared (D33). */}
+      <LiveFilterForm action={CUSTOMERS_PATH} className="flex flex-wrap gap-2">
+        <Input
+          type="search"
+          name="q"
+          defaultValue={text}
+          placeholder="Nombre, código o NIT/CI"
+          aria-label="Buscar cliente"
+          className="max-w-xs"
+        />
+        {zones.length > 0 && (
+          <NativeSelect name="zone" defaultValue={zoneId ?? ""} aria-label="Zona">
+            <NativeSelectOption value="">Todas las zonas</NativeSelectOption>
+            {zones.map((zone) => (
+              <NativeSelectOption key={zone.id} value={zone.id}>
+                {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
+              </NativeSelectOption>
+            ))}
           </NativeSelect>
-          <button type="submit" className={buttonVariants({ variant: "outline" })}>
-            Buscar
-          </button>
-        </form>
-      </ResetOnLeave>
+        )}
+        <NativeSelect name="status" defaultValue={status} aria-label="Estado">
+          <NativeSelectOption value="active">Activos</NativeSelectOption>
+          <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
+        </NativeSelect>
+      </LiveFilterForm>
 
       {items.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">

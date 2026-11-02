@@ -13,6 +13,7 @@ import { getDb } from "@/shared/infrastructure/db/client";
 import type { Actor } from "@/shared/application/actor";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import { formatMoney } from "@/shared/presentation/format";
+import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
 import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
@@ -71,32 +72,28 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
 
   return (
     <div className="flex flex-col gap-4">
-      <ResetOnLeave key={`${text}|${line}|${status}`}>
-        <form action={PRODUCTS_PATH} className="flex flex-wrap gap-2">
-          <Input
-            name="q"
-            defaultValue={text}
-            placeholder="Nombre o código"
-            aria-label="Buscar producto"
-            className="max-w-xs"
-          />
-          <NativeSelect name="line" defaultValue={line} aria-label="Línea">
-            <NativeSelectOption value="">Todas las líneas</NativeSelectOption>
-            {PRODUCT_LINES.map((option) => (
-              <NativeSelectOption key={option} value={option}>
-                {LINE_LABELS[option]}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <NativeSelect name="status" defaultValue={status} aria-label="Estado">
-            <NativeSelectOption value="active">Activos</NativeSelectOption>
-            <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
-          </NativeSelect>
-          <button type="submit" className={buttonVariants({ variant: "outline" })}>
-            Buscar
-          </button>
-        </form>
-      </ResetOnLeave>
+      <LiveFilterForm action={PRODUCTS_PATH} className="flex flex-wrap gap-2">
+        <Input
+          type="search"
+          name="q"
+          defaultValue={text}
+          placeholder="Nombre o código"
+          aria-label="Buscar producto"
+          className="max-w-xs"
+        />
+        <NativeSelect name="line" defaultValue={line} aria-label="Línea">
+          <NativeSelectOption value="">Todas las líneas</NativeSelectOption>
+          {PRODUCT_LINES.map((option) => (
+            <NativeSelectOption key={option} value={option}>
+              {LINE_LABELS[option]}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+        <NativeSelect name="status" defaultValue={status} aria-label="Estado">
+          <NativeSelectOption value="active">Activos</NativeSelectOption>
+          <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
+        </NativeSelect>
+      </LiveFilterForm>
       {prices && (
         <p className="text-sm text-muted-foreground">
           Precios generales de {prices.label}, en US$.{" "}

@@ -3,6 +3,12 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-02
+
+- **Filters apply as they change (D33)** in products, customers and notes: no "Buscar" button,
+  the search box waits for a 350 ms pause, selects apply at once, Enter still searches. The price
+  sheet keeps "Ver". Week 3's lists (payments, charges, statements) get the same when it merges.
+
 ## 2026-11-01
 
 - **The client is Agrosoil**, not Agrosoy: renamed in every screen, page title, document and doc.
