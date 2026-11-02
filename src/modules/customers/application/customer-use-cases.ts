@@ -1,5 +1,6 @@
 import type { Actor } from "@/shared/application/actor";
 import type { AuditTrail } from "@/shared/application/audit-trail";
+import { paged, pageWindow, type Paged } from "@/shared/application/pagination";
 import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
@@ -34,8 +35,6 @@ export type CustomerDeps = {
   technicians: TechnicianLookup;
   audit: AuditTrail;
 };
-
-export const CUSTOMERS_PAGE_SIZE = 50;
 
 export async function registerCustomer(
   deps: CustomerDeps,
@@ -100,19 +99,18 @@ export async function searchCustomers(
   deps: Pick<CustomerDeps, "customers">,
   actor: Actor,
   input: unknown,
-): Promise<{ items: CustomerListItem[]; total: number; page: number; pageSize: number }> {
+): Promise<Paged<CustomerListItem>> {
   assertCan(actor, "customers.view");
-  const { text, zoneId, status, page } = validateInput(customerSearchSchema, input);
+  const { text, zoneId, status, page, pages } = validateInput(customerSearchSchema, input);
 
   const result = await deps.customers.search({
     text: normalizeForComparison(text),
     zoneId,
     status,
     preferTechnicianId: actor.role === "sales_technician" ? actor.id : undefined,
-    limit: CUSTOMERS_PAGE_SIZE,
-    offset: (page - 1) * CUSTOMERS_PAGE_SIZE,
+    ...pageWindow({ page, pages }),
   });
-  return { ...result, page, pageSize: CUSTOMERS_PAGE_SIZE };
+  return paged({ page, pages }, result);
 }
 
 /** Everything known about a customer, for the customer page. Every role can look customers up. */

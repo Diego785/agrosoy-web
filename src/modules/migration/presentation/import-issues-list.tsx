@@ -1,8 +1,12 @@
+import { CircleCheckIcon, FileSpreadsheetIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
+import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatDate, formatUsd } from "@/shared/presentation/format";
+import { Loading, Skeleton } from "@/shared/presentation/skeletons";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { importIssues } from "../application/import-use-cases";
 import type { ImportIssue, ImportIssueCode } from "../domain/sales-sheet";
 import { migrationDeps } from "./migration-deps";
@@ -74,32 +78,78 @@ export async function ImportIssuesList({ params }: { params: Promise<{ batchId: 
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        Hoja «{batch.sheetName}» · {batch.campaignLabel ?? "sin campaña"} · {batch.fileName}
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+        <FileSpreadsheetIcon className="size-4 text-highlight" aria-hidden />
+        <span className="font-medium text-foreground">Hoja «{batch.sheetName}»</span>
+        <span aria-hidden>·</span>
+        <span>{batch.campaignLabel ?? "sin campaña"}</span>
+        <span aria-hidden>·</span>
+        <span className="font-mono text-xs">{batch.fileName}</span>
       </p>
       {issues.length === 0 ? (
-        <p className="text-sm">La planilla no tiene observaciones.</p>
+        <EmptyState icon={<CircleCheckIcon />} title="La planilla no tiene observaciones." />
       ) : (
-        <ul className="divide-y rounded-lg border">
-          {findings(issues).map((finding) => (
-            <li key={`${finding.text}:${finding.rows.join(",")}`} className="flex gap-4 px-4 py-3 text-sm">
-              <span className="w-28 shrink-0 text-muted-foreground tabular-nums">
-                {finding.rows.length === 0
-                  ? "Hoja"
-                  : finding.rows.length === 1
-                    ? `Fila ${finding.rows[0]}`
-                    : `${finding.rows.length} filas`}
+        <section aria-labelledby="import-issues" className="rounded-xl border bg-card shadow-xs">
+          <h2 id="import-issues" className="border-b px-5 py-3 text-sm font-semibold">
+            Observaciones
+          </h2>
+          <ul className="divide-y">
+            {findings(issues).map((finding) => (
+              <li key={`${finding.text}:${finding.rows.join(",")}`} className="flex gap-4 px-5 py-3 text-sm">
+                <span className="w-24 shrink-0 pt-0.5">
+                  <Badge variant="neutral" className="tabular-nums">
+                    {finding.rows.length === 0
+                      ? "Hoja"
+                      : finding.rows.length === 1
+                        ? `Fila ${finding.rows[0]}`
+                        : `${finding.rows.length} filas`}
+                  </Badge>
+                </span>
+                <span className="min-w-0">
+                  {finding.text}
+                  {finding.rows.length > 1 && (
+                    <span className="block text-xs text-muted-foreground tabular-nums">
+                      Filas {finding.rows.join(", ")}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** The sheet's findings while they load: the sheet line and the "Observaciones" card. */
+export function ImportIssuesListSkeleton() {
+  return (
+    <Loading label="Cargando observaciones" className="max-w-3xl">
+      <div aria-hidden className="flex h-5 flex-wrap items-center gap-2">
+        <Skeleton className="size-4" />
+        <Skeleton className="h-3.5 w-36" />
+        <Skeleton className="h-3.5 w-20" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+      <div aria-hidden className="rounded-xl border bg-card shadow-xs">
+        <div className="border-b px-5 py-3.5">
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <ul className="divide-y">
+          {[0, 1, 2, 3, 4, 5].map((index) => (
+            <li key={index} className="flex gap-4 px-5 py-3">
+              <span className="w-24 shrink-0 pt-0.5">
+                <Skeleton className="h-5 w-16 rounded-full" />
               </span>
-              <span>
-                {finding.text}
-                {finding.rows.length > 1 && (
-                  <span className="block text-xs text-muted-foreground">Filas {finding.rows.join(", ")}</span>
-                )}
-              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
+                <Skeleton className="h-3.5 w-full max-w-md" />
+                {index % 2 === 0 && <Skeleton className="h-3 w-32" />}
+              </div>
             </li>
           ))}
         </ul>
-      )}
-    </div>
+      </div>
+    </Loading>
   );
 }

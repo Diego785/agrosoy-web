@@ -1,6 +1,8 @@
 import { Money } from "@/shared/domain/money";
 import { formatDate, formatMoney, formatQuantity, formatRate, formatUsd } from "@/shared/presentation/format";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { CardListSkeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import {
   Table,
   TableBody,
@@ -11,7 +13,14 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import type { CustomerStatementView, StatementLineView } from "../application/statement-view";
-import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
+import {
+  Figure,
+  Figures,
+  StatementFiguresSkeleton,
+  SourceNotice,
+  SourceNoticeSkeleton,
+  StatusBadge,
+} from "./statement-parts";
 
 const UNDATED: Record<Exclude<StatementLineView["kind"], "delivery">, string> = {
   payment: "Pagos según el resumen de la planilla (sin fecha)",
@@ -51,8 +60,10 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
           <TableBody>
             {rows.map(({ line, balance: running }, index) => (
               <TableRow key={index}>
-                <TableCell className="tabular-nums">{line.date ? formatDate(line.date) : "—"}</TableCell>
-                <TableCell className="tabular-nums">{line.noteNumber ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground tabular-nums">
+                  {line.date ? formatDate(line.date) : "—"}
+                </TableCell>
+                <TableCell className="font-medium tabular-nums">{line.noteNumber ?? "—"}</TableCell>
                 <TableCell>
                   <LineDetail line={line} />
                 </TableCell>
@@ -134,12 +145,39 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
   );
 }
 
+/** `CustomerStatement` while it loads: the source, the four figures and the movements. */
+export function CustomerStatementSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-6">
+      <SourceNoticeSkeleton />
+      <StatementFiguresSkeleton />
+      <TableSkeleton
+        rows={9}
+        columns={[
+          { shape: "short" },
+          { shape: "code" },
+          { shape: "text" },
+          { shape: "code", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "code", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+        ]}
+      />
+      <CardListSkeleton lines={3} />
+    </div>
+  );
+}
+
 function LineDetail({ line }: { line: StatementLineView }) {
   return (
     <>
       {line.kind !== "delivery" && !line.description ? UNDATED[line.kind] : line.description}
       {line.kind === "return" && line.description && (
-        <span className="ml-2 text-xs text-muted-foreground">devolución</span>
+        <Badge variant="neutral" className="ml-2 print:border-current">
+          devolución
+        </Badge>
       )}
       {line.observation && (
         <span className="block text-xs text-muted-foreground">Obs.: {line.observation}</span>

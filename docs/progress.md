@@ -3,6 +3,19 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-02
+
+- **Filters apply as they change (D33)** in products, customers and notes: no "Buscar" button,
+  the search box waits for a 350 ms pause, selects apply at once, Enter still searches. The price
+  sheet keeps "Ver". Week 3's lists (payments, charges, statements) get the same when it merges.
+- **Agrosoil's look (D34):** colors from the logo, a green sidebar with the logo and sections,
+  a branded login and a home page with shortcuts and counts; tables, lists, badges, buttons and
+  fields restyled for every screen. The products list shows presentations as tags with their price,
+  one row per product. "Precios" joins the menu.
+- **Loading skeletons** on every screen, shaped like its content (same cards, columns and form
+  rows) from `shared/presentation/skeletons.tsx`, so nothing jumps when the data arrives. Header
+  buttons still wait for permissions. The products page drops its "Precios" button (now in the menu).
+
 ## 2026-11-01
 
 - **The client is Agrosoil**, not Agrosoy: renamed in every screen, page title, document and doc.
@@ -20,6 +33,9 @@ up without re-reading the whole history.
   - **Screens start clean** after leaving them, and filters show what the list applies (D31).
   - **Choosing a customer on a note fills who receives** with the customer's name, NIT/CI and
     "Titular", still editable.
+- **Pagination (D32):** customers, notes, products and the change log in pages of 20; phones
+  append the next page while scrolling. The notes list had a page size but no way to reach page 2.
+- **Deployed to staging** (`main` at `8186f36`, by the developer) for the business owner's demo.
 
 ## 2026-10-31
 

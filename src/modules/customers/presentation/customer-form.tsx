@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { applyActionError } from "@/shared/presentation/form-errors";
@@ -55,14 +55,17 @@ export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technici
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex max-w-2xl flex-col gap-6">
-      <FieldGroup>
+    <form
+      onSubmit={submit}
+      noValidate
+      className="flex max-w-2xl flex-col divide-y overflow-hidden rounded-xl border bg-card shadow-xs"
+    >
+      <FormSection title="Datos del cliente">
         <Field data-invalid={!!errors.name}>
           <FieldLabel htmlFor="name">Nombre o razón social</FieldLabel>
           <Input id="name" autoFocus={!customer} aria-invalid={!!errors.name} {...form.register("name")} />
           <FieldError errors={[errors.name]} />
         </Field>
-
         <div className="grid gap-5 sm:grid-cols-2">
           <Field data-invalid={!!errors.taxId}>
             <FieldLabel htmlFor="taxId">NIT o CI (opcional)</FieldLabel>
@@ -74,6 +77,11 @@ export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technici
             <Input id="phone" type="tel" aria-invalid={!!errors.phone} {...form.register("phone")} />
             <FieldError errors={[errors.phone]} />
           </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Zona y técnico">
+        <div className="grid gap-5 sm:grid-cols-2">
           <Field data-invalid={!!errors.zoneId}>
             <FieldLabel htmlFor="zoneId">Zona</FieldLabel>
             <NativeSelect id="zoneId" aria-invalid={!!errors.zoneId} {...form.register("zoneId")}>
@@ -102,6 +110,11 @@ export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technici
             </NativeSelect>
             <FieldError errors={[errors.technicianId]} />
           </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Tipo de cambio">
+        <div className="grid gap-5 sm:grid-cols-2">
           <Field data-invalid={!!errors.exchangeRateKind}>
             <FieldLabel htmlFor="exchangeRateKind">Tipo de cambio acordado</FieldLabel>
             <NativeSelect id="exchangeRateKind" {...form.register("exchangeRateKind")}>
@@ -125,31 +138,43 @@ export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technici
             </Field>
           )}
         </div>
+      </FormSection>
 
+      <FormSection title="Notas">
         <Field data-invalid={!!errors.notes}>
           <FieldLabel htmlFor="notes">Notas (opcional)</FieldLabel>
           <Textarea id="notes" rows={3} aria-invalid={!!errors.notes} {...form.register("notes")} />
           <FieldDescription>Por ejemplo, dónde se le entrega o con quién coordinar.</FieldDescription>
           <FieldError errors={[errors.notes]} />
         </Field>
-      </FieldGroup>
+      </FormSection>
 
-      <FieldError errors={[errors.root]} />
-
-      <div className="flex gap-3">
-        <Button type="submit" disabled={isSaving}>
-          {isSaving ? "Guardando…" : customer ? "Guardar cambios" : "Registrar cliente"}
-        </Button>
-        <Link
-          href={customer ? customerPath(customer.id) : CUSTOMERS_PATH}
-          className={buttonVariants({ variant: "ghost" })}
-        >
-          Cancelar
-        </Link>
+      <div className="flex flex-col gap-3 bg-muted/30 px-5 py-4">
+        <FieldError errors={[errors.root]} />
+        <div className="flex gap-3">
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? "Guardando…" : customer ? "Guardar cambios" : "Registrar cliente"}
+          </Button>
+          <Link
+            href={customer ? customerPath(customer.id) : CUSTOMERS_PATH}
+            className={buttonVariants({ variant: "ghost" })}
+          >
+            Cancelar
+          </Link>
+        </div>
       </div>
     </form>
   );
 });
+
+function FormSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-4 p-5">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <FieldGroup>{children}</FieldGroup>
+    </div>
+  );
+}
 
 function initialValues(customer: CustomerFormData | undefined): CustomerInput {
   return {

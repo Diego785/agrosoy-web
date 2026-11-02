@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Actor } from "@/shared/application/actor";
 import type { AuditTrail } from "@/shared/application/audit-trail";
+import { paged, pageWindow, type Paged } from "@/shared/application/pagination";
 import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
@@ -24,6 +25,7 @@ import {
   newProductSchema,
   presentationSchema,
   priceSheetSchema,
+  productPageSchema,
   productSchema,
   productSearchSchema,
   savePricesSchema,
@@ -159,6 +161,21 @@ export async function listProducts(
   assertCan(actor, "catalog.view");
   const { text, line, status } = validateInput(productSearchSchema, input);
   return deps.products.search({ text: normalizeForComparison(text), line, status });
+}
+
+/** The products list, a page at a time (D32). */
+export async function productsPage(
+  deps: Pick<CatalogDeps, "products">,
+  actor: Actor,
+  input: unknown,
+): Promise<Paged<ProductView>> {
+  assertCan(actor, "catalog.view");
+  const { text, line, status, page, pages } = validateInput(productPageSchema(), input);
+  const result = await deps.products.searchPage(
+    { text: normalizeForComparison(text), line, status },
+    pageWindow({ page, pages }),
+  );
+  return paged({ page, pages }, result);
 }
 
 export async function getProduct(

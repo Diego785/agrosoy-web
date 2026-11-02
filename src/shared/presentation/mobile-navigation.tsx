@@ -2,6 +2,7 @@
 
 import { MenuIcon, XIcon } from "lucide-react";
 import { useState, type MouseEvent, type ReactNode } from "react";
+import { AgrosoilLogo } from "./brand/agrosoil-logo";
 import { Button } from "./ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "./ui/sheet";
 
@@ -21,14 +22,24 @@ export function MobileNavigation({ children }: { children: ReactNode }) {
       >
         <MenuIcon aria-hidden />
       </SheetTrigger>
-      <SheetContent>
-        <div className="flex h-14 items-center justify-between border-b px-4">
-          <SheetTitle>Agrosoil</SheetTitle>
-          <SheetClose render={<Button variant="ghost" size="icon" aria-label="Cerrar menú" />}>
+      <SheetContent className="border-sidebar-border bg-sidebar text-sidebar-foreground">
+        <div className="flex items-center justify-between px-4 pt-5 pb-4">
+          <SheetTitle className="sr-only">Agrosoil</SheetTitle>
+          <AgrosoilLogo className="h-11" />
+          <SheetClose
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Cerrar menú"
+                className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              />
+            }
+          >
             <XIcon aria-hidden />
           </SheetClose>
         </div>
-        <div className="flex-1 overflow-y-auto" onClick={closeOnLink}>
+        <div className="flex-1 overflow-y-auto pb-4" onClick={closeOnLink}>
           {children}
         </div>
       </SheetContent>

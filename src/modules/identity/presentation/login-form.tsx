@@ -59,7 +59,7 @@ export function LoginForm() {
         </Field>
       </FieldGroup>
       {error && <FieldError>{error}</FieldError>}
-      <Button type="submit" disabled={isSigningIn}>
+      <Button type="submit" size="lg" disabled={isSigningIn}>
         {isSigningIn ? "Ingresando…" : "Ingresar"}
       </Button>
     </form>

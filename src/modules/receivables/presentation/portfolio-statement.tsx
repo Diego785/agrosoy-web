@@ -1,7 +1,9 @@
+import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { Money } from "@/shared/domain/money";
 import { formatMoney, formatPerMille, formatUsd } from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { CardListSkeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import {
   Table,
   TableBody,
@@ -12,7 +14,14 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import type { PortfolioStatementView } from "../application/statement-view";
-import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
+import {
+  Figure,
+  Figures,
+  StatementFiguresSkeleton,
+  SourceNotice,
+  SourceNoticeSkeleton,
+  StatusBadge,
+} from "./statement-parts";
 
 /** The summary Agrosoil keeps next to each sheet: Cliente, Entrega, Pago, Dev., Deuda and status. */
 export function PortfolioStatement({
@@ -48,13 +57,20 @@ export function PortfolioStatement({
               <TableHead className="text-right">Dev.</TableHead>
               <TableHead className="text-right">Deuda</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead className="w-10 print:hidden">
+                <span className="sr-only">Abrir</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {statement.customers.map((customer) => (
-              <TableRow key={customer.key}>
+              <TableRow key={customer.key} className="group relative">
                 <TableCell className="font-medium">
-                  <Link href={customerHref(customer.key)} className="hover:underline">
+                  {/* The link covers the row, so the whole row opens the customer's statement. */}
+                  <Link
+                    href={customerHref(customer.key)}
+                    className="group-hover:text-primary after:absolute after:inset-0"
+                  >
                     {customer.name}
                   </Link>
                 </TableCell>
@@ -64,6 +80,12 @@ export function PortfolioStatement({
                 <Amount value={customer.totals.balance} strong />
                 <TableCell>
                   <StatusBadge status={customer.totals.status} />
+                </TableCell>
+                <TableCell className="text-muted-foreground print:hidden">
+                  <ChevronRightIcon
+                    className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                    aria-hidden
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -78,15 +100,16 @@ export function PortfolioStatement({
               <Amount value={totals.returned} />
               <Amount value={totals.balance} strong />
               <TableCell />
+              <TableCell className="print:hidden" />
             </TableRow>
           </TableFooter>
         </Table>
       </WideOnly>
       <CardList label="Clientes de la planilla">
         {statement.customers.map((customer) => (
-          <CardListItem key={customer.key}>
+          <CardListItem key={customer.key} className="relative">
             <div className="flex items-baseline justify-between gap-3">
-              <Link href={customerHref(customer.key)} className="font-medium hover:underline">
+              <Link href={customerHref(customer.key)} className="font-medium after:absolute after:inset-0">
                 {customer.name}
               </Link>
               <StatusBadge status={customer.totals.status} />
@@ -108,6 +131,29 @@ export function PortfolioStatement({
           </CardField>
         </CardListItem>
       </CardList>
+    </div>
+  );
+}
+
+/** `PortfolioStatement` while it loads: the source, the four figures and the customers. */
+export function PortfolioStatementSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-6">
+      <SourceNoticeSkeleton />
+      <StatementFiguresSkeleton />
+      <TableSkeleton
+        rows={9}
+        columns={[
+          { shape: "text" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "badge" },
+          { shape: "chevron", className: "w-10" },
+        ]}
+      />
+      <CardListSkeleton lines={3} />
     </div>
   );
 }

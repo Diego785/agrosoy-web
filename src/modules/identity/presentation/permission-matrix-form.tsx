@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { CheckIcon, MinusIcon, SaveIcon } from "lucide-react";
+import { Fragment, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { PERMISSIONS, type Permission } from "@/shared/application/permissions";
 import type { Role } from "@/shared/domain/role";
@@ -8,6 +9,14 @@ import { errorMessage } from "@/shared/presentation/error-messages";
 import { PERMISSION_LABELS } from "@/shared/presentation/permission-labels";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
 import { Button } from "@/shared/presentation/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/shared/presentation/ui/table";
 import type { PermissionMatrix } from "../application/permission-use-cases";
 import { savePermissionMatrixAction } from "./permission-actions";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
@@ -46,51 +55,107 @@ export const PermissionMatrixForm = resetOnLeave(function PermissionMatrixForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="py-2 pr-4 text-left font-medium">Permiso</th>
-              {matrix.map((row) => (
-                <th key={row.role} className="px-3 py-2 text-center font-medium">
-                  {ROLE_LABELS[row.role]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {PERMISSIONS.map((permission) => (
-              <tr key={permission} className="border-b last:border-0">
-                <td className="py-3 pr-4">
-                  <span className="font-medium">{PERMISSION_LABELS[permission].label}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {PERMISSION_LABELS[permission].description}
-                  </span>
-                </td>
-                {matrix.map((row) => (
-                  <td key={row.role} className="px-3 py-3 text-center">
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-primary"
-                      checked={granted.get(row.role)?.has(permission) ?? false}
-                      disabled={!row.editable || isSaving}
-                      onChange={() => toggle(row.role, permission)}
-                      aria-label={`${PERMISSION_LABELS[permission].label} para ${ROLE_LABELS[row.role]}`}
-                    />
-                  </td>
-                ))}
-              </tr>
+      <Table className="min-w-[640px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Permiso</TableHead>
+            {matrix.map((row) => (
+              <TableHead key={row.role} className="w-32 text-center">
+                {ROLE_LABELS[row.role]}
+              </TableHead>
             ))}
-          </tbody>
-        </table>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {PERMISSION_AREAS.map(({ area, permissions }) => (
+            <Fragment key={area}>
+              <TableRow className="bg-muted/35 hover:bg-muted/35">
+                <TableCell
+                  colSpan={matrix.length + 1}
+                  className="py-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {area}
+                </TableCell>
+              </TableRow>
+              {permissions.map((permission) => (
+                <TableRow key={permission}>
+                  <TableCell className="whitespace-normal">
+                    <span className="font-medium">{PERMISSION_LABELS[permission].label}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {PERMISSION_LABELS[permission].description}
+                    </span>
+                  </TableCell>
+                  {matrix.map((row) => {
+                    const checked = granted.get(row.role)?.has(permission) ?? false;
+                    const label = `${PERMISSION_LABELS[permission].label} para ${ROLE_LABELS[row.role]}`;
+                    return (
+                      <TableCell key={row.role} className="text-center">
+                        {row.editable ? (
+                          <input
+                            type="checkbox"
+                            className="size-4.5 cursor-pointer align-middle accent-primary disabled:cursor-not-allowed"
+                            checked={checked}
+                            disabled={isSaving}
+                            onChange={() => toggle(row.role, permission)}
+                            aria-label={label}
+                          />
+                        ) : (
+                          // A role that can't be changed shows a plain mark instead of a dead checkbox.
+                          <span
+                            role="img"
+                            aria-label={`${label}: ${checked ? "sí" : "no"}`}
+                            className="inline-flex text-primary"
+                          >
+                            {checked ? (
+                              <CheckIcon className="size-4.5" aria-hidden />
+                            ) : (
+                              <MinusIcon className="size-4.5 text-muted-foreground" aria-hidden />
+                            )}
+                          </span>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </Fragment>
+          ))}
+        </TableBody>
+      </Table>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-xl text-sm text-muted-foreground">
+          Administración siempre tiene todos los permisos. Los cambios valen desde el siguiente clic de cada
+          usuario.
+        </p>
+        <Button onClick={save} disabled={isSaving}>
+          <SaveIcon aria-hidden />
+          {isSaving ? "Guardando…" : "Guardar permisos"}
+        </Button>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Administración siempre tiene todos los permisos. Los cambios valen desde el siguiente clic de cada
-        usuario.
-      </p>
-      <Button onClick={save} disabled={isSaving} className="self-start">
-        {isSaving ? "Guardando…" : "Guardar permisos"}
-      </Button>
     </div>
   );
 });
+
+/** Which part of the system each permission belongs to, read from its code ("catalog.manage"). */
+const AREA_LABELS: Record<string, string> = {
+  users: "Administración",
+  audit: "Administración",
+  customers: "Clientes y cobranzas",
+  statements: "Clientes y cobranzas",
+  imports: "Importación",
+  catalog: "Catálogo",
+  notes: "Boletas",
+};
+
+const PERMISSION_AREAS = groupByArea();
+
+/** The permissions grouped by area, in the order they are declared. */
+function groupByArea() {
+  const groups = new Map<string, Permission[]>();
+  for (const permission of PERMISSIONS) {
+    const prefix = permission.split(".")[0] ?? permission;
+    const area = AREA_LABELS[prefix] ?? prefix;
+    groups.set(area, [...(groups.get(area) ?? []), permission]);
+  }
+  return [...groups].map(([area, permissions]) => ({ area, permissions }));
+}

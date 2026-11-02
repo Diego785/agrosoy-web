@@ -1,5 +1,6 @@
 "use client";
 
+import { SaveIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { errorMessage } from "@/shared/presentation/error-messages";
@@ -86,14 +87,14 @@ export const PriceSheetForm = resetOnLeave(function PriceSheetForm({
             <TableRow key={row.presentationId}>
               <TableCell className="font-mono text-xs text-muted-foreground">{row.code}</TableCell>
               <TableCell className="font-medium">{row.productName}</TableCell>
-              <TableCell>{contentLabel(row)}</TableCell>
+              <TableCell className="text-muted-foreground">{contentLabel(row)}</TableCell>
               <TableCell className="text-muted-foreground">{LINE_LABELS[row.line]}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <Input
                     inputMode="decimal"
                     selectOnFocus
-                    className="w-24 text-right"
+                    className="w-24 text-right tabular-nums"
                     value={prices.get(row.presentationId) ?? ""}
                     placeholder={row.generalPrice ?? ""}
                     aria-label={`Precio de ${row.productName} ${contentLabel(row)}`}
@@ -105,16 +106,20 @@ export const PriceSheetForm = resetOnLeave(function PriceSheetForm({
                   <span className="text-xs text-muted-foreground">por {priceUnitLabel(row)}</span>
                 </div>
                 {errors[row.presentationId] && (
-                  <span className="text-xs text-destructive">{errors[row.presentationId]}</span>
+                  <span className="mt-1 block text-xs text-destructive">{errors[row.presentationId]}</span>
                 )}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      <Button onClick={save} disabled={isSaving} className="self-start">
-        {isSaving ? "Guardando…" : "Guardar precios"}
-      </Button>
+      {/* Stays in view while scrolling a long sheet. */}
+      <div className="sticky bottom-4 z-10 self-start">
+        <Button onClick={save} disabled={isSaving} className="shadow-md">
+          <SaveIcon aria-hidden />
+          {isSaving ? "Guardando…" : "Guardar precios"}
+        </Button>
+      </div>
     </div>
   );
 });

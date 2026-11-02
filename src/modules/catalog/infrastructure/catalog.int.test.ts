@@ -11,6 +11,7 @@ import {
   createProduct,
   listProducts,
   priceSheet,
+  productsPage,
   referencePrice,
   savePrices,
   setPresentationActive,
@@ -161,6 +162,23 @@ describe("products", () => {
     await expect(setPresentationActive(deps(), admin, id, crypto.randomUUID(), true)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
+  });
+
+  it("lists products a page at a time, or several pages for a phone", async () => {
+    for (let index = 1; index <= 21; index++) {
+      await createProduct(deps(), admin, { ...fulvin, name: `Producto ${String(index).padStart(2, "0")}` });
+    }
+    const first = await productsPage(deps(), admin, { text: "" });
+    expect(first).toMatchObject({ total: 21, page: 1, pages: 1, pageSize: 20 });
+    expect(first.items).toHaveLength(20);
+    expect(first.items[0]?.name).toBe("Producto 01");
+
+    const second = await productsPage(deps(), admin, { text: "", page: "2" });
+    expect(second.items.map((product) => product.name)).toEqual(["Producto 21"]);
+    expect(second.items[0]?.presentations).toHaveLength(1);
+
+    expect((await productsPage(deps(), admin, { text: "", pages: "2" })).items).toHaveLength(21);
+    expect((await productsPage(deps(), admin, { text: "producto 2" })).total).toBe(2);
   });
 
   it("only lets catalog managers change products", async () => {

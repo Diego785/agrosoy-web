@@ -1,11 +1,20 @@
+import { ChevronRightIcon, UsersRoundIcon } from "lucide-react";
 import Link from "next/link";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { getDb } from "@/shared/infrastructure/db/client";
-import { buttonVariants } from "@/shared/presentation/ui/button";
-import { Input } from "@/shared/presentation/ui/input";
+import { EmptyState } from "@/shared/presentation/empty-state";
+import { SearchInput } from "@/shared/presentation/search-input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
-import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
+import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
+import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
+import {
+  CardListSkeleton,
+  FiltersSkeleton,
+  ListFooterSkeleton,
+  Loading,
+  TableSkeleton,
+} from "@/shared/presentation/skeletons";
 import {
   Table,
   TableBody,
@@ -29,51 +38,60 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
   const zoneId = firstValue(params.zone) || undefined;
   const status = firstValue(params.status) === "inactive" ? "inactive" : "active";
 
-  const [{ items, total, page, pageSize }, zones] = await Promise.all([
-    searchCustomers(deps, actor, { text, zoneId, status, page: firstValue(params.page) }),
+  const [list, zones] = await Promise.all([
+    searchCustomers(deps, actor, {
+      text,
+      zoneId,
+      status,
+      page: firstValue(params.page),
+      pages: firstValue(params.pages),
+    }),
     listAllZones(deps, actor),
   ]);
-  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  const { items } = list;
+  const filters = { q: text, zone: zoneId, status: status === "inactive" ? status : undefined };
 
   return (
     <div className="flex flex-col gap-4">
-      {/* A plain GET form: works before JavaScript loads and the URL can be shared. Keyed by the
-          search, so it always shows the one applied (D31). */}
-      <ResetOnLeave key={`${text}|${zoneId ?? ""}|${status}`}>
-        <form action={CUSTOMERS_PATH} className="flex flex-wrap gap-2">
-          <Input
-            name="q"
-            defaultValue={text}
-            placeholder="Nombre, código o NIT/CI"
-            aria-label="Buscar cliente"
-            className="max-w-xs"
-          />
-          {zones.length > 0 && (
-            <NativeSelect name="zone" defaultValue={zoneId ?? ""} aria-label="Zona">
-              <NativeSelectOption value="">Todas las zonas</NativeSelectOption>
-              {zones.map((zone) => (
-                <NativeSelectOption key={zone.id} value={zone.id}>
-                  {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          )}
-          <NativeSelect name="status" defaultValue={status} aria-label="Estado">
-            <NativeSelectOption value="active">Activos</NativeSelectOption>
-            <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
+      {/* Applied as it changes, with the filters in the URL so it can be shared (D33). */}
+      <LiveFilterForm action={CUSTOMERS_PATH} className="flex flex-wrap items-center gap-2">
+        <SearchInput
+          name="q"
+          defaultValue={text}
+          placeholder="Nombre, código o NIT/CI"
+          aria-label="Buscar cliente"
+        />
+        {zones.length > 0 && (
+          <NativeSelect name="zone" defaultValue={zoneId ?? ""} aria-label="Zona">
+            <NativeSelectOption value="">Todas las zonas</NativeSelectOption>
+            {zones.map((zone) => (
+              <NativeSelectOption key={zone.id} value={zone.id}>
+                {zone.isActive ? zone.name : `${zone.name} (desactivada)`}
+              </NativeSelectOption>
+            ))}
           </NativeSelect>
-          <button type="submit" className={buttonVariants({ variant: "outline" })}>
-            Buscar
-          </button>
-        </form>
-      </ResetOnLeave>
+        )}
+        <NativeSelect name="status" defaultValue={status} aria-label="Estado">
+          <NativeSelectOption value="active">Activos</NativeSelectOption>
+          <NativeSelectOption value="inactive">Desactivados</NativeSelectOption>
+        </NativeSelect>
+      </LiveFilterForm>
 
       {items.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">
+        <EmptyState
+          icon={<UsersRoundIcon />}
+          title={
+            text || zoneId
+              ? "Ningún cliente coincide con la búsqueda."
+              : "Todavía no hay clientes registrados."
+          }
+        >
           {text || zoneId
-            ? "Ningún cliente coincide con la búsqueda."
-            : "Todavía no hay clientes registrados."}
-        </p>
+            ? "Prueba con otro nombre, código o NIT/CI, o quita el filtro de zona."
+            : status === "inactive"
+              ? "No hay clientes desactivados."
+              : "Registra el primero con su zona y su técnico de venta."}
+        </EmptyState>
       ) : (
         <>
           <WideOnly>
@@ -86,23 +104,40 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
                   <TableHead>Zona</TableHead>
                   <TableHead>Técnico</TableHead>
                   <TableHead>Teléfono</TableHead>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Abrir</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((customer) => (
-                  <TableRow key={customer.id}>
+                {pageRows(list).map((customer) => (
+                  <TableRow key={customer.id} className="group relative">
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {formatCustomerCode(customer.code)}
                     </TableCell>
-                    <TableCell className="font-medium">
-                      <Link href={customerPath(customer.id)} className="hover:underline">
+                    <TableCell>
+                      {/* The link covers the row, so the whole row opens the customer. */}
+                      <Link
+                        href={customerPath(customer.id)}
+                        className="font-medium group-hover:text-primary after:absolute after:inset-0"
+                      >
                         {customer.name}
                       </Link>
                     </TableCell>
-                    <TableCell>{customer.taxId ?? "—"}</TableCell>
-                    <TableCell>{customer.zoneName ?? "—"}</TableCell>
-                    <TableCell>{customer.technicianName ?? "—"}</TableCell>
-                    <TableCell>{customer.phone ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {customer.taxId ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{customer.zoneName ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{customer.technicianName ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {customer.phone ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <ChevronRightIcon
+                        className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                        aria-hidden
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -110,21 +145,27 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
           </WideOnly>
           <CardList label="Clientes">
             {items.map((customer) => (
-              <CardListItem key={customer.id}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <Link href={customerPath(customer.id)} className="font-medium hover:underline">
-                    {customer.name}
-                  </Link>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {formatCustomerCode(customer.code)}
-                  </span>
+              <CardListItem key={customer.id} className="relative">
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={customerPath(customer.id)}
+                      className="block truncate font-medium after:absolute after:inset-0"
+                    >
+                      {customer.name}
+                    </Link>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {formatCustomerCode(customer.code)}
+                    </span>
+                  </div>
+                  <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 </div>
                 <span className="text-muted-foreground">
                   {[customer.zoneName, customer.technicianName].filter(Boolean).join(" · ") ||
                     "Sin zona ni técnico"}
                 </span>
                 {(customer.taxId || customer.phone) && (
-                  <span className="text-muted-foreground">
+                  <span className="text-muted-foreground tabular-nums">
                     {[customer.taxId && `NIT/CI ${customer.taxId}`, customer.phone]
                       .filter(Boolean)
                       .join(" · ")}
@@ -136,45 +177,12 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
         </>
       )}
 
-      <footer className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{total === 1 ? "1 cliente" : `${total.toLocaleString("es-BO")} clientes`}</span>
-        {lastPage > 1 && (
-          <nav className="flex items-center gap-2" aria-label="Páginas">
-            {page > 1 && (
-              <PageLink params={{ q: text, zone: zoneId, status }} page={page - 1} label="Anterior" />
-            )}
-            <span>
-              Página {page} de {lastPage}
-            </span>
-            {page < lastPage && (
-              <PageLink params={{ q: text, zone: zoneId, status }} page={page + 1} label="Siguiente" />
-            )}
-          </nav>
-        )}
-      </footer>
+      <ListPages
+        list={list}
+        href={(paging) => listHref(CUSTOMERS_PATH, filters, paging)}
+        noun={["cliente", "clientes"]}
+      />
     </div>
-  );
-}
-
-function PageLink({
-  params,
-  page,
-  label,
-}: {
-  params: { q: string; zone?: string; status: string };
-  page: number;
-  label: string;
-}) {
-  const query = new URLSearchParams({
-    ...(params.q && { q: params.q }),
-    ...(params.zone && { zone: params.zone }),
-    ...(params.status === "inactive" && { status: params.status }),
-    page: String(page),
-  });
-  return (
-    <Link href={`${CUSTOMERS_PATH}?${query}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-      {label}
-    </Link>
   );
 }
 
@@ -182,13 +190,24 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** The customers list while it loads, laid out like `CustomersTable`. */
 export function CustomersTableSkeleton() {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Cargando clientes">
-      <div className="h-8 max-w-md animate-pulse rounded-md bg-muted" />
-      {Array.from({ length: 6 }, (_, row) => (
-        <div key={row} className="h-10 animate-pulse rounded-md bg-muted/60" />
-      ))}
-    </div>
+    <Loading label="Cargando clientes">
+      <FiltersSkeleton selects={2} />
+      <TableSkeleton
+        columns={[
+          { shape: "code", className: "w-20" },
+          { shape: "text" },
+          { shape: "short" },
+          { shape: "text" },
+          { shape: "text" },
+          { shape: "short" },
+          { shape: "chevron", className: "w-10" },
+        ]}
+      />
+      <CardListSkeleton lines={3} />
+      <ListFooterSkeleton />
+    </Loading>
   );
 }

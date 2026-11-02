@@ -49,8 +49,13 @@ export const CampaignForm = resetOnLeave(function CampaignForm({ campaign }: { c
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
-      <FieldGroup>
+    <form
+      onSubmit={submit}
+      noValidate
+      className="flex max-w-xl flex-col divide-y overflow-hidden rounded-xl border bg-card shadow-xs"
+    >
+      <FieldGroup className="gap-4 p-5">
+        <h3 className="text-sm font-semibold">Temporada</h3>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field data-invalid={!!errors.season}>
             <FieldLabel htmlFor="season">Temporada</FieldLabel>
@@ -74,6 +79,11 @@ export const CampaignForm = resetOnLeave(function CampaignForm({ campaign }: { c
             />
             <FieldError errors={[errors.year]} />
           </Field>
+        </div>
+      </FieldGroup>
+      <FieldGroup className="gap-4 p-5">
+        <h3 className="text-sm font-semibold">Fechas</h3>
+        <div className="grid gap-5 sm:grid-cols-2">
           <Field data-invalid={!!errors.startsOn}>
             <FieldLabel htmlFor="startsOn">Desde</FieldLabel>
             <Controller
@@ -94,14 +104,16 @@ export const CampaignForm = resetOnLeave(function CampaignForm({ campaign }: { c
           </Field>
         </div>
       </FieldGroup>
-      <FieldError errors={[errors.root]} />
-      <div className="flex gap-3">
-        <Button type="submit" disabled={isSaving}>
-          {isSaving ? "Guardando…" : campaign ? "Guardar cambios" : "Crear campaña"}
-        </Button>
-        <Link href={CAMPAIGNS_PATH} className={buttonVariants({ variant: "ghost" })}>
-          Cancelar
-        </Link>
+      <div className="flex flex-col gap-3 bg-muted/30 px-5 py-4">
+        <FieldError errors={[errors.root]} />
+        <div className="flex gap-3">
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? "Guardando…" : campaign ? "Guardar cambios" : "Crear campaña"}
+          </Button>
+          <Link href={CAMPAIGNS_PATH} className={buttonVariants({ variant: "ghost" })}>
+            Cancelar
+          </Link>
+        </div>
       </div>
     </form>
   );

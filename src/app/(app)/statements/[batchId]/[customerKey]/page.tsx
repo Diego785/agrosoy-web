@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
-import { CustomerStatementPreview } from "@/modules/migration/presentation/statement-preview";
+import {
+  CustomerStatementPreview,
+  CustomerStatementPreviewSkeleton,
+} from "@/modules/migration/presentation/statement-preview";
 import { PrintButton } from "@/modules/receivables/presentation/print-button";
 import { PageHeader } from "@/shared/presentation/app-shell";
 
@@ -11,7 +14,7 @@ export default function CustomerStatementPage({ params }: PageProps<"/statements
   return (
     <>
       <PageHeader title="Estado de cuenta" actions={<PrintButton />} />
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
+      <Suspense fallback={<CustomerStatementPreviewSkeleton />}>
         <RequirePermission permission="statements.view">
           <CustomerStatementPreview params={params} />
         </RequirePermission>
