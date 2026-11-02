@@ -19,6 +19,8 @@ import {
   formatRate,
   trimDecimalZeros,
 } from "@/shared/presentation/format";
+import { ChevronRightIcon, ClipboardListIcon, PencilIcon, SproutIcon } from "lucide-react";
+import { EmptyState } from "@/shared/presentation/empty-state";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
@@ -29,7 +31,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -47,6 +48,11 @@ const STATUS_LABELS: Record<NoteStatus, string> = {
   confirmed: "Confirmada",
   voided: "Anulada",
 };
+const STATUS_VARIANTS = {
+  draft: "warning",
+  confirmed: "success",
+  voided: "destructive",
+} as const satisfies Record<NoteStatus, string>;
 const FREE_LABELS = { bonus: "Bonificación", sample: "Muestra" } as const;
 
 const notesDeps = () => ({ notes: drizzleNoteRepository(getDb()) });
@@ -69,7 +75,7 @@ export async function NotesTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <LiveFilterForm action={NOTES_PATH} className="flex gap-2">
+      <LiveFilterForm action={NOTES_PATH} className="flex flex-wrap items-center gap-2">
         <NativeSelect name="status" defaultValue={status} aria-label="Estado">
           <NativeSelectOption value="">Todas</NativeSelectOption>
           <NativeSelectOption value="draft">Borradores</NativeSelectOption>
@@ -78,37 +84,54 @@ export async function NotesTable({
         </NativeSelect>
       </LiveFilterForm>
       {items.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">No hay boletas.</p>
+        <EmptyState icon={<ClipboardListIcon />} title="No hay boletas">
+          {status ? "Prueba con otro estado." : undefined}
+        </EmptyState>
       ) : (
         <>
           <WideOnly>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-24">N.º</TableHead>
+                  <TableHead className="w-28">N.º</TableHead>
                   <TableHead className="w-28">Fecha</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Pago</TableHead>
                   <TableHead className="text-right">Total US$</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Abrir</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pageRows(list).map((note) => (
-                  <TableRow key={note.id}>
+                  <TableRow key={note.id} className="group relative">
                     <TableCell className="tabular-nums">
-                      <Link href={notePath(note.id)} className="font-medium hover:underline">
+                      {/* The link covers the row, so the whole row opens the note. */}
+                      <Link
+                        href={notePath(note.id)}
+                        className={`font-medium group-hover:text-primary after:absolute after:inset-0 ${note.number ? "" : "text-muted-foreground"}`}
+                      >
                         {note.number ?? "Sin número"}
                       </Link>
                     </TableCell>
-                    <TableCell className="tabular-nums">{formatDate(note.noteDate)}</TableCell>
-                    <TableCell>{note.customerName}</TableCell>
-                    <TableCell>{note.paymentTerms === "cash" ? "Contado" : "Crédito"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatMoney(note.total)}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {formatDate(note.noteDate)}
+                    </TableCell>
+                    <TableCell className="font-medium">{note.customerName}</TableCell>
+                    <TableCell className="text-muted-foreground">{paymentLabel(note.paymentTerms)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatMoney(note.total)}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant={note.status === "draft" ? "outline" : "secondary"}>
-                        {STATUS_LABELS[note.status]}
-                      </Badge>
+                      <NoteStatusBadge status={note.status} />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <ChevronRightIcon
+                        className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                        aria-hidden
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -117,19 +140,22 @@ export async function NotesTable({
           </WideOnly>
           <CardList label="Boletas">
             {items.map((note) => (
-              <CardListItem key={note.id}>
+              <CardListItem key={note.id} className="relative">
                 <div className="flex items-center justify-between gap-3">
-                  <Link href={notePath(note.id)} className="font-medium hover:underline">
+                  <Link
+                    href={notePath(note.id)}
+                    className="min-w-0 truncate font-medium after:absolute after:inset-0"
+                  >
                     {note.number ? `N.º ${note.number}` : "Sin número"} · {note.customerName}
                   </Link>
-                  <Badge variant={note.status === "draft" ? "outline" : "secondary"}>
-                    {STATUS_LABELS[note.status]}
-                  </Badge>
+                  <NoteStatusBadge status={note.status} />
                 </div>
-                <span className="text-muted-foreground tabular-nums">
-                  {formatDate(note.noteDate)} · {note.paymentTerms === "cash" ? "Contado" : "Crédito"}
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {formatDate(note.noteDate)} · {paymentLabel(note.paymentTerms)}
                 </span>
-                <CardField label="Total US$">{formatMoney(note.total)}</CardField>
+                <CardField label="Total US$">
+                  <span className="font-medium">{formatMoney(note.total)}</span>
+                </CardField>
               </CardListItem>
             ))}
           </CardList>
@@ -160,126 +186,187 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
   const bob = ExchangeRate.parse(note.exchangeRate).toBob(total);
 
+  const transport = [
+    note.carrier.name,
+    note.carrier.vehicle,
+    note.carrier.documentId && `CI ${note.carrier.documentId}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">
-            Boleta de entrega {note.number ? `N.º ${note.number}` : "(borrador)"}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatDate(note.noteDate)} · Campaña {campaignLabel(note.campaign)} ·{" "}
-            <Badge variant={note.status === "draft" ? "outline" : "secondary"}>
-              {STATUS_LABELS[note.status]}
-            </Badge>
-          </p>
-        </div>
-        {canEdit && (
-          <div className="flex gap-2">
-            <Link href={editNotePath(note.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Editar borrador
-            </Link>
-            <DiscardDraftButton noteId={note.id} />
+    <div className="flex max-w-5xl flex-col gap-6">
+      <article className="overflow-hidden rounded-xl border bg-card shadow-xs">
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b p-5">
+          <div className="min-w-0">
+            <h2>
+              <span className="block text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Boleta de entrega
+              </span>
+              <span
+                className={`mt-1 block text-2xl font-semibold tracking-tight tabular-nums ${note.number ? "" : "text-muted-foreground"}`}
+              >
+                {note.number ? `N.º ${note.number}` : "Sin número"}
+              </span>
+            </h2>
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+              <NoteStatusBadge status={note.status} />
+              <span className="tabular-nums">{formatDate(note.noteDate)}</span>
+              <span aria-hidden>·</span>
+              <span>Campaña {campaignLabel(note.campaign)}</span>
+            </p>
           </div>
-        )}
-      </header>
+          {canEdit && (
+            <div className="flex flex-wrap gap-2">
+              <Link href={editNotePath(note.id)} className={buttonVariants({ variant: "outline" })}>
+                <PencilIcon aria-hidden />
+                Editar borrador
+              </Link>
+              <DiscardDraftButton noteId={note.id} />
+            </div>
+          )}
+        </header>
+        <div className="grid gap-6 p-5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <div>
+            <p className="text-xs tracking-wide text-muted-foreground uppercase">Cliente</p>
+            <Link
+              href={customerPath(note.customer.id)}
+              className="mt-1 block text-base font-semibold hover:text-primary"
+            >
+              {note.customer.name}
+            </Link>
+            <p className="font-mono text-xs text-muted-foreground">
+              {formatCustomerCode(note.customer.code)}
+            </p>
+          </div>
+          <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+            <Item label="Propiedad">{note.property?.name}</Item>
+            <Item label="Técnico de venta">{note.technician?.name}</Item>
+            <Item label="Pago">{paymentLabel(note.paymentTerms)}</Item>
+            <Item label="Tipo de cambio">
+              <span className="tabular-nums">{formatRate(note.exchangeRate)}</span> Bs por US$
+            </Item>
+            <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>
+          </dl>
+        </div>
+      </article>
 
-      <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
-        <Item label="Cliente">
-          <Link href={customerPath(note.customer.id)} className="hover:underline">
-            {formatCustomerCode(note.customer.code)} · {note.customer.name}
-          </Link>
-        </Item>
-        <Item label="Propiedad">{note.property?.name}</Item>
-        <Item label="Técnico de venta">{note.technician?.name}</Item>
-        <Item label="Pago">{note.paymentTerms === "cash" ? "Contado" : "Crédito"}</Item>
-        <Item label="Tipo de cambio">{formatRate(note.exchangeRate)} Bs por US$</Item>
-        <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>
-        <Item label="Recibe">
-          {note.receiver.name}
-          {note.receiver.relationship && ` (${note.receiver.relationship})`}
-          {note.receiver.documentId && ` · CI ${note.receiver.documentId}`}
-        </Item>
-        <Item label="Entrega">
-          {note.handedOverBy &&
-            [note.handedOverBy.name, note.handedOverBy.position].filter(Boolean).join(" · ")}
-        </Item>
-        <Item label="Transporte">
-          {[
-            note.carrier.name,
-            note.carrier.vehicle,
-            note.carrier.documentId && `CI ${note.carrier.documentId}`,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </Item>
-        <Item label="Observaciones">{note.observations}</Item>
-      </dl>
-
-      <WideOnly>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Producto</TableHead>
-              <TableHead className="text-right">Cantidad</TableHead>
-              <TableHead className="text-right">Precio US$</TableHead>
-              <TableHead className="text-right">Total US$</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {note.lines.map((line, index) => (
-              <TableRow key={index}>
-                <TableCell>
-                  {line.productName} · {contentLabel(line)}
-                  {line.freeOfCharge && (
-                    <Badge variant="outline" className="ml-2">
-                      {FREE_LABELS[line.freeOfCharge]}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{formatQuantity(line.quantity)}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {line.freeOfCharge ? "—" : `${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{formatMoney(line.total)}</TableCell>
+      <section aria-labelledby="note-lines" className="flex flex-col gap-3">
+        <h3 id="note-lines" className="text-sm font-semibold">
+          Productos
+        </h3>
+        <WideOnly>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Producto</TableHead>
+                <TableHead className="text-right">Cantidad</TableHead>
+                <TableHead className="text-right">Precio US$</TableHead>
+                <TableHead className="text-right">Total US$</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow>
-              <TableCell colSpan={3}>Total (Bs {formatMoney(bob.toDecimalString())})</TableCell>
-              <TableCell className="text-right font-semibold tabular-nums">
-                {formatMoney(total.toDecimalString())}
-              </TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
-      </WideOnly>
-      <CardList label="Productos">
-        {note.lines.map((line, index) => (
-          <CardListItem key={index}>
-            <span>
-              {line.productName} · {contentLabel(line)}
-              {line.freeOfCharge && (
-                <Badge variant="outline" className="ml-2">
-                  {FREE_LABELS[line.freeOfCharge]}
-                </Badge>
-              )}
-            </span>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {formatQuantity(line.quantity)}
-              {line.freeOfCharge ? "" : ` × ${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
-            </span>
-            <CardField label="Total US$">{formatMoney(line.total)}</CardField>
-          </CardListItem>
-        ))}
-        <CardListItem className="bg-muted/50">
-          <CardField label="Total US$">
-            <span className="font-semibold">{formatMoney(total.toDecimalString())}</span>
-          </CardField>
-          <CardField label="Equivale a Bs">{formatMoney(bob.toDecimalString())}</CardField>
-        </CardListItem>
-      </CardList>
+            </TableHeader>
+            <TableBody>
+              {note.lines.map((line, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <span className="font-medium">{line.productName}</span>{" "}
+                    <span className="text-muted-foreground">· {contentLabel(line)}</span>
+                    {line.freeOfCharge && (
+                      <Badge variant="info" className="ml-2">
+                        {FREE_LABELS[line.freeOfCharge]}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{formatQuantity(line.quantity)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {line.freeOfCharge ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <>
+                        {formatMoney(line.unitPrice)}{" "}
+                        <span className="text-xs text-muted-foreground">por {priceUnitLabel(line)}</span>
+                      </>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">
+                    {formatMoney(line.total)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </WideOnly>
+        <CardList label="Productos">
+          {note.lines.map((line, index) => (
+            <CardListItem key={index}>
+              <span>
+                <span className="font-medium">{line.productName}</span>{" "}
+                <span className="text-muted-foreground">· {contentLabel(line)}</span>
+                {line.freeOfCharge && (
+                  <Badge variant="info" className="ml-2">
+                    {FREE_LABELS[line.freeOfCharge]}
+                  </Badge>
+                )}
+              </span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {formatQuantity(line.quantity)}
+                {line.freeOfCharge ? "" : ` × ${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
+              </span>
+              <CardField label="Total US$">
+                <span className="font-medium">{formatMoney(line.total)}</span>
+              </CardField>
+            </CardListItem>
+          ))}
+        </CardList>
+        <dl className="flex flex-col gap-1 self-end rounded-xl border bg-card px-5 py-4 shadow-xs sm:min-w-72">
+          <div className="flex items-baseline justify-between gap-6">
+            <dt className="text-sm text-muted-foreground">Total US$</dt>
+            <dd className="text-2xl font-semibold tracking-tight tabular-nums">
+              {formatMoney(total.toDecimalString())}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-6 text-sm">
+            <dt className="text-muted-foreground">Equivale a Bs</dt>
+            <dd className="font-medium tabular-nums">{formatMoney(bob.toDecimalString())}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="note-delivery" className="rounded-xl border bg-card shadow-xs">
+        <h3 id="note-delivery" className="border-b px-5 py-3 text-sm font-semibold">
+          Entrega
+        </h3>
+        <dl className="grid gap-x-6 gap-y-4 p-5 text-sm sm:grid-cols-3">
+          <Item label="Recibe">
+            {note.receiver.name}
+            {(note.receiver.relationship || note.receiver.documentId) && (
+              <span className="block text-xs font-normal text-muted-foreground">
+                {[note.receiver.relationship, note.receiver.documentId && `CI ${note.receiver.documentId}`]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            )}
+          </Item>
+          <Item label="Entrega">
+            {note.handedOverBy && (
+              <>
+                {note.handedOverBy.name}
+                {note.handedOverBy.position && (
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {note.handedOverBy.position}
+                  </span>
+                )}
+              </>
+            )}
+          </Item>
+          <Item label="Transporte">{transport}</Item>
+          <Item label="Observaciones" className="sm:col-span-3">
+            {note.observations && (
+              <span className="font-normal whitespace-pre-line">{note.observations}</span>
+            )}
+          </Item>
+        </dl>
+      </section>
     </div>
   );
 }
@@ -288,7 +375,11 @@ export async function NewNote() {
   const actor = await requireActor();
   const options = await loadNoteFormOptions(actor);
   if (options.campaigns.length === 0) {
-    return <p className="text-sm text-muted-foreground">Primero crea la campaña actual en Campañas.</p>;
+    return (
+      <EmptyState icon={<SproutIcon />} title="Sin campaña actual">
+        Primero crea la campaña actual en Campañas.
+      </EmptyState>
+    );
   }
   return <NoteForm options={options} today={todayInBolivia()} />;
 }
@@ -332,11 +423,19 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
   );
 }
 
-function Item({ label, children }: { label: string; children: ReactNode }) {
+function Item({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
   return (
-    <div>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>{children || "—"}</dd>
+    <div className={className}>
+      <dt className="text-xs tracking-wide text-muted-foreground uppercase">{label}</dt>
+      <dd className="mt-1 font-medium">{children || <span className="text-muted-foreground">—</span>}</dd>
     </div>
   );
+}
+
+function NoteStatusBadge({ status }: { status: NoteStatus }) {
+  return <Badge variant={STATUS_VARIANTS[status]}>{STATUS_LABELS[status]}</Badge>;
+}
+
+function paymentLabel(terms: string): string {
+  return terms === "cash" ? "Contado" : "Crédito";
 }

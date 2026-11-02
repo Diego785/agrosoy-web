@@ -9,7 +9,11 @@ export const metadata: Metadata = { title: "Registrar cliente" };
 export default function NewCustomerPage() {
   return (
     <>
-      <PageHeader title="Registrar cliente" description="El código se asigna automáticamente." />
+      <PageHeader
+        back={{ href: "/customers", label: "Clientes" }}
+        title="Registrar cliente"
+        description="El código se asigna automáticamente."
+      />
       <Suspense>
         <RequirePermission permission="customers.manage">
           <NewCustomer />

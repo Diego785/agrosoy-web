@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Editar boleta" };
 export default function EditNotePage({ params }: PageProps<"/notes/[id]/edit">) {
   return (
     <>
-      <PageHeader title="Editar borrador de boleta" />
+      <PageHeader back={{ href: "/notes", label: "Boletas" }} title="Editar borrador de boleta" />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
         <RequirePermission permission="notes.manage">
           <EditNote params={params} />

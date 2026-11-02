@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -35,21 +36,22 @@ export const AddPropertyForm = resetOnLeave(function AddPropertyForm({ customerI
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-1">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-1.5">
       <div className="flex flex-wrap gap-2">
         <Input
-          className="max-w-56"
+          className="sm:max-w-56"
           placeholder="Nombre de la propiedad"
           aria-label="Nombre de la propiedad"
           {...form.register("name")}
         />
         <Input
-          className="max-w-64"
+          className="sm:max-w-64"
           placeholder="Ubicación (opcional)"
           aria-label="Ubicación"
           {...form.register("location")}
         />
         <Button type="submit" variant="outline" disabled={isSaving}>
+          <PlusIcon aria-hidden />
           Agregar
         </Button>
       </div>
@@ -77,22 +79,23 @@ export const AddReceiverForm = resetOnLeave(function AddReceiverForm({ customerI
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-1">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-1.5">
       <div className="flex flex-wrap gap-2">
         <Input
-          className="max-w-56"
+          className="sm:max-w-56"
           placeholder="Nombre completo"
           aria-label="Nombre de quien recibe"
           {...form.register("name")}
         />
-        <Input className="max-w-32" placeholder="CI" aria-label="CI" {...form.register("documentId")} />
+        <Input className="sm:max-w-32" placeholder="CI" aria-label="CI" {...form.register("documentId")} />
         <Input
-          className="max-w-48"
+          className="sm:max-w-48"
           placeholder="Cargo o parentesco"
           aria-label="Cargo o parentesco"
           {...form.register("relationship")}
         />
         <Button type="submit" variant="outline" disabled={isSaving}>
+          <PlusIcon aria-hidden />
           Agregar
         </Button>
       </div>

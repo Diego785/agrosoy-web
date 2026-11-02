@@ -1,10 +1,13 @@
+import { ArrowRightLeftIcon, FileSpreadsheetIcon, WalletIcon } from "lucide-react";
 import Link from "next/link";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { statementPath } from "@/modules/receivables/presentation/statement-routes";
 import { getDb } from "@/shared/infrastructure/db/client";
+import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatCount, formatDateTime } from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { Badge } from "@/shared/presentation/ui/badge";
+import { buttonVariants } from "@/shared/presentation/ui/button";
 import {
   Table,
   TableBody,
@@ -22,10 +25,13 @@ export async function ImportBatches() {
   const batches = await listImportBatches(migrationDeps(getDb()), actor);
 
   if (batches.length === 0) {
-    return <p className="text-sm text-muted-foreground">Todavía no se importó ninguna planilla.</p>;
+    return <EmptyState icon={<FileSpreadsheetIcon />} title="Todavía no se importó ninguna planilla." />;
   }
   return (
-    <>
+    <section aria-labelledby="import-batches" className="flex flex-col gap-3">
+      <h2 id="import-batches" className="text-sm font-semibold">
+        Planillas importadas
+      </h2>
       <WideOnly>
         <Table>
           <TableHeader>
@@ -48,24 +54,17 @@ export async function ImportBatches() {
                   <span className="font-medium">{batch.sheetName}</span>
                   <span className="block text-xs text-muted-foreground">{batch.fileName}</span>
                 </TableCell>
-                <TableCell>{batch.campaignLabel ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{batch.campaignLabel ?? "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatCount(batch.lineCount)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatCount(batch.customerCount)}</TableCell>
                 <TableCell>
                   <ReviewLink batch={batch} />
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
+                <TableCell className="text-sm text-muted-foreground tabular-nums">
                   {formatDateTime(batch.importedAt)}
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-col gap-1 text-sm font-medium">
-                    <Link href={statementPath(batch.id)} className="hover:underline">
-                      Estado de cuenta
-                    </Link>
-                    <Link href={importConversionPath(batch.id)} className="hover:underline">
-                      Pasar al sistema
-                    </Link>
-                  </div>
+                  <BatchLinks batchId={batch.id} />
                 </TableCell>
               </TableRow>
             ))}
@@ -75,40 +74,53 @@ export async function ImportBatches() {
       <CardList label="Planillas importadas">
         {batches.map((batch) => (
           <CardListItem key={batch.id}>
-            <div className="flex flex-col">
-              <span className="font-medium">{batch.sheetName}</span>
-              <span className="text-xs text-muted-foreground">{batch.fileName}</span>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate font-medium">{batch.sheetName}</span>
+                <span className="truncate text-xs text-muted-foreground">{batch.fileName}</span>
+              </div>
+              <ReviewLink batch={batch} />
             </div>
             <CardField label="Campaña">{batch.campaignLabel ?? "—"}</CardField>
             <CardField label="Filas / clientes">
               {formatCount(batch.lineCount)} / {formatCount(batch.customerCount)}
             </CardField>
             <CardField label="Importada">{formatDateTime(batch.importedAt)}</CardField>
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-              <ReviewLink batch={batch} />
-              <div className="flex gap-4 font-medium">
-                <Link href={statementPath(batch.id)} className="hover:underline">
-                  Estado de cuenta
-                </Link>
-                <Link href={importConversionPath(batch.id)} className="hover:underline">
-                  Pasar al sistema
-                </Link>
-              </div>
+            <div className="pt-1">
+              <BatchLinks batchId={batch.id} />
             </div>
           </CardListItem>
         ))}
       </CardList>
-    </>
+    </section>
+  );
+}
+
+function BatchLinks({ batchId }: { batchId: string }) {
+  return (
+    <div className="flex flex-wrap gap-2 md:justify-end">
+      <Link href={statementPath(batchId)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+        <WalletIcon aria-hidden />
+        Estado de cuenta
+      </Link>
+      <Link
+        href={importConversionPath(batchId)}
+        className={buttonVariants({ variant: "outline", size: "sm" })}
+      >
+        <ArrowRightLeftIcon aria-hidden />
+        Pasar al sistema
+      </Link>
+    </div>
   );
 }
 
 function ReviewLink({ batch }: { batch: { id: string; issueCount: number } }) {
   return (
-    <Link href={importReviewPath(batch.id)}>
+    <Link href={importReviewPath(batch.id)} className="shrink-0">
       {batch.issueCount === 0 ? (
-        <Badge variant="secondary">Sin observaciones</Badge>
+        <Badge variant="success">Sin observaciones</Badge>
       ) : (
-        <Badge variant="outline">
+        <Badge variant="warning">
           {batch.issueCount === 1 ? "1 observación" : `${formatCount(batch.issueCount)} observaciones`}
         </Badge>
       )}

@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Nueva boleta" };
 export default function NewNotePage() {
   return (
     <>
-      <PageHeader title="Nueva boleta de entrega" />
+      <PageHeader back={{ href: "/notes", label: "Boletas" }} title="Nueva boleta de entrega" />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
         <RequirePermission permission="notes.manage">
           <NewNote />

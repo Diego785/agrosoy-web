@@ -347,3 +347,19 @@ choice would drop the ones not saved.
 
 **Why:** it is what people expect from a management system today, and it spares a tap per search on
 a phone; one query per pause over a few hundred rows is negligible for the server.
+
+## D34 · Agrosoil's look: its logo's colors, calm surfaces
+
+**Decision:** the interface takes its colors from Agrosoil's logo (`src/app/globals.css`): the green
+`#0b8135` for actions, links and the current place; the light green for focus; the orange `#e76b08`
+only for small accents (the current module's marker, stat icons, the user's initials), never for
+whole surfaces or buttons. Statuses have their own tints (`success`, `warning`, `info`,
+`destructive`). The sidebar is a deep green with the logo; pages sit on a soft off-white, with lists,
+tables and sections as white cards. Every list shows an empty state with an icon and what to do
+next; rows with a detail page open with a click anywhere on the row. The products list shows one row
+per product with its presentations as tags (code, content, price; a dashed tag when it has no price),
+at most four and "+N más", so every row has the same height. The home page greets the user with
+shortcuts and the counts they are allowed to see.
+
+**Why:** a management system is used all day; the client should recognise their brand in it and find
+it calm and orderly. Color carries meaning (action, status), so it stays scarce.

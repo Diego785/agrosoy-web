@@ -9,7 +9,11 @@ export const metadata: Metadata = { title: "Crear campaña" };
 export default function NewCampaignPage() {
   return (
     <>
-      <PageHeader title="Crear campaña" description="Las fechas de dos campañas no pueden cruzarse." />
+      <PageHeader
+        back={{ href: "/campaigns", label: "Campañas" }}
+        title="Crear campaña"
+        description="Las fechas de dos campañas no pueden cruzarse."
+      />
       <Suspense>
         <RequirePermission permission="catalog.manage">
           <CampaignForm />

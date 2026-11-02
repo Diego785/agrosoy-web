@@ -1,3 +1,4 @@
+import { PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -19,6 +20,7 @@ export default function CampaignsPage() {
           <Suspense>
             <RequirePermission permission="catalog.manage" fallback={null}>
               <Link href={NEW_CAMPAIGN_PATH} className={buttonVariants()}>
+                <PlusIcon aria-hidden />
                 Crear campaña
               </Link>
             </RequirePermission>

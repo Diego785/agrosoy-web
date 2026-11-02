@@ -9,7 +9,11 @@ export const metadata: Metadata = { title: "Zonas" };
 export default function ZonesPage() {
   return (
     <>
-      <PageHeader title="Zonas" description="Zonas de venta para agrupar a los clientes." />
+      <PageHeader
+        back={{ href: "/customers", label: "Clientes" }}
+        title="Zonas"
+        description="Zonas de venta para agrupar a los clientes."
+      />
       <Suspense>
         <RequirePermission permission="customers.view">
           <ZonesList />

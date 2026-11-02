@@ -8,6 +8,10 @@ up without re-reading the whole history.
 - **Filters apply as they change (D33)** in products, customers and notes: no "Buscar" button,
   the search box waits for a 350 ms pause, selects apply at once, Enter still searches. The price
   sheet keeps "Ver". Week 3's lists (payments, charges, statements) get the same when it merges.
+- **Agrosoil's look (D34):** colors from the logo, a green sidebar with the logo and sections,
+  a branded login and a home page with shortcuts and counts; tables, lists, badges, buttons and
+  fields restyled for every screen. The products list shows presentations as tags with their price,
+  one row per product. "Precios" joins the menu.
 
 ## 2026-11-01
 

@@ -10,7 +10,7 @@ export function WideOnly({ children }: { children: ReactNode }) {
 
 export function CardList({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <ul aria-label={label} className="divide-y rounded-lg border md:hidden">
+    <ul aria-label={label} className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs md:hidden">
       {children}
     </ul>
   );

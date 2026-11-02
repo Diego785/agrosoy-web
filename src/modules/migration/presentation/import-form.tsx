@@ -1,5 +1,6 @@
 "use client";
 
+import { UploadIcon } from "lucide-react";
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { errorMessage } from "@/shared/presentation/error-messages";
@@ -42,7 +43,7 @@ export const ImportForm = resetOnLeave(function ImportForm() {
   }
 
   return (
-    <form onSubmit={submit} className="flex max-w-xl flex-col gap-3">
+    <form onSubmit={submit} className="flex max-w-2xl flex-col gap-3 rounded-xl border bg-card p-5 shadow-xs">
       <Field>
         <FieldLabel htmlFor="file">Planilla de ventas (.xlsx)</FieldLabel>
         <div className="flex flex-wrap gap-2">
@@ -52,9 +53,10 @@ export const ImportForm = resetOnLeave(function ImportForm() {
             type="file"
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             required
-            className="max-w-sm"
+            className="max-w-sm flex-1"
           />
           <Button type="submit" disabled={isImporting}>
+            <UploadIcon aria-hidden />
             {isImporting ? "Importando…" : "Importar"}
           </Button>
         </div>

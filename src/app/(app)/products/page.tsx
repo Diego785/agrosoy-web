@@ -1,3 +1,4 @@
+import { PlusIcon, TagsIcon, UploadIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -23,13 +24,16 @@ export default function ProductsPage({ searchParams }: PageProps<"/products">) {
           <Suspense>
             <div className="flex flex-wrap gap-2">
               <Link href={PRICES_PATH} className={buttonVariants({ variant: "outline" })}>
+                <TagsIcon aria-hidden />
                 Precios
               </Link>
               <RequirePermission permission="catalog.manage" fallback={null}>
                 <Link href={IMPORT_PRODUCTS_PATH} className={buttonVariants({ variant: "outline" })}>
+                  <UploadIcon aria-hidden />
                   Importar lista
                 </Link>
                 <Link href={NEW_PRODUCT_PATH} className={buttonVariants()}>
+                  <PlusIcon aria-hidden />
                   Crear producto
                 </Link>
               </RequirePermission>

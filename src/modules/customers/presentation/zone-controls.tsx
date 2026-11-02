@@ -1,7 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MapPinIcon, PencilIcon } from "lucide-react";
 import { useState, useTransition } from "react";
+import { cn } from "cn";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { errorMessage } from "@/shared/presentation/error-messages";
@@ -16,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/presentation/ui/alert-dialog";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { Button } from "@/shared/presentation/ui/button";
 import { FieldError } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
@@ -34,6 +37,7 @@ export const ZoneRow = resetOnLeave(function ZoneRow({ zone }: { zone: ZoneListI
       <ZoneName zone={zone} />
       <div className="flex shrink-0 gap-1">
         <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+          <PencilIcon aria-hidden />
           Renombrar
         </Button>
         <ZoneStatusButton zone={zone} />
@@ -44,11 +48,24 @@ export const ZoneRow = resetOnLeave(function ZoneRow({ zone }: { zone: ZoneListI
 
 export function ZoneName({ zone }: { zone: ZoneListItem }) {
   return (
-    <span className={zone.isActive ? "" : "text-muted-foreground"}>
-      {zone.name}
-      <span className="ml-2 text-xs text-muted-foreground">
-        {zone.customerCount === 1 ? "1 cliente" : `${zone.customerCount} clientes`}
-        {!zone.isActive && " · desactivada"}
+    <span className="flex min-w-0 items-center gap-3">
+      <span
+        aria-hidden
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-lg",
+          zone.isActive ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground",
+        )}
+      >
+        <MapPinIcon className="size-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className={cn("font-medium", !zone.isActive && "text-muted-foreground")}>{zone.name}</span>
+          {!zone.isActive && <Badge variant="destructive">Desactivada</Badge>}
+        </span>
+        <span className="block text-xs text-muted-foreground tabular-nums">
+          {zone.customerCount === 1 ? "1 cliente" : `${zone.customerCount} clientes`}
+        </span>
       </span>
     </span>
   );

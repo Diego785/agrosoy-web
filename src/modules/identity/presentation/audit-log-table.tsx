@@ -1,5 +1,8 @@
+import { HistoryIcon } from "lucide-react";
 import { getDb } from "@/shared/infrastructure/db/client";
+import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatDateTime } from "@/shared/presentation/format";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
@@ -73,7 +76,7 @@ export async function AuditLogTable({
   const { items } = list;
 
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">Todavía no hay cambios registrados.</p>;
+    return <EmptyState icon={<HistoryIcon />} title="Todavía no hay cambios registrados" />;
   }
   return (
     <div className="flex flex-col gap-4">
@@ -81,19 +84,25 @@ export async function AuditLogTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-40">Fecha y hora</TableHead>
+              <TableHead className="w-44">Fecha y hora</TableHead>
               <TableHead className="w-48">Usuario</TableHead>
+              <TableHead className="w-32">Área</TableHead>
               <TableHead>Cambio</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pageRows(list).map((entry) => (
               <TableRow key={entry.id}>
-                <TableCell className="text-sm text-muted-foreground tabular-nums">
+                <TableCell className="text-xs text-muted-foreground tabular-nums">
                   {formatDateTime(entry.occurredAt)}
                 </TableCell>
-                <TableCell>{entry.actorName ?? "Instalación"}</TableCell>
                 <TableCell>
+                  <ActorName entry={entry} />
+                </TableCell>
+                <TableCell>
+                  <AreaBadge action={entry.action} />
+                </TableCell>
+                <TableCell className="whitespace-normal">
                   <ChangeDescription entry={entry} />
                 </TableCell>
               </TableRow>
@@ -104,12 +113,17 @@ export async function AuditLogTable({
       <CardList label="Cambios">
         {items.map((entry) => (
           <CardListItem key={entry.id}>
+            <div className="flex items-center justify-between gap-3">
+              <AreaBadge action={entry.action} />
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {formatDateTime(entry.occurredAt)}
+              </span>
+            </div>
             <span>
               <ChangeDescription entry={entry} />
             </span>
-            <span className="text-muted-foreground">
-              {entry.actorName ?? "Instalación"} ·{" "}
-              <span className="tabular-nums">{formatDateTime(entry.occurredAt)}</span>
+            <span className="text-xs">
+              <ActorName entry={entry} />
             </span>
           </CardListItem>
         ))}
@@ -120,6 +134,29 @@ export async function AuditLogTable({
         noun={["cambio", "cambios"]}
       />
     </div>
+  );
+}
+
+/** The part of the system an action belongs to, read from its code ("catalog.save_prices"). */
+const AREA_LABELS: Record<string, string> = {
+  identity: "Usuarios",
+  customers: "Clientes",
+  campaigns: "Campañas",
+  catalog: "Catálogo",
+  sales: "Boletas",
+  migration: "Importación",
+};
+
+function AreaBadge({ action }: { action: string }) {
+  const area = action.split(".")[0] ?? "";
+  return <Badge variant="neutral">{AREA_LABELS[area] ?? area}</Badge>;
+}
+
+function ActorName({ entry }: { entry: AuditLogEntry }) {
+  return entry.actorName ? (
+    <span className="font-medium">{entry.actorName}</span>
+  ) : (
+    <span className="text-muted-foreground">Instalación</span>
   );
 }
 

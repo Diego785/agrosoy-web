@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Editar usuario" };
 export default function EditUserPage({ params }: PageProps<"/users/[id]">) {
   return (
     <>
-      <PageHeader title="Editar usuario" />
+      <PageHeader back={{ href: "/users", label: "Usuarios" }} title="Editar usuario" />
       <Suspense>
         <RequirePermission permission="users.manage">
           <EditUser params={params} />

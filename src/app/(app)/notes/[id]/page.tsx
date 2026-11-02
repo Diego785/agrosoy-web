@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Boleta" };
 export default function NotePage({ params }: PageProps<"/notes/[id]">) {
   return (
     <>
-      <PageHeader title="Boleta" />
+      <PageHeader back={{ href: "/notes", label: "Boletas" }} title="Boleta" />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
         <RequirePermission permission="notes.view">
           <NoteDetail params={params} />

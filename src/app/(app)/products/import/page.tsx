@@ -10,6 +10,7 @@ export default function ImportProductsPage() {
   return (
     <>
       <PageHeader
+        back={{ href: "/products", label: "Productos" }}
         title="Importar lista de productos"
         description="La lista de Agrosoil con sus códigos y precios en dólares (PRODUCTOS.xlsx)."
       />

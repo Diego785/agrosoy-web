@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Editar campaña" };
 export default function EditCampaignPage({ params }: PageProps<"/campaigns/[id]">) {
   return (
     <>
-      <PageHeader title="Editar campaña" />
+      <PageHeader back={{ href: "/campaigns", label: "Campañas" }} title="Editar campaña" />
       <Suspense>
         <RequirePermission permission="catalog.manage">
           <EditCampaign params={params} />

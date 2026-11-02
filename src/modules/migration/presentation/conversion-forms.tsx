@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleCheckIcon, PackagePlusIcon, UserPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -42,7 +43,7 @@ export const CustomerConversion = resetOnLeave(function CustomerConversion({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Clientes</h2>
+      <h2 className="text-base font-semibold">Clientes</h2>
       <Table>
         <TableHeader>
           <TableRow>
@@ -53,14 +54,15 @@ export const CustomerConversion = resetOnLeave(function CustomerConversion({
         <TableBody>
           {preview.customers.map((customer) => (
             <TableRow key={customer.key}>
-              <TableCell>{customer.name}</TableCell>
+              <TableCell className="font-medium">{customer.name}</TableCell>
               <TableCell>
                 {customer.existing ? (
-                  <Badge variant="secondary">
-                    Ya existe · {String(customer.existing.code).padStart(4, "0")}
+                  <Badge variant="neutral">
+                    Ya existe ·{" "}
+                    <span className="font-mono">{String(customer.existing.code).padStart(4, "0")}</span>
                   </Badge>
                 ) : (
-                  <Badge variant="outline">Nuevo</Badge>
+                  <Badge variant="info">Nuevo</Badge>
                 )}
               </TableCell>
             </TableRow>
@@ -82,11 +84,13 @@ export const CustomerConversion = resetOnLeave(function CustomerConversion({
             ))}
           </NativeSelect>
           <Button onClick={convert} disabled={isWorking}>
+            <UserPlusIcon aria-hidden />
             {isWorking ? "Registrando…" : `Registrar ${missing} clientes nuevos`}
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CircleCheckIcon className="size-4 text-success" aria-hidden />
           Todos los clientes de la planilla ya están registrados.
         </p>
       )}
@@ -134,7 +138,7 @@ export const ProductConversion = resetOnLeave(function ProductConversion({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Productos</h2>
+      <h2 className="text-base font-semibold">Productos</h2>
       <p className="text-sm text-muted-foreground">
         La planilla no dice la línea ni si el precio es por envase o por litro o kilo: elígelos para cada
         producto nuevo. Los que dejes sin elegir no se crean.
@@ -162,7 +166,7 @@ export const ProductConversion = resetOnLeave(function ProductConversion({
                     {group.presentations.map((presentation) => (
                       <Badge
                         key={`${presentation.content}${presentation.unit}`}
-                        variant={presentation.exists ? "secondary" : "outline"}
+                        variant={presentation.exists ? "neutral" : "info"}
                         title={presentation.labels.join(", ")}
                       >
                         {formatQuantity(presentation.content)} {UNIT_LABELS[presentation.unit]}
@@ -220,10 +224,12 @@ export const ProductConversion = resetOnLeave(function ProductConversion({
       )}
       {pending.length > 0 ? (
         <Button onClick={convert} disabled={isWorking || ready === 0} className="self-start">
+          <PackagePlusIcon aria-hidden />
           {isWorking ? "Creando…" : `Crear ${ready} de ${pending.length} productos`}
         </Button>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CircleCheckIcon className="size-4 text-success" aria-hidden />
           Todos los productos y presentaciones ya están registrados.
         </p>
       )}

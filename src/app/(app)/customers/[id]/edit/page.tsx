@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Editar cliente" };
 export default function EditCustomerPage({ params }: PageProps<"/customers/[id]/edit">) {
   return (
     <>
-      <PageHeader title="Editar cliente" />
+      <PageHeader back={{ href: "/customers", label: "Clientes" }} title="Editar cliente" />
       <Suspense>
         <RequirePermission permission="customers.manage">
           <EditCustomer params={params} />

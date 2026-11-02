@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Producto" };
 export default function ProductPage({ params }: PageProps<"/products/[id]">) {
   return (
     <>
-      <PageHeader title="Producto" />
+      <PageHeader back={{ href: "/products", label: "Productos" }} title="Producto" />
       <Suspense>
         <RequirePermission permission="catalog.view">
           <ProductDetail params={params} />

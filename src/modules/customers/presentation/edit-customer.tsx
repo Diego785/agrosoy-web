@@ -22,8 +22,8 @@ export async function EditCustomer({ params }: { params: Promise<{ id: string }>
 
   return (
     <>
-      <p className="-mt-4 font-mono text-sm text-muted-foreground">
-        Código {formatCustomerCode(customer.code)}
+      <p className="-mt-3 text-sm text-muted-foreground">
+        Código <span className="font-mono">{formatCustomerCode(customer.code)}</span>
       </p>
       <CustomerForm {...options} customer={customer} />
     </>

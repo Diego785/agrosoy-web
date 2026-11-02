@@ -9,8 +9,12 @@ export const metadata: Metadata = { title: "Permisos" };
 export default function PermissionsPage() {
   return (
     <>
-      <PageHeader title="Permisos" description="Qué puede hacer cada rol en el sistema." />
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
+      <PageHeader
+        back={{ href: "/users", label: "Usuarios" }}
+        title="Permisos"
+        description="Qué puede hacer cada rol en el sistema."
+      />
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-muted/60" />}>
         <RequirePermission permission="users.manage">
           <PermissionMatrix />
         </RequirePermission>

@@ -10,6 +10,7 @@ export default function NewProductPage() {
   return (
     <>
       <PageHeader
+        back={{ href: "/products", label: "Productos" }}
         title="Crear producto"
         description="Cada presentación lleva el código de Agrosoil. Se propone el siguiente número libre y puedes cambiarlo."
       />

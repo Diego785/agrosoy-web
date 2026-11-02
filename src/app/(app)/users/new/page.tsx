@@ -9,7 +9,11 @@ export const metadata: Metadata = { title: "Crear usuario" };
 export default function NewUserPage() {
   return (
     <>
-      <PageHeader title="Crear usuario" description="El sistema genera una contraseña temporal." />
+      <PageHeader
+        back={{ href: "/users", label: "Usuarios" }}
+        title="Crear usuario"
+        description="El sistema genera una contraseña temporal."
+      />
       <Suspense>
         <RequirePermission permission="users.manage">
           <NewUser />

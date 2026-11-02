@@ -10,7 +10,7 @@ export default function AuditPage({ searchParams }: PageProps<"/audit">) {
   return (
     <>
       <PageHeader title="Registro de cambios" description="Quién hizo cada cambio y cuándo." />
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-muted/60" />}>
         <RequirePermission permission="audit.view">
           <AuditLogTable searchParams={searchParams} />
         </RequirePermission>

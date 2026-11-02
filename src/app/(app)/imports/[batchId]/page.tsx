@@ -10,6 +10,7 @@ export default function ImportReviewPage({ params }: PageProps<"/imports/[batchI
   return (
     <>
       <PageHeader
+        back={{ href: "/imports", label: "Planillas" }}
         title="Revisión de la planilla"
         description="Lo que conviene corregir o confirmar antes de migrar los datos."
       />

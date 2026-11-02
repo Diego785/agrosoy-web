@@ -1,3 +1,4 @@
+import { InfoIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { isDomainError } from "@/shared/domain/domain-error";
@@ -18,10 +19,16 @@ export async function ConversionPage({ params }: { params: Promise<{ batchId: st
   );
 
   return (
-    <div className="flex max-w-5xl flex-col gap-10">
-      <p className="text-sm text-muted-foreground">
-        Hoja «{preview.batch.sheetName}» · {preview.batch.campaignLabel ?? "sin campaña"}. Se crean registros
-        reales del sistema; la planilla importada no cambia.
+    <div className="flex max-w-5xl flex-col gap-8">
+      <p className="flex items-start gap-3 rounded-xl border border-info/25 bg-info/5 px-4 py-3 text-sm">
+        <InfoIcon className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
+        <span>
+          <span className="font-medium">Hoja «{preview.batch.sheetName}»</span> ·{" "}
+          {preview.batch.campaignLabel ?? "sin campaña"}.{" "}
+          <span className="text-muted-foreground">
+            Se crean registros reales del sistema; la planilla importada no cambia.
+          </span>
+        </span>
       </p>
       <CustomerConversion preview={preview} />
       <ProductConversion preview={preview} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { EllipsisVerticalIcon } from "lucide-react";
+import { EllipsisVerticalIcon, KeyRoundIcon, UserCheckIcon, UserXIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { errorMessage } from "@/shared/presentation/error-messages";
@@ -70,11 +70,15 @@ export const UserRowActions = resetOnLeave(function UserRowActions({
         >
           <EllipsisVerticalIcon aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-56">
           {active && (
-            <DropdownMenuItem onClick={() => setDialog("reset")}>Restablecer contraseña</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setDialog("reset")}>
+              <KeyRoundIcon aria-hidden />
+              Restablecer contraseña
+            </DropdownMenuItem>
           )}
           <DropdownMenuItem variant={active ? "destructive" : "default"} onClick={() => setDialog("toggle")}>
+            {active ? <UserXIcon aria-hidden /> : <UserCheckIcon aria-hidden />}
             {active ? "Desactivar" : "Reactivar"}
           </DropdownMenuItem>
         </DropdownMenuContent>

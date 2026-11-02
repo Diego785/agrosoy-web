@@ -10,6 +10,7 @@ import { drizzleUserDirectory } from "../infrastructure/drizzle-user-directory";
 import { requireActor } from "./current-user";
 import { CreateUserForm } from "./create-user-form";
 import { EditUserForm } from "./edit-user-form";
+import { UserInitials, UserStatus } from "./users-table";
 
 export async function EditUser({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,9 +25,16 @@ export async function EditUser({ params }: { params: Promise<{ id: string }> }) 
 
   return (
     <>
-      <p className="-mt-4 text-sm text-muted-foreground">
-        <span className="font-mono">{user.username}</span> · {ROLE_LABELS[user.role]}
-      </p>
+      <div className="flex max-w-2xl flex-wrap items-center gap-3 rounded-xl border bg-card p-4 shadow-xs">
+        <UserInitials name={user.name} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">{user.name}</p>
+          <p className="truncate text-sm text-muted-foreground">
+            <span className="font-mono text-xs">{user.username}</span> · {ROLE_LABELS[user.role]}
+          </p>
+        </div>
+        <UserStatus user={user} />
+      </div>
       <EditUserForm user={user} zones={await workZoneOptions(actor, user.workZoneId)} />
     </>
   );

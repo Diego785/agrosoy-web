@@ -1,5 +1,6 @@
 import { Money } from "@/shared/domain/money";
 import { formatDate, formatMoney, formatQuantity, formatRate, formatUsd } from "@/shared/presentation/format";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import {
   Table,
@@ -51,8 +52,10 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
           <TableBody>
             {rows.map(({ line, balance: running }, index) => (
               <TableRow key={index}>
-                <TableCell className="tabular-nums">{line.date ? formatDate(line.date) : "—"}</TableCell>
-                <TableCell className="tabular-nums">{line.noteNumber ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground tabular-nums">
+                  {line.date ? formatDate(line.date) : "—"}
+                </TableCell>
+                <TableCell className="font-medium tabular-nums">{line.noteNumber ?? "—"}</TableCell>
                 <TableCell>
                   <LineDetail line={line} />
                 </TableCell>
@@ -139,7 +142,9 @@ function LineDetail({ line }: { line: StatementLineView }) {
     <>
       {line.kind !== "delivery" && !line.description ? UNDATED[line.kind] : line.description}
       {line.kind === "return" && line.description && (
-        <span className="ml-2 text-xs text-muted-foreground">devolución</span>
+        <Badge variant="neutral" className="ml-2 print:border-current">
+          devolución
+        </Badge>
       )}
       {line.observation && (
         <span className="block text-xs text-muted-foreground">Obs.: {line.observation}</span>

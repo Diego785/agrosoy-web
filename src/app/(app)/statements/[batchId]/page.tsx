@@ -10,7 +10,11 @@ export const metadata: Metadata = { title: "Estado de cuenta" };
 export default function PortfolioStatementPage({ params }: PageProps<"/statements/[batchId]">) {
   return (
     <>
-      <PageHeader title="Estado de cuenta" actions={<PrintButton />} />
+      <PageHeader
+        back={{ href: "/statements", label: "Estados de cuenta" }}
+        title="Estado de cuenta"
+        actions={<PrintButton />}
+      />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
         <RequirePermission permission="statements.view">
           <PortfolioStatementPreview params={params} />

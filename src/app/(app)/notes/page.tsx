@@ -1,3 +1,4 @@
+import { PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -19,6 +20,7 @@ export default function NotesPage({ searchParams }: PageProps<"/notes">) {
           <Suspense>
             <RequirePermission permission="notes.manage" fallback={null}>
               <Link href={NEW_NOTE_PATH} className={buttonVariants()}>
+                <PlusIcon aria-hidden />
                 Nueva boleta
               </Link>
             </RequirePermission>
