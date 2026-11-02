@@ -11,7 +11,7 @@ see it in the address.
 Two phases:
 
 - **Phase A, now:** staging reached by IP and port, `http://38.242.145.246:3100`, which stays open
-  until phase B. nginx is already prepared for the domain `agrosoy.solution-services-tech.com`
+  until phase B. nginx is already prepared for the domain `agrosoil.market-ia.shop`
   (step A6), so nothing waits on us once the DNS record exists.
 - **Phase B, at the end:** the server's admin creates the DNS record; then the certificate, HTTPS,
   and the public port is closed.
@@ -41,7 +41,7 @@ Server  /home/apps/www/solution/agrosoy/staging      │
                              │ phase A        │ phase B: server-network
                     http://IP:3100            │
         /home/apps/nginx-certbot-docker   shared nginx, ports 80/443
-        └─ conf/agrosoy-staging.conf      https://agrosoy.solution-services-tech.com ──▶ http://agrosoy-staging:3000
+        └─ conf/agrosoy-staging.conf      https://agrosoil.market-ia.shop ──▶ http://agrosoy-staging:3000
 ```
 
 - The container applies pending migrations, then starts the server (`Dockerfile`, last line).
@@ -152,7 +152,7 @@ then on the server:
 docker exec nginx curl -s http://agrosoy-staging:3000/api/health     # nginx reaches the app
 docker exec nginx nginx -t                                           # must pass…
 docker exec nginx nginx -s reload                                    # …before this
-curl -sI -H "Host: agrosoy.solution-services-tech.com" http://127.0.0.1/
+curl -sI -H "Host: agrosoil.market-ia.shop" http://127.0.0.1/
 ```
 
 - **Check:** the last `curl` answers from our app (a redirect to `/login` or a 200), not another
@@ -171,33 +171,35 @@ curl -sI -H "Host: agrosoy.solution-services-tech.com" http://127.0.0.1/
 
 ## Phase B · Domain and HTTPS
 
-Starts when the DNS record exists. Domain: `agrosoy.solution-services-tech.com`. If production
-later takes this name, staging moves to another one (e.g. `demo-agrosoy.solution-services-tech.com`)
-by replacing the name in both `nginx/` files and repeating A6 and phase B.
+Starts when the DNS record exists. Domain: `agrosoil.market-ia.shop`, given by the developer on
+2 November 2026. If production later takes this name, staging moves to another one (e.g.
+`demo-agrosoil.market-ia.shop`) by replacing the name in both `nginx/` files and repeating A6 and
+phase B.
 
 ### B1 · DNS
 
-Ask the server's admin, who manages `solution-services-tech.com`:
+`agrosoil.market-ia.shop` is an alias (CNAME) of `market-ia.shop`, which points to
+`38.242.145.246`. The HTTP file loaded in A6 named the domain planned before, so load it again
+with the new name: from your computer
+`scp deploy/nginx/agrosoy-staging.http.conf root@38.242.145.246:/home/apps/nginx-certbot-docker/conf/agrosoy-staging.conf`,
+then on the server `docker exec nginx nginx -t && docker exec nginx nginx -s reload`.
 
-> Please create an **A record** `agrosoy.solution-services-tech.com` → `38.242.145.246`
-> (TTL 300). nginx already has its `.conf` (`conf/agrosoy-staging.conf`) and I'll request the
-> certificate with certbot once it resolves.
-
-- **Check:** `nslookup agrosoy.solution-services-tech.com 1.1.1.1` returns `38.242.145.246`, and
-  `http://agrosoy.solution-services-tech.com` opens the app (HTTP for now).
-- **Undo:** remove the record.
+- **Check:** `nslookup agrosoil.market-ia.shop 1.1.1.1` returns `38.242.145.246`, and
+  `curl -sI http://agrosoil.market-ia.shop/` answers from our app (a redirect to `/login` or a
+  200), not another site on the server.
+- **Undo:** copy the previous file back, `nginx -t`, reload.
 
 ### B2 · Certificate
 
 From `/home/apps/nginx-certbot-docker`, rehearsal first:
 
 ```bash
-docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoy.solution-services-tech.com --dry-run
-docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoy.solution-services-tech.com
+docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoil.market-ia.shop --dry-run
+docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoil.market-ia.shop
 ```
 
 - **Check:** `Successfully received certificate`.
-- **Undo:** `docker compose run --rm certbot delete --cert-name agrosoy.solution-services-tech.com` (after removing the
+- **Undo:** `docker compose run --rm certbot delete --cert-name agrosoil.market-ia.shop` (after removing the
   HTTPS file that uses it).
 
 ### B3 · nginx, HTTPS
@@ -208,20 +210,20 @@ cp conf/agrosoy-staging.conf ~/agrosoy-staging.http.conf.bak     # outside conf/
 docker exec nginx nginx -t && docker exec nginx nginx -s reload
 ```
 
-- **Check:** `https://agrosoy.solution-services-tech.com` opens with the padlock; `http://` redirects to it.
+- **Check:** `https://agrosoil.market-ia.shop` opens with the padlock; `http://` redirects to it.
 - **Undo:** copy the backup back, test, reload.
 
 ### B4 · Switch the app to the domain and close the port
 
 In `.env`: remove the `COMPOSE_FILE` and `PUBLIC_PORT` lines, and set
-`BETTER_AUTH_URL=https://agrosoy.solution-services-tech.com`. Then:
+`BETTER_AUTH_URL=https://agrosoil.market-ia.shop`. Then:
 
 ```bash
 docker compose up -d                    # recreates the app without the public port
 docker compose ps                       # no 0.0.0.0:3100 anymore
 ```
 
-- **Check:** sign-in works at `https://agrosoy.solution-services-tech.com`; `http://38.242.145.246:3100` no longer answers.
+- **Check:** sign-in works at `https://agrosoil.market-ia.shop`; `http://38.242.145.246:3100` no longer answers.
 - **Undo:** put the lines back, `docker compose up -d`.
 
 ### B5 · Renewal
