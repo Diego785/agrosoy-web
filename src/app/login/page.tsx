@@ -6,8 +6,8 @@ import { AgrosoilLogo } from "@/shared/presentation/brand/agrosoil-logo";
 export const metadata: Metadata = { title: "Ingresar" };
 
 const HIGHLIGHTS = [
-  { icon: ClipboardListIcon, text: "Boletas de entrega desde el campo o la oficina" },
-  { icon: WalletIcon, text: "Cobranzas y estados de cuenta al día" },
+  { icon: ClipboardListIcon, text: "Boletas de entrega" },
+  { icon: WalletIcon, text: "Clientes y estados de cuenta" },
   { icon: PackageIcon, text: "Productos y precios por campaña" },
 ];
 
@@ -24,13 +24,10 @@ export default function LoginPage() {
         <div className="relative flex max-w-md flex-col gap-8">
           <div>
             <h1 className="text-4xl leading-tight font-semibold tracking-tight text-white">
-              Todo el campo,
-              <br />
-              en un solo lugar.
+              Ventas, cobranzas
+              <br />e inventario
             </h1>
-            <p className="mt-3 text-base text-sidebar-foreground/80">
-              El sistema de ventas, cobranzas e inventario de Agrosoil.
-            </p>
+            <p className="mt-3 text-base text-sidebar-foreground/80">Sistema de gestión de Agrosoil</p>
           </div>
           <ul className="flex flex-col gap-3">
             {HIGHLIGHTS.map(({ icon: Icon, text }) => (
