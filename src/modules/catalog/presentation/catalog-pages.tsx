@@ -15,6 +15,7 @@ import { todayInBolivia } from "@/shared/presentation/business-date";
 import { formatMoney } from "@/shared/presentation/format";
 import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import { Input } from "@/shared/presentation/ui/input";
@@ -28,7 +29,7 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import type { ProductView } from "../application/catalog-ports";
-import { getProduct, listProducts, nextPresentationCode, priceSheet } from "../application/catalog-use-cases";
+import { getProduct, nextPresentationCode, priceSheet, productsPage } from "../application/catalog-use-cases";
 import { PRODUCT_LINES } from "../domain/product";
 import { catalogDeps } from "./catalog-deps";
 import { LINE_LABELS, contentLabel, priceUnitLabel } from "./catalog-labels";
@@ -55,10 +56,18 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
   const line = first(params.line) ?? "";
   const status = first(params.status) === "inactive" ? "inactive" : "active";
   const db = getDb();
-  const [products, prices] = await Promise.all([
-    listProducts(catalogDeps(db), actor, { text, line: line || undefined, status }),
+  const [list, prices] = await Promise.all([
+    productsPage(catalogDeps(db), actor, {
+      text,
+      line: line || undefined,
+      status,
+      page: first(params.page),
+      pages: first(params.pages),
+    }),
     currentGeneralPrices(actor),
   ]);
+  const products = list.items;
+  const filters = { q: text, line, status: status === "inactive" ? status : undefined };
 
   return (
     <div className="flex flex-col gap-4">
@@ -116,7 +125,7 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => (
+                {pageRows(list).map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">
                       <Link href={productPath(product.id)} className="hover:underline">
@@ -150,6 +159,11 @@ export async function ProductsTable({ searchParams }: { searchParams: SearchPara
           </CardList>
         </>
       )}
+      <ListPages
+        list={list}
+        href={(paging) => listHref(PRODUCTS_PATH, filters, paging)}
+        noun={["producto", "productos"]}
+      />
     </div>
   );
 }

@@ -319,3 +319,17 @@ select their whole value when tapped (`selectOnFocus`).
 
 **Why:** Agrosoil's staff expect a new note or product to start empty and a list to show what its
 filters say; a half-typed draft left on a hidden screen is more likely a mistake than work to keep.
+
+## D32 · Lists come in pages of 20; phones keep scrolling
+
+**Decision:** lists that grow with the business (customers, notes, products, the change log, and
+payments and charges in week 3) read 20 rows at a time from the database (`shared/application/
+pagination.ts`). Wide screens show "Anterior / Siguiente" with the page in the URL. On a phone the
+next 20 are appended when the end of the list comes into view, by asking the server for one more
+page (`pages` in the URL, replaced, not added to the history), up to 200 rows; past that it moves on
+by link. Short or bounded lists (users, zones, campaigns, imported sheets) and the price sheet,
+which is edited as a whole, are not paged; neither are statements, which are reports with totals.
+
+**Why:** 20 rows fit a laptop screen with little scrolling and stay light on a phone's data plan;
+appending on a phone follows how lists are read there, while a page number in the URL lets a wide
+screen go back to the same page.

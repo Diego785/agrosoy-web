@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagingFields } from "@/shared/application/pagination";
 
 // Shared by the forms (instant feedback) and the use cases (the real check). The messages are
 // shown next to the fields, so they are written in Spanish here.
@@ -43,7 +44,7 @@ export const customerSearchSchema = z.object({
   text: z.string().trim().max(100).catch(""),
   zoneId: z.uuid().optional().catch(undefined),
   status: z.enum(["active", "inactive"]).catch("active"),
-  page: z.coerce.number().int().min(1).catch(1),
+  ...pagingFields,
 });
 
 export const propertySchema = z.object({

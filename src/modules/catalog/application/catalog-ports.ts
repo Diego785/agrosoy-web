@@ -28,6 +28,8 @@ export type ProductView = {
 
 export type ProductStatus = "active" | "inactive";
 
+export type ProductQuery = { text: string; line?: ProductLine; status?: ProductStatus };
+
 export interface ProductRepository {
   /** Throws DomainError "DUPLICATE" (field "name", or "code" when a presentation's code is taken). */
   insert(product: ProductRecord, presentations: PresentationRecord[]): Promise<{ id: string }>;
@@ -47,7 +49,12 @@ export interface ProductRepository {
    * Products ordered by name; `text` is already normalized and also matches presentation codes.
    * Active products come with their active presentations only; deactivated ones with all.
    */
-  search(query: { text: string; line?: ProductLine; status?: ProductStatus }): Promise<ProductView[]>;
+  search(query: ProductQuery): Promise<ProductView[]>;
+  /** One page of `search`, with how many there are in all. */
+  searchPage(
+    query: ProductQuery,
+    window: { limit: number; offset: number },
+  ): Promise<{ items: ProductView[]; total: number }>;
 }
 
 export type ReferencePrice = { presentationId: string; price: string };

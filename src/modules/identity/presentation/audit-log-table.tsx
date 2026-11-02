@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { getDb } from "@/shared/infrastructure/db/client";
-import { formatCount, formatDateTime } from "@/shared/presentation/format";
+import { formatDateTime } from "@/shared/presentation/format";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
 import { isRole } from "@/shared/domain/role";
-import { buttonVariants } from "@/shared/presentation/ui/button";
 import {
   Table,
   TableBody,
@@ -66,12 +65,12 @@ export async function AuditLogTable({
 }) {
   const params = await searchParams;
   const actor = await requireActor();
-  const { items, total, page, pageSize } = await listAuditEntries(
-    { auditLog: drizzleAuditLogReader(getDb()) },
-    actor,
-    { page: Array.isArray(params.page) ? params.page[0] : params.page },
-  );
-  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+  const list = await listAuditEntries({ auditLog: drizzleAuditLogReader(getDb()) }, actor, {
+    page: first(params.page),
+    pages: first(params.pages),
+  });
+  const { items } = list;
 
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">Todavía no hay cambios registrados.</p>;
@@ -88,7 +87,7 @@ export async function AuditLogTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((entry) => (
+            {pageRows(list).map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell className="text-sm text-muted-foreground tabular-nums">
                   {formatDateTime(entry.occurredAt)}
@@ -115,32 +114,11 @@ export async function AuditLogTable({
           </CardListItem>
         ))}
       </CardList>
-      <footer className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{formatCount(total)} cambios</span>
-        {lastPage > 1 && (
-          <nav className="flex items-center gap-2" aria-label="Páginas">
-            {page > 1 && (
-              <Link
-                href={`${AUDIT_PATH}?page=${page - 1}`}
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
-              >
-                Más recientes
-              </Link>
-            )}
-            <span>
-              Página {page} de {lastPage}
-            </span>
-            {page < lastPage && (
-              <Link
-                href={`${AUDIT_PATH}?page=${page + 1}`}
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
-              >
-                Anteriores
-              </Link>
-            )}
-          </nav>
-        )}
-      </footer>
+      <ListPages
+        list={list}
+        href={(paging) => listHref(AUDIT_PATH, {}, paging)}
+        noun={["cambio", "cambios"]}
+      />
     </div>
   );
 }

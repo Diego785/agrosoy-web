@@ -5,6 +5,7 @@ import { buttonVariants } from "@/shared/presentation/ui/button";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 import {
   Table,
@@ -29,11 +30,18 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
   const zoneId = firstValue(params.zone) || undefined;
   const status = firstValue(params.status) === "inactive" ? "inactive" : "active";
 
-  const [{ items, total, page, pageSize }, zones] = await Promise.all([
-    searchCustomers(deps, actor, { text, zoneId, status, page: firstValue(params.page) }),
+  const [list, zones] = await Promise.all([
+    searchCustomers(deps, actor, {
+      text,
+      zoneId,
+      status,
+      page: firstValue(params.page),
+      pages: firstValue(params.pages),
+    }),
     listAllZones(deps, actor),
   ]);
-  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  const { items } = list;
+  const filters = { q: text, zone: zoneId, status: status === "inactive" ? status : undefined };
 
   return (
     <div className="flex flex-col gap-4">
@@ -89,7 +97,7 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((customer) => (
+                {pageRows(list).map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {formatCustomerCode(customer.code)}
@@ -136,45 +144,12 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
         </>
       )}
 
-      <footer className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{total === 1 ? "1 cliente" : `${total.toLocaleString("es-BO")} clientes`}</span>
-        {lastPage > 1 && (
-          <nav className="flex items-center gap-2" aria-label="Páginas">
-            {page > 1 && (
-              <PageLink params={{ q: text, zone: zoneId, status }} page={page - 1} label="Anterior" />
-            )}
-            <span>
-              Página {page} de {lastPage}
-            </span>
-            {page < lastPage && (
-              <PageLink params={{ q: text, zone: zoneId, status }} page={page + 1} label="Siguiente" />
-            )}
-          </nav>
-        )}
-      </footer>
+      <ListPages
+        list={list}
+        href={(paging) => listHref(CUSTOMERS_PATH, filters, paging)}
+        noun={["cliente", "clientes"]}
+      />
     </div>
-  );
-}
-
-function PageLink({
-  params,
-  page,
-  label,
-}: {
-  params: { q: string; zone?: string; status: string };
-  page: number;
-  label: string;
-}) {
-  const query = new URLSearchParams({
-    ...(params.q && { q: params.q }),
-    ...(params.zone && { zone: params.zone }),
-    ...(params.status === "inactive" && { status: params.status }),
-    page: String(page),
-  });
-  return (
-    <Link href={`${CUSTOMERS_PATH}?${query}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-      {label}
-    </Link>
   );
 }
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagingFields } from "@/shared/application/pagination";
 import { FREE_REASONS, PAYMENT_TERMS } from "../domain/delivery-note";
 
 // Shared by the note form and the use cases; the messages are shown next to the fields.
@@ -81,5 +82,5 @@ export type NoteLineInput = z.input<typeof noteLineSchema>;
 
 export const noteSearchSchema = z.object({
   status: z.enum(["draft", "confirmed", "voided"]).optional().catch(undefined),
-  page: z.coerce.number().int().min(1).catch(1),
+  ...pagingFields,
 });

@@ -20,6 +20,7 @@ import {
   trimDecimalZeros,
 } from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
@@ -59,10 +60,12 @@ export async function NotesTable({
   const params = await searchParams;
   const actor = await requireActor();
   const status = first(params.status) ?? "";
-  const { items, total } = await listNotes(notesDeps(), actor, {
+  const list = await listNotes(notesDeps(), actor, {
     status: status || undefined,
     page: first(params.page),
+    pages: first(params.pages),
   });
+  const { items } = list;
 
   return (
     <div className="flex flex-col gap-4">
@@ -96,7 +99,7 @@ export async function NotesTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((note) => (
+                {pageRows(list).map((note) => (
                   <TableRow key={note.id}>
                     <TableCell className="tabular-nums">
                       <Link href={notePath(note.id)} className="font-medium hover:underline">
@@ -137,7 +140,11 @@ export async function NotesTable({
           </CardList>
         </>
       )}
-      <p className="text-sm text-muted-foreground">{total === 1 ? "1 boleta" : `${total} boletas`}</p>
+      <ListPages
+        list={list}
+        href={(paging) => listHref(NOTES_PATH, { status }, paging)}
+        noun={["boleta", "boletas"]}
+      />
     </div>
   );
 }

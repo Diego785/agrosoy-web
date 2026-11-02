@@ -20,6 +20,9 @@ up without re-reading the whole history.
   - **Screens start clean** after leaving them, and filters show what the list applies (D31).
   - **Choosing a customer on a note fills who receives** with the customer's name, NIT/CI and
     "Titular", still editable.
+- **Pagination (D32):** customers, notes, products and the change log in pages of 20; phones
+  append the next page while scrolling. The notes list had a page size but no way to reach page 2.
+- **Deployed to staging** (`main` at `8186f36`, by the developer) for the business owner's demo.
 
 ## 2026-10-31
 
