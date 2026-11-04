@@ -3,6 +3,19 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-04
+
+- **Staging is on its domain:** `https://agrosoil.market-ia.shop`, with `main` at `fde4ea1` or later
+  and port 3100 closed. Recorded in `deploy/server-log.md`, with what could only be checked from
+  outside. The certificate expires on 31 January 2027 and nothing renews it yet (`deploy/README.md`,
+  B5). This site also answers unknown names on the shared nginx; left as it is, with the fix noted.
+- **Week 3's state, reviewed:** the base is built on `feature/week-3` but not approved. Left to do:
+  - merge `main` in (14 files conflict), page and filter payments and charges, and bring the new
+    look and skeletons to the week's own screens;
+  - charge concepts (D24), receipt balances (D27), printed receipt numbers and the system's range
+    (D28), company profile and PDFs like the paper forms (D26), returns and transfers from several
+    deliveries (D25), and opening balances, historical notes and payments with a cut-off date (D29).
+
 ## 2026-11-02
 
 - **Filters apply as they change (D33)** in products, customers and notes: no "Buscar" button,
