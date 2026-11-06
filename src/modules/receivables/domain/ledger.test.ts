@@ -18,6 +18,11 @@ describe("ledger postings", () => {
     expect(posting({ ...base, kind: "return", amount }).amount.toDecimalString()).toBe("-100.00");
   });
 
+  it("lets a charge lower the debt, as a price adjustment can (D24)", () => {
+    const entry = posting({ ...base, kind: "charge", amount: Money.parse("-50") });
+    expect(entry.amount.toDecimalString()).toBe("-50.00");
+  });
+
   it("rejects empty or negative amounts, except an opening balance in the customer's favor", () => {
     expect(() => posting({ ...base, kind: "delivery", amount: Money.zero() })).toThrow("INVALID_AMOUNT");
     expect(() => posting({ ...base, kind: "payment", amount: Money.parse("-5") })).toThrow("INVALID_AMOUNT");

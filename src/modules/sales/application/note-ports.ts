@@ -28,14 +28,14 @@ export type NoteView = {
   /** Returns and transfers: the delivery note they act on. */
   original: { id: string; number: number | null; campaign: { season: Season; year: number } } | null;
   noteDate: string;
-  customer: { id: string; code: number; name: string };
+  customer: { id: string; code: number; name: string; taxId: string | null };
   property: { id: string; name: string } | null;
   campaign: { id: string; season: Season; year: number };
   technician: { id: string; name: string } | null;
   paymentTerms: PaymentTerms;
   exchangeRate: string;
   receiver: { name: string; documentId: string | null; relationship: string | null };
-  handedOverBy: { id: string; name: string; position: string | null } | null;
+  handedOverBy: { id: string; name: string; position: string | null; documentId: string | null } | null;
   carrier: Carrier;
   observations: string | null;
   taxInvoiceNumber: string | null;

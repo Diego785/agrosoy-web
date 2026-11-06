@@ -95,6 +95,7 @@ export async function confirmNote(
       inKindDescription: optionalText(payment.inKindDescription) ?? null,
       reference: optionalText(payment.reference) ?? null,
       observations: null,
+      concept: null,
       noteId: id,
     });
     const allocation = { campaignId: note.campaign.id, noteId: id, amount: total };

@@ -120,6 +120,13 @@
       "when": 1793505268962,
       "tag": "0016_sales_import",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793928642679,
+      "tag": "0017_charge_concepts_and_receipt_balances",
+      "breakpoints": true
     }
   ]
 }

@@ -125,10 +125,10 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
     async charges(ids) {
       if (ids.length === 0) return new Map();
       const rows = await executor
-        .select({ id: charges.id, reason: charges.reason })
+        .select({ id: charges.id, reason: charges.reason, concept: charges.concept })
         .from(charges)
         .where(inArray(charges.id, [...ids]));
-      return new Map(rows.map(({ id, reason }) => [id, { reason }]));
+      return new Map(rows.map(({ id, reason, concept }) => [id, { reason, concept }]));
     },
   };
 }

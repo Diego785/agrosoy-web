@@ -187,6 +187,7 @@ export async function customerStatement(
           kind: "charge",
           amount: signed(entry),
           description: charges.get(entry.source.id)?.reason ?? "",
+          chargeConcept: charges.get(entry.source.id)?.concept ?? null,
           document: { type: "charge", id: entry.source.id },
         },
       ];

@@ -57,7 +57,7 @@ import type { DocumentStatus } from "../application/collection-ports";
 import { ChargeForm } from "./charge-form";
 import { DailyRateForm, VoidChargeButton, VoidPaymentButton } from "./collection-controls";
 import { collectionDeps } from "./collection-deps";
-import { METHOD_LABELS, formatAmount } from "./collection-labels";
+import { CHARGE_CONCEPT_LABELS, METHOD_LABELS, formatAmount, paymentConcept } from "./collection-labels";
 import { CHARGES_PATH, PAYMENTS_PATH, paymentPath, receiptPdfPath } from "./collection-routes";
 import { PaymentForm } from "./payment-form";
 
@@ -382,6 +382,9 @@ export async function PaymentDetail({ params }: { params: Promise<{ id: string }
               )}
             </Item>
             <Item label="Referencia">{payment.reference}</Item>
+            <Item label="Por concepto de" className="sm:col-span-2">
+              <span className="font-normal">{paymentConcept(payment)}</span>
+            </Item>
             {payment.settlesNote && (
               <Item label="Boleta al contado">
                 <Link href={notePath(payment.settlesNote.id)} className="hover:text-primary">
@@ -418,6 +421,18 @@ export async function PaymentDetail({ params }: { params: Promise<{ id: string }
             <dt className="text-muted-foreground">A {formatRate(payment.exchangeRate)} Bs por US$</dt>
             <dd className="font-medium tabular-nums">US$ {formatMoney(payment.usdAmount)}</dd>
           </div>
+        )}
+        {payment.balance && (
+          <>
+            <div className="mt-1 flex items-baseline justify-between gap-6 border-t pt-2 text-sm">
+              <dt className="text-muted-foreground">Debía</dt>
+              <dd className="font-medium tabular-nums">US$ {formatMoney(payment.balance.before)}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-6 text-sm">
+              <dt className="text-muted-foreground">Quedó debiendo</dt>
+              <dd className="font-semibold tabular-nums">US$ {formatMoney(payment.balance.after)}</dd>
+            </div>
+          </>
         )}
       </dl>
 
@@ -538,7 +553,7 @@ export async function ChargesTable({ searchParams }: { searchParams: SearchParam
                   <TableHead className="w-28">Fecha</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Campaña</TableHead>
-                  <TableHead>Motivo</TableHead>
+                  <TableHead>Concepto y motivo</TableHead>
                   <TableHead className="text-right">US$</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>
@@ -555,6 +570,7 @@ export async function ChargesTable({ searchParams }: { searchParams: SearchParam
                     <TableCell className="font-medium">{charge.customer.name}</TableCell>
                     <TableCell className="text-muted-foreground">{campaignLabel(charge.campaign)}</TableCell>
                     <TableCell className="max-w-80 whitespace-normal">
+                      <span className="block font-medium">{CHARGE_CONCEPT_LABELS[charge.concept]}</span>
                       {charge.reason}
                       {charge.voided && (
                         <span className="block text-xs text-muted-foreground">
@@ -563,7 +579,7 @@ export async function ChargesTable({ searchParams }: { searchParams: SearchParam
                       )}
                     </TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
-                      {formatMoney(charge.usdAmount)}
+                      {chargeAmount(charge)}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={charge.status} />
@@ -587,6 +603,7 @@ export async function ChargesTable({ searchParams }: { searchParams: SearchParam
                   {formatDate(charge.chargeDate)} · {campaignLabel(charge.campaign)}
                 </span>
                 <span>
+                  <span className="block font-medium">{CHARGE_CONCEPT_LABELS[charge.concept]}</span>
                   {charge.reason}
                   {charge.voided && (
                     <span className="block text-xs text-muted-foreground">
@@ -595,7 +612,7 @@ export async function ChargesTable({ searchParams }: { searchParams: SearchParam
                   )}
                 </span>
                 <CardField label="US$">
-                  <span className="font-medium">{formatMoney(charge.usdAmount)}</span>
+                  <span className="font-medium">{chargeAmount(charge)}</span>
                 </CardField>
                 {charge.status === "recorded" && (
                   <div className="pt-1">
@@ -614,6 +631,11 @@ export async function ChargesTable({ searchParams }: { searchParams: SearchParam
       />
     </div>
   );
+}
+
+/** "−50,00" when the adjustment lowers the debt. */
+function chargeAmount(charge: { usdAmount: string; direction: "debit" | "credit" }): string {
+  return `${charge.direction === "credit" ? "−" : ""}${formatMoney(charge.usdAmount)}`;
 }
 
 /** The charges list while it loads, laid out like `ChargesTable`. */

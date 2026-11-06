@@ -23,7 +23,10 @@ export async function savePayment(
   actorId: string,
 ): Promise<{ id: string; receiptNumber: number }> {
   const receiptNumber = await deps.receipts.take((candidate) => deps.payments.receiptNumberInUse(candidate));
-  const { id } = await deps.payments.insert(payment, allocations, receiptNumber, actorId);
+  // A cash note posts its debt first, so its receipt shows the note in the total (D27).
+  const before = await deps.ledger.customerBalance(payment.customerId);
+  const balance = { before, after: before.subtract(payment.usdAmount) };
+  const { id } = await deps.payments.insert(payment, allocations, receiptNumber, actorId, balance);
   await postToLedger(
     deps.ledger,
     allocations.map((allocation) =>

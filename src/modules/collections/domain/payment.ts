@@ -21,6 +21,8 @@ export type PaymentRecord = {
   inKindDescription: string | null;
   reference: string | null;
   observations: string | null;
+  /** What the receipt says it is for; without it, it says what the payment was applied to (D26). */
+  concept: string | null;
   /** The cash note this payment was received with, voided together with it. */
   settlesNoteId: string | null;
 };
@@ -60,16 +62,38 @@ export function cashNotePayment(
   return { ...record, usdAmount: total };
 }
 
-/** An extra debit entered by administration, for example interest, always with its reason. */
+/** The "OTROS" codes of Agrosoil's product list: charges, not products (D24). */
+export const CHARGE_CONCEPTS = ["interest", "price_adjustment", "notarized_contract", "other"] as const;
+export type ChargeConcept = (typeof CHARGE_CONCEPTS)[number];
+
+export const CHARGE_DIRECTIONS = ["debit", "credit"] as const;
+export type ChargeDirection = (typeof CHARGE_DIRECTIONS)[number];
+
+/** Only a price adjustment can lower the debt (D24). */
+export function canLowerDebt(concept: ChargeConcept): boolean {
+  return concept === "price_adjustment";
+}
+
+/** A movement administration enters on a customer's debt, always with its concept and reason. */
 export type ChargeRecord = {
   chargeDate: string;
   customerId: string;
   campaignId: string;
+  concept: ChargeConcept;
+  direction: ChargeDirection;
   amount: Money;
   reason: string;
 };
 
 export function chargeRecord(input: ChargeRecord): ChargeRecord {
+  if (input.direction === "credit" && !canLowerDebt(input.concept)) {
+    throw new DomainError("VALIDATION_FAILED", { fieldErrors: { direction: ["not_allowed"] } });
+  }
   if (!input.amount.isPositive()) throw new DomainError("INVALID_AMOUNT", { reason: "not_positive" });
   return input;
+}
+
+/** What the charge does to the debt: positive raises it, negative lowers it. */
+export function chargeLedgerAmount(charge: Pick<ChargeRecord, "amount" | "direction">): Money {
+  return charge.direction === "credit" ? charge.amount.negate() : charge.amount;
 }

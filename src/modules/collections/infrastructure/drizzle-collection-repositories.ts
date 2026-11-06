@@ -26,7 +26,7 @@ function voidInfo(row: { voidedAt: Date | null; voidReason: string | null }, byN
 
 export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepository {
   return {
-    async insert(payment, allocations, receiptNumber, createdBy) {
+    async insert(payment, allocations, receiptNumber, createdBy, balance) {
       const [row] = await executor
         .insert(payments)
         .values({
@@ -41,6 +41,9 @@ export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepositor
           inKindDescription: payment.inKindDescription,
           reference: payment.reference,
           observations: payment.observations,
+          concept: payment.concept,
+          balanceBefore: balance.before.toDecimalString(),
+          balanceAfter: balance.after.toDecimalString(),
           settlesNoteId: payment.settlesNoteId,
           createdBy,
         })
@@ -61,9 +64,10 @@ export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepositor
       const [row] = await executor
         .select({
           payment: payments,
-          customer: customerRef,
+          customer: { ...customerRef, taxId: customers.taxId },
           settledNoteNumber: settledNote.number,
           recorderName: recorder.name,
+          recorderDocumentId: recorder.documentId,
           voiderName: voider.name,
         })
         .from(payments)
@@ -102,6 +106,11 @@ export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepositor
         inKindDescription: payment.inKindDescription,
         reference: payment.reference,
         observations: payment.observations,
+        concept: payment.concept,
+        balance:
+          payment.balanceBefore && payment.balanceAfter
+            ? { before: payment.balanceBefore, after: payment.balanceAfter }
+            : null,
         settlesNote: payment.settlesNoteId
           ? { id: payment.settlesNoteId, number: row.settledNoteNumber }
           : null,
@@ -110,7 +119,11 @@ export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepositor
           note: allocation.noteId ? { id: allocation.noteId, number: allocation.noteNumber } : null,
           usdAmount: allocation.usdAmount,
         })),
-        recorded: { at: payment.createdAt, byName: row.recorderName },
+        recorded: {
+          at: payment.createdAt,
+          byName: row.recorderName,
+          documentId: row.recorderDocumentId,
+        },
         voided: voidInfo(payment, row.voiderName),
       };
     },
@@ -198,6 +211,8 @@ export function drizzleChargeRepository(executor: DbExecutor): ChargeRepository 
     customer: row.customer,
     campaign: row.campaign,
     usdAmount: row.charge.usdAmount,
+    concept: row.charge.concept,
+    direction: row.charge.direction,
     reason: row.charge.reason,
     voided: voidInfo(row.charge, row.voiderName),
   });
@@ -210,6 +225,8 @@ export function drizzleChargeRepository(executor: DbExecutor): ChargeRepository 
           chargeDate: charge.chargeDate,
           customerId: charge.customerId,
           campaignId: charge.campaignId,
+          concept: charge.concept,
+          direction: charge.direction,
           usdAmount: charge.amount.toDecimalString(),
           reason: charge.reason,
           createdBy,

@@ -15,8 +15,10 @@ export type LedgerKind = (typeof LEDGER_KINDS)[number];
 export const LEDGER_SOURCE_TYPES = ["delivery_note", "payment", "charge", "import_batch"] as const;
 export type LedgerSource = { type: (typeof LEDGER_SOURCE_TYPES)[number]; id: string };
 
-/** Kinds that lower the debt. An opening balance may go either way (a customer can start in favor). */
+/** Kinds that lower the debt. */
 const CREDIT_KINDS: ReadonlySet<LedgerKind> = new Set(["return", "payment", "campaign_transfer_out"]);
+/** These go either way, so their amount carries the sign: a customer can start in favor (opening balance), a price adjustment can lower the debt (D24). */
+const SIGNED_KINDS: ReadonlySet<LedgerKind> = new Set(["opening_balance", "charge"]);
 
 /** A line of the customer's debt: positive amounts are debits (they owe more), negative are credits. */
 export type LedgerPosting = {
@@ -36,7 +38,7 @@ export type LedgerEntry = LedgerPosting & { id: string };
 /** Builds an entry from the document's (positive) amount; the kind decides whether it is a debit or a credit. */
 export function posting(input: Omit<LedgerPosting, "reversesEntryId">): LedgerPosting {
   if (input.amount.isZero()) throw new DomainError("INVALID_AMOUNT", { reason: "zero_entry" });
-  if (input.kind === "opening_balance") return { ...input, reversesEntryId: null };
+  if (SIGNED_KINDS.has(input.kind)) return { ...input, reversesEntryId: null };
   if (input.amount.isNegative()) throw new DomainError("INVALID_AMOUNT", { reason: "negative_entry" });
   return {
     ...input,

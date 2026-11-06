@@ -1,7 +1,14 @@
 import type { Season } from "@/modules/campaigns/domain/campaign";
 import type { ExchangeRate } from "@/shared/domain/exchange-rate";
+import type { Money } from "@/shared/domain/money";
 import type { Allocation, CampaignBalance } from "../domain/allocation";
-import type { ChargeRecord, PaymentMethod, PaymentRecord } from "../domain/payment";
+import type {
+  ChargeConcept,
+  ChargeDirection,
+  ChargeRecord,
+  PaymentMethod,
+  PaymentRecord,
+} from "../domain/payment";
 
 export type DocumentStatus = "recorded" | "voided";
 
@@ -15,7 +22,7 @@ export type PaymentView = {
   receiptNumber: number;
   status: DocumentStatus;
   paymentDate: string;
-  customer: CustomerRef;
+  customer: CustomerRef & { taxId: string | null };
   currency: "USD" | "BOB";
   amount: string;
   exchangeRate: string;
@@ -24,13 +31,16 @@ export type PaymentView = {
   inKindDescription: string | null;
   reference: string | null;
   observations: string | null;
+  concept: string | null;
+  /** The customer's debt in US$ around this payment; null on payments from before they were kept (D27). */
+  balance: { before: string; after: string } | null;
   settlesNote: { id: string; number: number | null } | null;
   allocations: {
     campaign: CampaignRef;
     note: { id: string; number: number | null } | null;
     usdAmount: string;
   }[];
-  recorded: { at: Date; byName: string | null };
+  recorded: { at: Date; byName: string | null; documentId: string | null };
   voided: VoidInfo;
 };
 
@@ -46,6 +56,8 @@ export type ChargeView = {
   customer: CustomerRef;
   campaign: CampaignRef;
   usdAmount: string;
+  concept: ChargeConcept;
+  direction: ChargeDirection;
   reason: string;
   voided: VoidInfo;
 };
@@ -64,6 +76,7 @@ export interface PaymentRepository {
     allocations: readonly Allocation[],
     receiptNumber: number,
     createdBy: string,
+    balance: { before: Money; after: Money },
   ): Promise<{ id: string }>;
   findById(id: string): Promise<PaymentView | undefined>;
   list(query: DocumentQuery & { customerId?: string }): Promise<{ items: PaymentListItem[]; total: number }>;

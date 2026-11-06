@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql, sum } from "drizzle-orm";
 import { Money } from "@/shared/domain/money";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import type { LedgerRepository } from "../application/ledger-ports";
@@ -20,6 +20,14 @@ export function drizzleLedgerRepository(executor: DbExecutor): LedgerRepository 
           createdBy,
         })),
       );
+    },
+
+    async customerBalance(customerId) {
+      const [row] = await executor
+        .select({ balance: sql<string>`coalesce(${sum(ledgerEntries.amount)}, 0)::numeric(14,2)::text` })
+        .from(ledgerEntries)
+        .where(eq(ledgerEntries.customerId, customerId));
+      return Money.parse(row?.balance ?? "0");
     },
 
     async entriesOf(source) {

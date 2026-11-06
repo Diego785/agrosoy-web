@@ -13,7 +13,7 @@ import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { normalizeForComparison, optionalText } from "@/shared/domain/text";
 import { allocate, type AllocationTarget, type CampaignBalance } from "../domain/allocation";
-import { chargeRecord, paymentRecord } from "../domain/payment";
+import { chargeLedgerAmount, chargeRecord, paymentRecord } from "../domain/payment";
 import type {
   ChargeRepository,
   ChargeView,
@@ -85,6 +85,7 @@ export async function recordPayment(
     inKindDescription: optionalText(data.inKindDescription) ?? null,
     reference: optionalText(data.reference) ?? null,
     observations: optionalText(data.observations) ?? null,
+    concept: optionalText(data.concept) ?? null,
     settlesNoteId: null,
   });
   const balances = target.kind === "oldest_debt" ? await deps.lookups.balances(data.customerId) : [];
@@ -184,6 +185,8 @@ export async function recordCharge(
     chargeDate: data.chargeDate,
     customerId: data.customerId,
     campaignId: data.campaignId,
+    concept: data.concept,
+    direction: data.direction,
     amount: Money.parse(data.amount),
     reason: data.reason,
   });
@@ -196,7 +199,7 @@ export async function recordCharge(
         campaignId: charge.campaignId,
         date: charge.chargeDate,
         kind: "charge",
-        amount: charge.amount,
+        amount: chargeLedgerAmount(charge),
         source: { type: "charge", id: created.id },
       }),
     ],
@@ -207,7 +210,12 @@ export async function recordCharge(
     action: "collections.record_charge",
     entityType: "customer",
     entityId: charge.customerId,
-    payload: { chargeId: created.id, usdAmount: charge.amount.toDecimalString(), reason: charge.reason },
+    payload: {
+      chargeId: created.id,
+      concept: charge.concept,
+      usdAmount: chargeLedgerAmount(charge).toDecimalString(),
+      reason: charge.reason,
+    },
   });
   return created;
 }

@@ -27,15 +27,10 @@ export function PdfActions({ href, fileName }: { href: string; fileName: string 
 
   return (
     <div className="flex gap-2 print:hidden">
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener"
-        className={buttonVariants({ variant: "outline", size: "sm" })}
-      >
+      <a href={href} target="_blank" rel="noopener" className={buttonVariants({ variant: "outline" })}>
         <FileDownIcon aria-hidden /> PDF
       </a>
-      <button type="button" onClick={share} className={buttonVariants({ variant: "outline", size: "sm" })}>
+      <button type="button" onClick={share} className={buttonVariants({ variant: "outline" })}>
         <Share2Icon aria-hidden /> Compartir
       </button>
     </div>

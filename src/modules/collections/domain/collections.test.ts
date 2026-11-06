@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { allocate, allocatedTotal } from "./allocation";
-import { cashNotePayment, paymentRecord } from "./payment";
+import { cashNotePayment, chargeLedgerAmount, chargeRecord, paymentRecord } from "./payment";
 
 const rate = ExchangeRate.parse("6.96");
 const base = {
@@ -13,6 +13,7 @@ const base = {
   inKindDescription: null,
   reference: null,
   observations: null,
+  concept: null,
   settlesNoteId: null,
 } as const;
 
@@ -79,5 +80,28 @@ describe("allocating a payment", () => {
     expect(
       amounts(allocate(Money.parse("80"), { kind: "campaign", campaignId: "summer25" }, balances, "x")),
     ).toEqual([["summer25", "80.00"]]);
+  });
+});
+
+describe("charges", () => {
+  const charge = {
+    chargeDate: "2026-11-02",
+    customerId: "c",
+    campaignId: "k",
+    amount: Money.parse("50"),
+    reason: "Ajuste acordado",
+  };
+
+  it("raises the debt unless a price adjustment lowers it (D24)", () => {
+    const debit = chargeRecord({ ...charge, concept: "interest", direction: "debit" });
+    expect(chargeLedgerAmount(debit).toDecimalString()).toBe("50.00");
+    const credit = chargeRecord({ ...charge, concept: "price_adjustment", direction: "credit" });
+    expect(chargeLedgerAmount(credit).toDecimalString()).toBe("-50.00");
+  });
+
+  it("rejects lowering the debt with any other concept", () => {
+    expect(() => chargeRecord({ ...charge, concept: "interest", direction: "credit" })).toThrow(
+      "VALIDATION_FAILED",
+    );
   });
 });

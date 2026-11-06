@@ -53,6 +53,7 @@ async function seedHistory() {
   });
   const summer = (await collectionDeps().lookups.campaignOn("2026-11-01"))!.id;
   await recordCharge(collectionDeps(), admin, {
+    concept: "interest",
     customerId: ids.customerId,
     campaignId: summer,
     chargeDate: "2026-11-02",

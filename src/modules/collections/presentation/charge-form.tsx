@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
 import { applyActionError } from "@/shared/presentation/form-errors";
@@ -14,7 +14,9 @@ import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
 import { chargeSchema, type ChargeInput } from "../application/collection-schemas";
+import { CHARGE_CONCEPTS, canLowerDebt, type ChargeConcept } from "../domain/payment";
 import { recordChargeAction } from "./collection-actions";
+import { CHARGE_CONCEPT_LABELS } from "./collection-labels";
 import { CHARGES_PATH } from "./collection-routes";
 import { DateInput } from "@/shared/presentation/date-input";
 import { FormSection } from "@/shared/presentation/form-section";
@@ -40,15 +42,22 @@ export const ChargeForm = resetOnLeave(function ChargeForm({
       customerId: "",
       campaignId: currentCampaignId ?? "",
       chargeDate: today,
+      concept: "interest",
+      direction: "debit",
       amount: "",
       reason: "",
     } satisfies ChargeInput,
   });
   const { errors } = form.formState;
+  const concept = useWatch({ control: form.control, name: "concept" }) as ChargeConcept;
 
   const submit = form.handleSubmit((values) =>
     startSaving(async () => {
-      const result = await recordChargeAction(values);
+      // Only an adjustment asks which way it goes; anything else raises the debt.
+      const result = await recordChargeAction({
+        ...values,
+        direction: canLowerDebt(values.concept as ChargeConcept) ? values.direction : "debit",
+      });
       if (!result.ok) return applyActionError(form, result.error);
       toast.success("Cargo registrado");
       router.push(CHARGES_PATH);
@@ -70,6 +79,29 @@ export const ChargeForm = resetOnLeave(function ChargeForm({
           </NativeSelect>
           <FieldError errors={[errors.customerId]} />
         </Field>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field data-invalid={!!errors.concept}>
+            <FieldLabel htmlFor="concept">Concepto</FieldLabel>
+            <NativeSelect id="concept" aria-invalid={!!errors.concept} {...form.register("concept")}>
+              {CHARGE_CONCEPTS.map((option) => (
+                <NativeSelectOption key={option} value={option}>
+                  {CHARGE_CONCEPT_LABELS[option]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <FieldError errors={[errors.concept]} />
+          </Field>
+          {canLowerDebt(concept) && (
+            <Field data-invalid={!!errors.direction}>
+              <FieldLabel htmlFor="direction">Efecto en la deuda</FieldLabel>
+              <NativeSelect id="direction" aria-invalid={!!errors.direction} {...form.register("direction")}>
+                <NativeSelectOption value="debit">Sube la deuda</NativeSelectOption>
+                <NativeSelectOption value="credit">Baja la deuda</NativeSelectOption>
+              </NativeSelect>
+              <FieldError errors={[errors.direction]} />
+            </Field>
+          )}
+        </div>
         <div className="grid gap-5 sm:grid-cols-3">
           <Field data-invalid={!!errors.campaignId}>
             <FieldLabel htmlFor="campaignId">Campaña</FieldLabel>
@@ -108,7 +140,7 @@ export const ChargeForm = resetOnLeave(function ChargeForm({
           <FieldLabel htmlFor="reason">Motivo</FieldLabel>
           <Textarea
             id="reason"
-            placeholder="Por ejemplo: interés por mora acordado con el cliente"
+            placeholder="Por ejemplo: mora de 60 días acordada con el cliente"
             aria-invalid={!!errors.reason}
             {...form.register("reason")}
           />

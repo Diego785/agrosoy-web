@@ -4,7 +4,7 @@ import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
 import { deliveryNotes } from "@/modules/sales/infrastructure/notes.tables";
 import { createdAt, id, timestamps } from "@/shared/infrastructure/db/columns";
-import { CURRENCIES, PAYMENT_METHODS } from "../domain/payment";
+import { CHARGE_CONCEPTS, CHARGE_DIRECTIONS, CURRENCIES, PAYMENT_METHODS } from "../domain/payment";
 
 const voidColumns = {
   status: text({ enum: ["recorded", "voided"] })
@@ -34,6 +34,11 @@ export const payments = pgTable(
     inKindDescription: text(),
     reference: text(),
     observations: text(),
+    /** What the receipt says it is for, when administration wrote it. */
+    concept: text(),
+    /** The customer's debt in US$ right before and after: a receipt keeps its moment (D27). */
+    balanceBefore: numeric({ precision: 14, scale: 2 }),
+    balanceAfter: numeric({ precision: 14, scale: 2 }),
     /** The cash note received together with this payment. */
     settlesNoteId: uuid().references(() => deliveryNotes.id),
     ...voidColumns,
@@ -71,7 +76,7 @@ export const paymentAllocations = pgTable(
   ],
 );
 
-/** Extra debits such as interest, entered by administration with a reason. */
+/** Movements such as interest or a price adjustment, entered by administration with a reason (D24). */
 export const charges = pgTable(
   "charges",
   {
@@ -83,6 +88,8 @@ export const charges = pgTable(
     campaignId: uuid()
       .notNull()
       .references(() => campaigns.id),
+    concept: text({ enum: CHARGE_CONCEPTS }).notNull().default("other"),
+    direction: text({ enum: CHARGE_DIRECTIONS }).notNull().default("debit"),
     usdAmount: numeric({ precision: 14, scale: 2 }).notNull(),
     reason: text().notNull(),
     ...voidColumns,

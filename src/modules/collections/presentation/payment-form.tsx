@@ -65,6 +65,7 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
       campaignId: "",
       noteId: "",
       observations: "",
+      concept: "",
     } satisfies PaymentInput,
   });
   const { errors } = form.formState;
@@ -86,7 +87,9 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
     <form onSubmit={submit} noValidate className="flex max-w-4xl flex-col gap-6">
       <FormSection title="Cliente">
         <Field data-invalid={!!errors.customerId}>
-          <FieldLabel htmlFor="customerId">Cliente</FieldLabel>
+          <FieldLabel htmlFor="customerId" className="sr-only">
+            Cliente
+          </FieldLabel>
           <NativeSelect
             id="customerId"
             value={customer?.id ?? ""}
@@ -265,7 +268,13 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
             )}
           </FormSection>
 
-          <FormSection title="Observaciones">
+          <FormSection title="Para el recibo">
+            <Field data-invalid={!!errors.concept}>
+              <FieldLabel htmlFor="concept">Por concepto de (opcional)</FieldLabel>
+              <Input id="concept" aria-invalid={!!errors.concept} {...form.register("concept")} />
+              <FieldDescription>Si lo dejas vacío, dirá a qué se aplicó el pago.</FieldDescription>
+              <FieldError errors={[errors.concept]} />
+            </Field>
             <Field data-invalid={!!errors.observations}>
               <FieldLabel htmlFor="observations">Observaciones (opcional)</FieldLabel>
               <Textarea id="observations" {...form.register("observations")} />

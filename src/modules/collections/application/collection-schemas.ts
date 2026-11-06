@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { pagingFields } from "@/shared/application/pagination";
-import { CURRENCIES, PAYMENT_METHODS } from "../domain/payment";
+import {
+  CHARGE_CONCEPTS,
+  CHARGE_DIRECTIONS,
+  CURRENCIES,
+  PAYMENT_METHODS,
+  canLowerDebt,
+} from "../domain/payment";
 
 // Shared by the collection forms and the use cases; the messages are shown next to the fields.
 
@@ -41,6 +47,7 @@ export const paymentSchema = z
     campaignId: optionalId,
     noteId: optionalId,
     observations: optionalText(500),
+    concept: optionalText(200),
   })
   .superRefine((payment, context) => {
     if (payment.target === "campaign" && !payment.campaignId) {
@@ -58,17 +65,29 @@ export const paymentSchema = z
     }
   });
 
-export const chargeSchema = z.object({
-  customerId: z.uuid({ error: "Elige el cliente." }),
-  campaignId: z.uuid({ error: "Elige la campaña." }),
-  chargeDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
-  amount: decimal(2, "Escribe el monto en US$, por ejemplo 120.50."),
-  reason: z
-    .string()
-    .trim()
-    .min(5, { error: "Explica el motivo del cargo." })
-    .max(500, { error: "Admite hasta 500 caracteres." }),
-});
+export const chargeSchema = z
+  .object({
+    customerId: z.uuid({ error: "Elige el cliente." }),
+    campaignId: z.uuid({ error: "Elige la campaña." }),
+    chargeDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
+    concept: z.enum(CHARGE_CONCEPTS, { error: "Elige el concepto." }),
+    direction: z.enum(CHARGE_DIRECTIONS).default("debit"),
+    amount: decimal(2, "Escribe el monto en US$, por ejemplo 120.50."),
+    reason: z
+      .string()
+      .trim()
+      .min(5, { error: "Explica el motivo del cargo." })
+      .max(500, { error: "Admite hasta 500 caracteres." }),
+  })
+  .superRefine((charge, context) => {
+    if (charge.direction === "credit" && !canLowerDebt(charge.concept)) {
+      context.addIssue({
+        code: "custom",
+        path: ["direction"],
+        message: "Solo un ajuste de precio puede bajar la deuda.",
+      });
+    }
+  });
 
 export const voidReasonSchema = z.object({
   reason: z

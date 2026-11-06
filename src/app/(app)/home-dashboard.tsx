@@ -1,6 +1,8 @@
 import {
   ArrowRightIcon,
+  BanknoteIcon,
   ClipboardListIcon,
+  HourglassIcon,
   PackageIcon,
   PlusIcon,
   SproutIcon,
@@ -14,6 +16,7 @@ import { campaignOn } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { CAMPAIGNS_PATH } from "@/modules/campaigns/presentation/campaign-routes";
+import { NEW_PAYMENT_PATH } from "@/modules/collections/presentation/collection-routes";
 import { productsPage } from "@/modules/catalog/application/catalog-use-cases";
 import { catalogDeps } from "@/modules/catalog/presentation/catalog-deps";
 import { PRODUCTS_PATH } from "@/modules/catalog/presentation/catalog-routes";
@@ -21,15 +24,18 @@ import { searchCustomers } from "@/modules/customers/application/customer-use-ca
 import { customerDeps } from "@/modules/customers/presentation/customer-deps";
 import { CUSTOMERS_PATH } from "@/modules/customers/presentation/customer-routes";
 import { requireActor } from "@/modules/identity/presentation/current-user";
+import { portfolioStatement } from "@/modules/receivables/application/statement-use-cases";
+import { statementDeps } from "@/modules/receivables/presentation/statement-deps";
 import { STATEMENTS_PATH } from "@/modules/receivables/presentation/statement-routes";
 import { listNotes } from "@/modules/sales/application/note-use-cases";
 import { drizzleNoteRepository } from "@/modules/sales/infrastructure/drizzle-note-repository";
 import { NEW_NOTE_PATH, NOTES_PATH } from "@/modules/sales/presentation/note-routes";
 import { can, type Permission } from "@/shared/application/permissions";
 import type { Actor } from "@/shared/application/actor";
+import { Money } from "@/shared/domain/money";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
-import { formatCount } from "@/shared/presentation/format";
+import { formatCount, formatUsd } from "@/shared/presentation/format";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
 import { FiguresSkeleton, Loading, Skeleton } from "@/shared/presentation/skeletons";
 
@@ -55,11 +61,11 @@ const SHORTCUTS: readonly {
     permission: "customers.view",
   },
   {
-    title: "Productos",
-    text: "Presentaciones y precios",
-    href: PRODUCTS_PATH,
-    icon: PackageIcon,
-    permission: "catalog.view",
+    title: "Registrar cobro",
+    text: "Baja la deuda y da su recibo",
+    href: NEW_PAYMENT_PATH,
+    icon: BanknoteIcon,
+    permission: "payments.manage",
   },
   {
     title: "Estados de cuenta",
@@ -115,7 +121,7 @@ export async function HomeDashboard() {
       </header>
 
       {shortcuts.length > 0 && (
-        <section aria-label="Accesos directos" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section aria-label="Accesos directos" className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
           {shortcuts.map(({ title, text, href, icon: Icon }, index) => (
             <Link
               key={href}
@@ -145,7 +151,7 @@ export async function HomeDashboard() {
       )}
 
       {figures.items.length > 0 && (
-        <section aria-label="Resumen" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section aria-label="Resumen" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {figures.items.map(({ label, value, note, href, icon: Icon }) => (
             <Link
               key={label}
@@ -175,7 +181,7 @@ export function HomeDashboardSkeleton() {
         <Skeleton className="h-8 w-64 bg-white/20" />
         <Skeleton className="h-3.5 w-56 bg-white/15" />
       </div>
-      <div aria-hidden className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div aria-hidden className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         {[0, 1, 2, 3].map((index) => (
           <div key={index} className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-xs">
             <Skeleton className="size-11 shrink-0 rounded-xl" />
@@ -186,7 +192,7 @@ export function HomeDashboardSkeleton() {
           </div>
         ))}
       </div>
-      <FiguresSkeleton />
+      <FiguresSkeleton count={6} className="xl:grid-cols-3" />
     </Loading>
   );
 }
@@ -196,7 +202,9 @@ type Figure = { label: string; value: string; note?: string; href: string; icon:
 /** The counts the home page shows, each only to who may see that list. */
 async function homeFigures(actor: Actor): Promise<{ campaign?: string; items: Figure[] }> {
   const db = getDb();
-  const [drafts, customers, products, campaigns] = await Promise.all([
+  const [portfolio, drafts, customers, products, campaigns] = await Promise.all([
+    // A technician sees their own portfolio; everyone else, the whole company's.
+    can(actor, "statements.view") ? portfolioStatement(statementDeps(), actor, {}) : undefined,
     can(actor, "notes.view")
       ? listNotes({ notes: drizzleNoteRepository(db) }, actor, { status: "draft" })
       : undefined,
@@ -208,6 +216,26 @@ async function homeFigures(actor: Actor): Promise<{ campaign?: string; items: Fi
   ]);
   const current = campaigns && (campaignOn(campaigns, todayInBolivia()) ?? campaigns[0]);
   const items: Figure[] = [];
+  if (portfolio) {
+    const owing = portfolio.customers.filter((customer) => customer.totals.status === "owing").length;
+    const old = Money.sum(portfolio.customers.map((customer) => Money.parse(customer.over90 ?? "0")));
+    items.push(
+      {
+        label: "Deuda total",
+        value: formatUsd(portfolio.totals.balance),
+        note: owing === 1 ? "1 cliente con deuda" : `${formatCount(owing)} clientes con deuda`,
+        href: `${STATEMENTS_PATH}?status=owing`,
+        icon: WalletIcon,
+      },
+      {
+        label: "Con más de 90 días",
+        value: formatUsd(old.toDecimalString()),
+        note: "De esa deuda",
+        href: `${STATEMENTS_PATH}?status=owing`,
+        icon: HourglassIcon,
+      },
+    );
+  }
   if (drafts)
     items.push({
       label: "Boletas en borrador",

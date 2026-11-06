@@ -280,6 +280,9 @@ points to a single original note; its PDF lists the deliveries it draws from.
 **Why:** the paper form has no "original note" field, and one return slip can bring back product
 from several deliveries. With one printed number it has to be one note.
 
+Until this is built, a confirmed note offers no return or transfer: the single-note version remains
+at its address only, so nobody learns a flow that is about to change.
+
 ## D26 · Notes and receipts print like Agrosoil's paper forms
 
 **Decision:** the PDFs follow the forms Agrosoil uses (photos of 28 Oct 2026).
@@ -298,7 +301,8 @@ Notes get optional carrier fields and a "handed over by" person: the technician 
 warehouse keeper once inventory exists); on a return the customer's person hands over and
 Agrosoil's receives. Users get an optional position ("Ejecutivo de ventas") and CI to print them.
 The company's name, logo and contact details come from a settings page; the documents carry the
-brand printed on the forms, **Agrosoil Bolivia**.
+brand printed on the forms, **Agrosoil Bolivia**. Until that page exists they live in
+`shared/presentation/company-profile.ts`.
 
 **Why:** customers and staff already know and sign these forms; the printed copy stays the
 physical record, so it must look like the one they trust.

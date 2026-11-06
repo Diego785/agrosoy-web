@@ -1,3 +1,4 @@
+import type { ChargeConcept } from "@/modules/collections/domain/payment";
 import type { Season } from "@/modules/campaigns/domain/campaign";
 import type { ContentUnit } from "@/modules/catalog/domain/product";
 import type { PaymentMethod } from "@/modules/collections/domain/payment";
@@ -51,5 +52,5 @@ export interface StatementReader {
   campaigns(): Promise<StatementCampaign[]>;
   notes(ids: readonly string[]): Promise<Map<string, NoteDetail>>;
   payments(ids: readonly string[]): Promise<Map<string, PaymentDetail>>;
-  charges(ids: readonly string[]): Promise<Map<string, { reason: string }>>;
+  charges(ids: readonly string[]): Promise<Map<string, { reason: string; concept: ChargeConcept }>>;
 }

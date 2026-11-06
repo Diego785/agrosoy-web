@@ -79,7 +79,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
       const [row] = await executor
         .select({
           note: deliveryNotes,
-          customer: { id: customers.id, code: customers.code, name: customers.name },
+          customer: { id: customers.id, code: customers.code, name: customers.name, taxId: customers.taxId },
           propertyName: customerProperties.name,
           campaign: { id: campaigns.id, season: campaigns.season, year: campaigns.year },
           technicianName: users.name,
@@ -87,7 +87,12 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           voiderName: voider.name,
           originalNumber: originalNote.number,
           originalCampaign: { season: originalCampaign.season, year: originalCampaign.year },
-          handedOverBy: { id: handedOverBy.id, name: handedOverBy.name, position: handedOverBy.position },
+          handedOverBy: {
+            id: handedOverBy.id,
+            name: handedOverBy.name,
+            position: handedOverBy.position,
+            documentId: handedOverBy.documentId,
+          },
         })
         .from(deliveryNotes)
         .innerJoin(customers, eq(customers.id, deliveryNotes.customerId))

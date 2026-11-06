@@ -205,6 +205,7 @@ describe("charges", () => {
       customerId: ids.customerId,
       campaignId,
       chargeDate: "2026-11-02",
+      concept: "interest",
       amount: "120.50",
       reason: "Interés por mora acordado",
     });
@@ -260,6 +261,7 @@ describe("lists", () => {
       customerId: ids.customerId,
       campaignId: (await collectionLookups(testDb).campaignOn("2026-10-26"))!.id,
       chargeDate: "2026-11-02",
+      concept: "interest",
       amount: "50",
       reason: "Interés por mora acordado",
     });
@@ -267,5 +269,66 @@ describe("lists", () => {
     expect((await listCharges(collectionDeps(), admin, {})).total).toBe(1);
     expect((await listCharges(collectionDeps(), admin, { status: "voided" })).total).toBe(0);
     expect((await listCharges(collectionDeps(), admin, { text: "nadie se llama asi" })).total).toBe(0);
+  });
+});
+
+describe("receipts", () => {
+  it("keep the balances of the moment they were issued (D27)", async () => {
+    const ids = await seedNoteFixtures();
+    await confirmedNote(ids);
+    const { id } = await recordPayment(collectionDeps(), admin, payment(ids, { amount: "200" }));
+    await recordPayment(collectionDeps(), admin, payment(ids, { amount: "300" }));
+
+    // Later payments leave the first receipt as it was.
+    const first = await getPayment(collectionDeps(), admin, id);
+    expect(first.balance).toEqual({ before: "2200.00", after: "2000.00" });
+  });
+
+  it("keep the concept administration wrote", async () => {
+    const ids = await seedNoteFixtures();
+    await confirmedNote(ids);
+    const { id } = await recordPayment(
+      collectionDeps(),
+      admin,
+      payment(ids, { amount: "200", concept: "Anticipo de la cosecha" }),
+    );
+    expect((await getPayment(collectionDeps(), admin, id)).concept).toBe("Anticipo de la cosecha");
+  });
+});
+
+describe("charge concepts", () => {
+  it("lowers the debt with a price adjustment, and a void gives it back (D24)", async () => {
+    const ids = await seedNoteFixtures();
+    await confirmedNote(ids);
+    const campaignId = (await collectionLookups(testDb).campaignOn("2026-10-26"))!.id;
+    const { id } = await recordCharge(collectionDeps(), admin, {
+      customerId: ids.customerId,
+      campaignId,
+      chargeDate: "2026-11-02",
+      concept: "price_adjustment",
+      direction: "credit",
+      amount: "200",
+      reason: "Precio acordado con gerencia",
+    });
+    expect(await balances(ids.customerId)).toEqual({ "2026-10-01": "2000.00" });
+
+    await voidCharge(collectionDeps(), admin, id, { reason: "Se registró por error" });
+    expect(await balances(ids.customerId)).toEqual({ "2026-10-01": "2200.00" });
+  });
+
+  it("rejects lowering the debt with interest", async () => {
+    const ids = await seedNoteFixtures();
+    const campaignId = (await collectionLookups(testDb).campaignOn("2026-10-26"))!.id;
+    await expect(
+      recordCharge(collectionDeps(), admin, {
+        customerId: ids.customerId,
+        campaignId,
+        chargeDate: "2026-11-02",
+        concept: "interest",
+        direction: "credit",
+        amount: "50",
+        reason: "Interés por mora",
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
   });
 });

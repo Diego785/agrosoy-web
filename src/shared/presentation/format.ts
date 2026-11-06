@@ -47,6 +47,32 @@ export function formatDate(isoDate: string): string {
   return `${day}/${month}/${year}`;
 }
 
+const MONTHS = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+/** ISO date "2026-10-28" as "28 de octubre de 2026", the way receipts write it. */
+export function formatLongDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${Number(day)} de ${MONTHS[Number(month) - 1]} de ${year}`;
+}
+
+/** Printed document numbers have six digits, like the pads: 12951 → "012951" (D26). */
+export function formatDocumentNumber(value: number): string {
+  return String(value).padStart(6, "0");
+}
+
 /**
  * What is typed in a date field, shaped as "dd/mm/aaaa": "01112026" → "01/11/2026". A slash closes
  * a part early ("1/" is day 01), and a slash only shows once something follows it, so backspace

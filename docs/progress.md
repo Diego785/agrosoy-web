@@ -3,6 +3,33 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-05
+
+Getting week 3 ready to preview on Saturday 7 November (`feature/week-3`; not approved yet, nothing
+on `main`).
+
+- **`main` and week 2 merged into week 3.** The note, customer and statement screens keep week 2's
+  look with week 3's actions. All checks passed after the merge.
+- **Payments and charges** page and filter like the other lists (D32, D33), with search by customer
+  or receipt number and the look and skeletons of D34. "Cobros" joins the menu.
+- **Charge concepts (D24):** interest, price adjustment, notarized contract, other; only an
+  adjustment can lower the debt.
+- **Receipts keep their balances (D27)** and a concept that can be written or is built from what the
+  payment was applied to. Migration `0017_charge_concepts_and_receipt_balances`.
+- **Notes and receipts print like the paper forms (D26)**, compared with the photos of 28 October:
+  logo, boxes, six-digit numbers, amount in words, long date, signature blocks. The statement PDF
+  gets the letterhead too; it still said AGROSOY.
+- **Home:** total debt and debt older than 90 days, a technician's own portfolio for technicians.
+- **Returns and transfers leave the note's actions** until they gather several deliveries (D25).
+- **Walked through in the browser**, on a separate local database (`agrosoy_s3_demo`): the sample
+  sheet reconciles to the cent (US$ 31,932.00, no differences), then note → debt, payment → receipt
+  and statement, adjustment → lower debt.
+- **Left for 9–13 November:** printed receipt numbers and number ranges (D28), returns from several
+  deliveries (D25), opening balances and cut-off date (D29), the company settings page, Agrosoil's
+  customer list and real data.
+- **To confirm with Agrosoil:** the second mobile number. The details it sent say 72142142 and its
+  printed forms say 76662583; the documents use the former.
+
 ## 2026-11-04
 
 - **Staging is on its domain:** `https://agrosoil.market-ia.shop`, with `main` at `fde4ea1` or later

@@ -1,3 +1,4 @@
+import type { ChargeConcept } from "@/modules/collections/domain/payment";
 import type { Season } from "@/modules/campaigns/domain/campaign";
 import type { ContentUnit } from "@/modules/catalog/domain/product";
 import type { PaymentMethod } from "@/modules/collections/domain/payment";
@@ -61,6 +62,8 @@ export type StatementLineView = {
   transfer: "out" | "in" | null;
   /** Payments and returns brought in from a spreadsheet, which have no document of their own. */
   fromSheet: boolean;
+  /** What a charge is for (D24). */
+  chargeConcept?: ChargeConcept | null;
   document: { type: "note" | "payment" | "charge"; id: string } | null;
 };
 
