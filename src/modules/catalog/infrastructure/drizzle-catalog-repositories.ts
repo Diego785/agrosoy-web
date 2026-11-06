@@ -1,8 +1,13 @@
-import { and, asc, eq, exists, ilike, inArray, isNull, max, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, exists, ilike, inArray, isNull, max, or, sql, type SQL } from "drizzle-orm";
 import { DomainError } from "@/shared/domain/domain-error";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
-import type { PriceRepository, ProductRepository, ProductView } from "../application/catalog-ports";
+import type {
+  PriceRepository,
+  ProductQuery,
+  ProductRepository,
+  ProductView,
+} from "../application/catalog-ports";
 import type { PresentationRecord } from "../domain/product";
 import {
   PRESENTATION_CODE_KEY,
@@ -77,41 +82,56 @@ export function drizzleProductRepository(executor: DbExecutor): ProductRepositor
       return product;
     },
 
-    search({ text, line, status = "active" }) {
-      const conditions: (SQL | undefined)[] = [eq(products.isActive, status === "active")];
-      if (line) conditions.push(eq(products.line, line));
-      if (text) {
-        const pattern = `%${text.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
-        const matches: SQL[] = [ilike(products.comparisonName, pattern)];
-        // "51" or "051" finds the product whose presentation has that code.
-        if (/^\d{1,6}$/.test(text)) {
-          const code = text.padStart(3, "0");
-          matches.push(
-            exists(
-              executor
-                .select({ id: presentations.id })
-                .from(presentations)
-                .where(and(eq(presentations.productId, products.id), eq(presentations.code, code))),
-            ),
-          );
-        }
-        conditions.push(or(...matches));
-      }
-      return withPresentations(executor, and(...conditions), status === "active");
+    search(query) {
+      return withPresentations(executor, productFilter(executor, query), query.status !== "inactive");
+    },
+
+    async searchPage(query, window) {
+      const where = productFilter(executor, query);
+      const [items, [counted]] = await Promise.all([
+        withPresentations(executor, where, query.status !== "inactive", window),
+        executor.select({ total: count() }).from(products).where(where),
+      ]);
+      return { items, total: counted?.total ?? 0 };
     },
   };
+}
+
+function productFilter(executor: DbExecutor, { text, line, status = "active" }: ProductQuery) {
+  const conditions: (SQL | undefined)[] = [eq(products.isActive, status === "active")];
+  if (line) conditions.push(eq(products.line, line));
+  if (text) {
+    const pattern = `%${text.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+    const matches: SQL[] = [ilike(products.comparisonName, pattern)];
+    // "51" or "051" finds the product whose presentation has that code.
+    if (/^\d{1,6}$/.test(text)) {
+      const code = text.padStart(3, "0");
+      matches.push(
+        exists(
+          executor
+            .select({ id: presentations.id })
+            .from(presentations)
+            .where(and(eq(presentations.productId, products.id), eq(presentations.code, code))),
+        ),
+      );
+    }
+    conditions.push(or(...matches));
+  }
+  return and(...conditions);
 }
 
 async function withPresentations(
   executor: DbExecutor,
   where: SQL | undefined,
   activePresentationsOnly: boolean,
+  window?: { limit: number; offset: number },
 ): Promise<ProductView[]> {
-  const productRows = await executor
+  const ordered = executor
     .select()
     .from(products)
     .where(where)
-    .orderBy(asc(products.comparisonName));
+    .orderBy(asc(products.comparisonName), asc(products.id));
+  const productRows = await (window ? ordered.limit(window.limit).offset(window.offset) : ordered);
   if (productRows.length === 0) return [];
   const presentationRows = await executor
     .select()

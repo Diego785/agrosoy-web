@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, type ReactNode } from "react";
 import { Controller, useFieldArray, useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { campaignOn } from "@/modules/campaigns/domain/campaign";
@@ -134,100 +134,104 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
   const totals = noteTotals(watchedLines ?? [], presentationsById, exchangeRate ?? "");
 
   return (
-    <form onSubmit={submit} noValidate className="flex max-w-5xl flex-col gap-8">
-      <FieldGroup>
-        <div className="grid gap-5 sm:grid-cols-3">
-          <Field data-invalid={!!errors.noteDate}>
-            <FieldLabel htmlFor="noteDate">Fecha</FieldLabel>
-            <Controller
-              control={form.control}
-              name="noteDate"
-              render={({ field }) => <DateInput id="noteDate" invalid={!!errors.noteDate} {...field} />}
-            />
-            <span className="text-xs text-muted-foreground">
-              {campaign ? `Campaña ${campaignLabel(campaign)}` : "Sin campaña abierta para esta fecha"}
-            </span>
-            <FieldError errors={[errors.noteDate]} />
-          </Field>
-          <Field data-invalid={!!errors.customerId} className="sm:col-span-2">
-            <FieldLabel htmlFor="customerId">Cliente</FieldLabel>
-            <NativeSelect
-              id="customerId"
-              aria-invalid={!!errors.customerId}
-              {...form.register("customerId", { onChange: (event) => chooseCustomer(event.target.value) })}
-            >
-              <NativeSelectOption value="">Elegir cliente…</NativeSelectOption>
-              {options.customers.map((option) => (
-                <NativeSelectOption key={option.id} value={option.id}>
-                  {String(option.code).padStart(4, "0")} · {option.name}
+    <form onSubmit={submit} noValidate className="flex max-w-5xl flex-col gap-6">
+      <FieldGroup className="gap-6">
+        <FormSection title="Datos de la boleta">
+          <div className="grid gap-5 sm:grid-cols-3">
+            <Field data-invalid={!!errors.noteDate}>
+              <FieldLabel htmlFor="noteDate">Fecha</FieldLabel>
+              <Controller
+                control={form.control}
+                name="noteDate"
+                render={({ field }) => <DateInput id="noteDate" invalid={!!errors.noteDate} {...field} />}
+              />
+              <span className="text-xs text-muted-foreground">
+                {campaign ? `Campaña ${campaignLabel(campaign)}` : "Sin campaña abierta para esta fecha"}
+              </span>
+              <FieldError errors={[errors.noteDate]} />
+            </Field>
+            <Field data-invalid={!!errors.customerId} className="sm:col-span-2">
+              <FieldLabel htmlFor="customerId">Cliente</FieldLabel>
+              <NativeSelect
+                id="customerId"
+                aria-invalid={!!errors.customerId}
+                {...form.register("customerId", { onChange: (event) => chooseCustomer(event.target.value) })}
+              >
+                <NativeSelectOption value="">Elegir cliente…</NativeSelectOption>
+                {options.customers.map((option) => (
+                  <NativeSelectOption key={option.id} value={option.id}>
+                    {String(option.code).padStart(4, "0")} · {option.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <FieldError errors={[errors.customerId]} />
+            </Field>
+            <Field data-invalid={!!errors.propertyId}>
+              <FieldLabel htmlFor="propertyId">Propiedad</FieldLabel>
+              <NativeSelect
+                id="propertyId"
+                disabled={!customer?.properties.length}
+                {...form.register("propertyId")}
+              >
+                <NativeSelectOption value="">
+                  {customer?.properties.length ? "Sin especificar" : "El cliente no tiene propiedades"}
                 </NativeSelectOption>
-              ))}
-            </NativeSelect>
-            <FieldError errors={[errors.customerId]} />
-          </Field>
-          <Field data-invalid={!!errors.propertyId}>
-            <FieldLabel htmlFor="propertyId">Propiedad</FieldLabel>
-            <NativeSelect
-              id="propertyId"
-              disabled={!customer?.properties.length}
-              {...form.register("propertyId")}
-            >
-              <NativeSelectOption value="">
-                {customer?.properties.length ? "Sin especificar" : "El cliente no tiene propiedades"}
-              </NativeSelectOption>
-              {customer?.properties.map((property) => (
-                <NativeSelectOption key={property.id} value={property.id}>
-                  {property.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-            <FieldError errors={[errors.propertyId]} />
-          </Field>
-          <Field data-invalid={!!errors.technicianId}>
-            <FieldLabel htmlFor="technicianId">Técnico de venta</FieldLabel>
-            <NativeSelect
-              id="technicianId"
-              {...form.register("technicianId")}
-              onChange={(event) => chooseTechnician(event.target.value)}
-            >
-              <NativeSelectOption value="">Sin técnico</NativeSelectOption>
-              {options.technicians.map((technician) => (
-                <NativeSelectOption key={technician.id} value={technician.id}>
-                  {technician.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-            <FieldError errors={[errors.technicianId]} />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="paymentTerms">Pago</FieldLabel>
-            <NativeSelect id="paymentTerms" {...form.register("paymentTerms")}>
-              <NativeSelectOption value="credit">Crédito</NativeSelectOption>
-              <NativeSelectOption value="cash">Contado</NativeSelectOption>
-            </NativeSelect>
-          </Field>
-          <Field data-invalid={!!errors.exchangeRate}>
-            <FieldLabel htmlFor="exchangeRate">Tipo de cambio (Bs por US$)</FieldLabel>
-            <Input
-              id="exchangeRate"
-              inputMode="decimal"
-              placeholder="12.00"
-              selectOnFocus
-              aria-invalid={!!errors.exchangeRate}
-              {...form.register("exchangeRate")}
-            />
-            <FieldError errors={[errors.exchangeRate]} />
-          </Field>
-        </div>
+                {customer?.properties.map((property) => (
+                  <NativeSelectOption key={property.id} value={property.id}>
+                    {property.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <FieldError errors={[errors.propertyId]} />
+            </Field>
+            <Field data-invalid={!!errors.technicianId}>
+              <FieldLabel htmlFor="technicianId">Técnico de venta</FieldLabel>
+              <NativeSelect
+                id="technicianId"
+                {...form.register("technicianId")}
+                onChange={(event) => chooseTechnician(event.target.value)}
+              >
+                <NativeSelectOption value="">Sin técnico</NativeSelectOption>
+                {options.technicians.map((technician) => (
+                  <NativeSelectOption key={technician.id} value={technician.id}>
+                    {technician.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <FieldError errors={[errors.technicianId]} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="paymentTerms">Pago</FieldLabel>
+              <NativeSelect id="paymentTerms" {...form.register("paymentTerms")}>
+                <NativeSelectOption value="credit">Crédito</NativeSelectOption>
+                <NativeSelectOption value="cash">Contado</NativeSelectOption>
+              </NativeSelect>
+            </Field>
+            <Field data-invalid={!!errors.exchangeRate}>
+              <FieldLabel htmlFor="exchangeRate">Tipo de cambio (Bs por US$)</FieldLabel>
+              <Input
+                id="exchangeRate"
+                inputMode="decimal"
+                placeholder="12.00"
+                selectOnFocus
+                aria-invalid={!!errors.exchangeRate}
+                {...form.register("exchangeRate")}
+              />
+              <FieldError errors={[errors.exchangeRate]} />
+            </Field>
+          </div>
+        </FormSection>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-sm font-medium">Productos</legend>
+        <FormSection title="Productos">
           {lines.fields.map((field, index) => {
             const line = watchedLines?.[index];
             const presentation = line ? presentationsById.get(line.presentationId) : undefined;
             const lineErrors = errors.lines?.[index];
             return (
-              <div key={field.id} className="flex flex-wrap items-start gap-2 rounded-lg border p-3">
+              <div
+                key={field.id}
+                className="flex flex-wrap items-start gap-2 rounded-lg border bg-muted/30 p-3"
+              >
                 <NativeSelect
                   className="min-w-64"
                   aria-label="Producto"
@@ -271,7 +275,7 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
                   <NativeSelectOption value="bonus">Bonificación</NativeSelectOption>
                   <NativeSelectOption value="sample">Muestra</NativeSelectOption>
                 </NativeSelect>
-                <span className="ml-auto self-center font-medium tabular-nums">
+                <span className="ml-auto min-w-20 self-center text-right font-medium tabular-nums">
                   {formatMoney(totalOf(line))}
                 </span>
                 {lines.fields.length > 1 && (
@@ -302,67 +306,73 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
           >
             <PlusIcon aria-hidden /> Otro producto
           </Button>
-          <dl className="flex flex-wrap justify-end gap-x-8 gap-y-1 text-sm">
-            <Total label="Total US$" value={totals.usd} />
-            <Total label="Equivale a Bs" value={totals.bob} />
+          <dl className="flex flex-wrap items-baseline justify-end gap-x-8 gap-y-2 border-t pt-4 text-sm">
             {totals.liters && <Total label="Litros" value={totals.liters} />}
             {totals.kilos && <Total label="Kilos" value={totals.kilos} />}
+            <Total label="Equivale a Bs" value={totals.bob} />
+            <Total label="Total US$" value={totals.usd} emphasis />
           </dl>
-        </fieldset>
+        </FormSection>
 
         <ReceiverFields form={form} customer={customer} onChoose={chooseReceiver} />
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
-          <Field data-invalid={!!errors.handedOverById}>
-            <FieldLabel htmlFor="handedOverById">Entrega (Agrosoil)</FieldLabel>
-            <NativeSelect id="handedOverById" {...form.register("handedOverById")}>
-              <NativeSelectOption value="">Sin especificar</NativeSelectOption>
-              {options.staff.map((person) => (
-                <NativeSelectOption key={person.id} value={person.id}>
-                  {person.position ? `${person.name} · ${person.position}` : person.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-            <FieldError errors={[errors.handedOverById]} />
-          </Field>
-          <fieldset className="flex flex-col gap-3">
-            <legend className="mb-2 text-sm font-medium">Transporte (opcional)</legend>
-            <div className="grid gap-5 sm:grid-cols-3">
-              <Field data-invalid={!!errors.carrierName}>
-                <FieldLabel htmlFor="carrierName">Empresa o transportista</FieldLabel>
-                <Input id="carrierName" {...form.register("carrierName")} />
-                <FieldError errors={[errors.carrierName]} />
-              </Field>
-              <Field data-invalid={!!errors.carrierVehicle}>
-                <FieldLabel htmlFor="carrierVehicle">Vehículo o placa</FieldLabel>
-                <Input id="carrierVehicle" {...form.register("carrierVehicle")} />
-                <FieldError errors={[errors.carrierVehicle]} />
-              </Field>
-              <Field data-invalid={!!errors.carrierDocumentId}>
-                <FieldLabel htmlFor="carrierDocumentId">CI del conductor</FieldLabel>
-                <Input id="carrierDocumentId" {...form.register("carrierDocumentId")} />
-                <FieldError errors={[errors.carrierDocumentId]} />
-              </Field>
-            </div>
-          </fieldset>
-        </div>
+        <FormSection title="Entrega y transporte">
+          <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
+            <Field data-invalid={!!errors.handedOverById}>
+              <FieldLabel htmlFor="handedOverById">Entrega (Agrosoil)</FieldLabel>
+              <NativeSelect id="handedOverById" {...form.register("handedOverById")}>
+                <NativeSelectOption value="">Sin especificar</NativeSelectOption>
+                {options.staff.map((person) => (
+                  <NativeSelectOption key={person.id} value={person.id}>
+                    {person.position ? `${person.name} · ${person.position}` : person.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <FieldError errors={[errors.handedOverById]} />
+            </Field>
+            <fieldset className="flex min-w-0 flex-col gap-3">
+              <legend className="mb-2 text-sm font-medium text-muted-foreground">
+                Transporte (opcional)
+              </legend>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <Field data-invalid={!!errors.carrierName}>
+                  <FieldLabel htmlFor="carrierName">Empresa o transportista</FieldLabel>
+                  <Input id="carrierName" {...form.register("carrierName")} />
+                  <FieldError errors={[errors.carrierName]} />
+                </Field>
+                <Field data-invalid={!!errors.carrierVehicle}>
+                  <FieldLabel htmlFor="carrierVehicle">Vehículo o placa</FieldLabel>
+                  <Input id="carrierVehicle" {...form.register("carrierVehicle")} />
+                  <FieldError errors={[errors.carrierVehicle]} />
+                </Field>
+                <Field data-invalid={!!errors.carrierDocumentId}>
+                  <FieldLabel htmlFor="carrierDocumentId">CI del conductor</FieldLabel>
+                  <Input id="carrierDocumentId" {...form.register("carrierDocumentId")} />
+                  <FieldError errors={[errors.carrierDocumentId]} />
+                </Field>
+              </div>
+            </fieldset>
+          </div>
+        </FormSection>
 
-        <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
-          <Field data-invalid={!!errors.observations}>
-            <FieldLabel htmlFor="observations">Observaciones</FieldLabel>
-            <Textarea id="observations" rows={2} {...form.register("observations")} />
-            <FieldError errors={[errors.observations]} />
-          </Field>
-          <Field data-invalid={!!errors.taxInvoiceNumber}>
-            <FieldLabel htmlFor="taxInvoiceNumber">N.º de factura SIN (opcional)</FieldLabel>
-            <Input id="taxInvoiceNumber" {...form.register("taxInvoiceNumber")} />
-            <FieldError errors={[errors.taxInvoiceNumber]} />
-          </Field>
-        </div>
+        <FormSection title="Otros datos">
+          <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
+            <Field data-invalid={!!errors.observations}>
+              <FieldLabel htmlFor="observations">Observaciones</FieldLabel>
+              <Textarea id="observations" rows={2} {...form.register("observations")} />
+              <FieldError errors={[errors.observations]} />
+            </Field>
+            <Field data-invalid={!!errors.taxInvoiceNumber}>
+              <FieldLabel htmlFor="taxInvoiceNumber">N.º de factura SIN (opcional)</FieldLabel>
+              <Input id="taxInvoiceNumber" {...form.register("taxInvoiceNumber")} />
+              <FieldError errors={[errors.taxInvoiceNumber]} />
+            </Field>
+          </div>
+        </FormSection>
       </FieldGroup>
 
       <FieldError errors={[errors.root]} />
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={isSaving}>
           {isSaving ? "Guardando…" : "Guardar borrador"}
         </Button>
@@ -385,8 +395,7 @@ function ReceiverFields({
 }) {
   const { errors } = form.formState;
   return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="mb-2 text-sm font-medium">Quién recibe</legend>
+    <FormSection title="Quién recibe">
       {!!customer?.receivers.length && (
         <NativeSelect
           key={customer.id}
@@ -424,15 +433,27 @@ function ReceiverFields({
           <FieldError errors={[errors.receiverRelationship]} />
         </Field>
       </div>
-    </fieldset>
+    </FormSection>
   );
 }
 
-function Total({ label, value }: { label: string; value: string }) {
+/** A white card holding one group of the form's fields under a small title. */
+function FormSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex gap-2">
+    <div className="rounded-xl border bg-card p-5 shadow-xs">
+      <fieldset className="flex min-w-0 flex-col gap-4">
+        <legend className="mb-4 text-sm font-semibold">{title}</legend>
+        {children}
+      </fieldset>
+    </div>
+  );
+}
+
+function Total({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
+  return (
+    <div className="flex items-baseline gap-2">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-semibold tabular-nums">{value}</dd>
+      <dd className={`font-semibold tabular-nums ${emphasis ? "text-xl tracking-tight" : ""}`}>{value}</dd>
     </div>
   );
 }

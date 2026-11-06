@@ -73,8 +73,13 @@ export const NewProductForm = resetOnLeave(function NewProductForm({ nextCode }:
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex max-w-3xl flex-col gap-6">
-      <FieldGroup>
+    <form
+      onSubmit={submit}
+      noValidate
+      className="flex max-w-3xl flex-col divide-y overflow-hidden rounded-xl border bg-card shadow-xs"
+    >
+      <FieldGroup className="gap-4 p-5">
+        <h3 className="text-sm font-semibold">Nombre y línea</h3>
         <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
           <Field data-invalid={!!errors.name}>
             <FieldLabel htmlFor="name">Producto</FieldLabel>
@@ -83,9 +88,11 @@ export const NewProductForm = resetOnLeave(function NewProductForm({ nextCode }:
           </Field>
           <LineField registration={form.register("line")} />
         </div>
+      </FieldGroup>
 
+      <div className="p-5">
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-sm font-medium">Presentaciones</legend>
+          <legend className="mb-4 text-sm font-semibold">Presentaciones</legend>
           {presentations.fields.map((field, index) => (
             <div key={field.id} className="flex flex-wrap items-start gap-2">
               <PresentationFields
@@ -131,16 +138,18 @@ export const NewProductForm = resetOnLeave(function NewProductForm({ nextCode }:
             <PlusIcon aria-hidden /> Otra presentación
           </Button>
         </fieldset>
-      </FieldGroup>
+      </div>
 
-      <FieldError errors={[errors.root]} />
-      <div className="flex gap-3">
-        <Button type="submit" disabled={isSaving}>
-          {isSaving ? "Guardando…" : "Crear producto"}
-        </Button>
-        <Link href={PRODUCTS_PATH} className={buttonVariants({ variant: "ghost" })}>
-          Cancelar
-        </Link>
+      <div className="flex flex-col gap-3 bg-muted/30 px-5 py-4">
+        <FieldError errors={[errors.root]} />
+        <div className="flex gap-3">
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? "Guardando…" : "Crear producto"}
+          </Button>
+          <Link href={PRODUCTS_PATH} className={buttonVariants({ variant: "ghost" })}>
+            Cancelar
+          </Link>
+        </div>
       </div>
     </form>
   );
@@ -166,6 +175,7 @@ export const EditProductForm = resetOnLeave(function EditProductForm({ product }
 
   return (
     <form onSubmit={submit} noValidate className="flex max-w-3xl flex-col gap-4">
+      <p className="text-sm font-semibold">Nombre y línea</p>
       <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
         <Field data-invalid={!!errors.name}>
           <FieldLabel htmlFor="name">Producto</FieldLabel>
@@ -215,7 +225,7 @@ export const AddPresentationForm = resetOnLeave(function AddPresentationForm({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-2">
-      <p className="text-sm font-medium">Agregar presentación</p>
+      <p className="text-sm font-semibold">Agregar presentación</p>
       <div className="flex flex-wrap items-start gap-2">
         <PresentationFields
           code={form.register("code")}
@@ -225,6 +235,7 @@ export const AddPresentationForm = resetOnLeave(function AddPresentationForm({
           error={errors.code?.message ?? errors.content?.message}
         />
         <Button type="submit" disabled={isSaving}>
+          <PlusIcon aria-hidden />
           {isSaving ? "Agregando…" : "Agregar"}
         </Button>
       </div>

@@ -15,6 +15,12 @@ const badgeVariants = cva(
         outline: "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost: "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // Statuses: a tint of the color with the color as text, so they read without shouting.
+        success: "bg-success/12 text-success ring-1 ring-success/20 ring-inset",
+        warning:
+          "bg-warning/14 text-[oklch(0.5_0.13_60)] ring-1 ring-warning/25 ring-inset dark:text-warning",
+        info: "bg-info/10 text-info ring-1 ring-info/20 ring-inset",
+        neutral: "bg-muted text-muted-foreground ring-1 ring-border ring-inset",
       },
     },
     defaultVariants: {

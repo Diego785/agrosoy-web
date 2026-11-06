@@ -1,5 +1,6 @@
 "use client";
 
+import { FileSearchIcon, UploadIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
@@ -89,7 +90,10 @@ export const ProductListForm = resetOnLeave(function ProductListForm({
 
   return (
     <div className="flex flex-col gap-6">
-      <form onSubmit={review} className="flex max-w-2xl flex-col gap-4">
+      <form
+        onSubmit={review}
+        className="flex max-w-2xl flex-col gap-4 rounded-xl border bg-card p-5 shadow-xs"
+      >
         <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
           <Field>
             <FieldLabel htmlFor="file">Lista de productos (.xlsx)</FieldLabel>
@@ -136,6 +140,7 @@ export const ProductListForm = resetOnLeave(function ProductListForm({
           disabled={isWorking || !file}
           className="self-start"
         >
+          <FileSearchIcon aria-hidden />
           {isWorking && !preview ? "Leyendo…" : "Revisar lista"}
         </Button>
       </form>
@@ -160,7 +165,7 @@ export const ProductListForm = resetOnLeave(function ProductListForm({
                   key={row.row}
                   className={row.plan.status === "conflict" ? "text-muted-foreground" : ""}
                 >
-                  <TableCell className="font-mono text-xs">{row.code}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{row.code}</TableCell>
                   <TableCell>
                     <span className="font-medium">{row.name}</span>
                     <span className="block text-xs text-muted-foreground">
@@ -178,7 +183,7 @@ export const ProductListForm = resetOnLeave(function ProductListForm({
                       </span>
                     )}
                   </TableCell>
-                  <TableCell>{LINE_LABELS[row.line]}</TableCell>
+                  <TableCell className="text-muted-foreground">{LINE_LABELS[row.line]}</TableCell>
                   <TableCell className="whitespace-normal">
                     <PlanBadge plan={row.plan} />
                     {row.findings.map((finding) => (
@@ -193,6 +198,7 @@ export const ProductListForm = resetOnLeave(function ProductListForm({
           </Table>
           {preview.skipped.length > 0 && <Skipped rows={preview.skipped} />}
           <Button onClick={save} disabled={isWorking} className="self-start">
+            <UploadIcon aria-hidden />
             {isWorking ? "Importando…" : `Importar con los precios de ${campaign?.label ?? "la campaña"}`}
           </Button>
         </section>
@@ -210,16 +216,22 @@ function Summary({ preview }: { preview: ProductListPreview }) {
       <Figure label="Ya existen" value={existing} />
       <Figure label="Cambian de precio" value={priceChanges} />
       <Figure label="Cambian de nombre" value={renamed} />
-      <Figure label="Con conflicto (no se importan)" value={conflicts} />
+      <Figure label="Con conflicto (no se importan)" value={conflicts} alert={conflicts > 0} />
     </dl>
   );
 }
 
-function Figure({ label, value }: { label: string; value: number }) {
+function Figure({ label, value, alert = false }: { label: string; value: number; alert?: boolean }) {
   return (
-    <div className="rounded-lg border px-3 py-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-lg font-semibold tabular-nums">{value}</dd>
+    <div
+      className={`flex flex-col justify-between rounded-xl border p-4 shadow-xs ${alert ? "border-destructive/30 bg-destructive/5" : "bg-card"}`}
+    >
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd
+        className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${alert ? "text-destructive" : ""}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
@@ -227,13 +239,13 @@ function Figure({ label, value }: { label: string; value: number }) {
 function PlanBadge({ plan }: { plan: ProductListRowPlan }) {
   switch (plan.status) {
     case "new_product":
-      return <Badge>Producto nuevo</Badge>;
+      return <Badge variant="info">Producto nuevo</Badge>;
     case "new_presentation":
-      return <Badge variant="secondary">Presentación nueva</Badge>;
+      return <Badge variant="info">Presentación nueva</Badge>;
     case "existing":
       return (
         <>
-          <Badge variant={plan.priceChange || plan.renamedFrom ? "secondary" : "outline"}>
+          <Badge variant={plan.priceChange || plan.renamedFrom ? "warning" : "neutral"}>
             {plan.priceChange || plan.renamedFrom ? "Se actualiza" : "Sin cambios"}
           </Badge>
           {plan.priceChange && <span className="block text-xs">Cambia el precio.</span>}
@@ -296,9 +308,9 @@ const SKIP_REASONS: Record<SkippedProductListRow["reason"], string> = {
 
 function Skipped({ rows }: { rows: SkippedProductListRow[] }) {
   return (
-    <section className="flex flex-col gap-1 text-sm">
-      <h3 className="font-medium">No se importan</h3>
-      <ul className="text-muted-foreground">
+    <section className="flex flex-col gap-2 rounded-xl border border-dashed bg-card/60 p-5 text-sm">
+      <h3 className="font-semibold">No se importan</h3>
+      <ul className="flex flex-col gap-1 text-muted-foreground">
         {rows.map((row) => (
           <li key={row.row}>
             Fila {row.row}: {row.code ? `${row.code} ` : ""}

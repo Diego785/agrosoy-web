@@ -10,11 +10,11 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <AppNavigation />
         </Suspense>
       }
-      userMenu={
+      userMenu={(placement) => (
         <Suspense>
-          <AppUserMenu />
+          <AppUserMenu placement={placement} />
         </Suspense>
-      }
+      )}
     >
       {children}
     </AppShell>

@@ -1,10 +1,13 @@
-import Link from "next/link";
+import { HistoryIcon } from "lucide-react";
 import { getDb } from "@/shared/infrastructure/db/client";
-import { formatCount, formatDateTime } from "@/shared/presentation/format";
+import { EmptyState } from "@/shared/presentation/empty-state";
+import { formatDateTime } from "@/shared/presentation/format";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { ROLE_LABELS } from "@/shared/presentation/role-labels";
+import { ListFooterSkeleton, Loading, Skeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import { isRole } from "@/shared/domain/role";
-import { buttonVariants } from "@/shared/presentation/ui/button";
 import {
   Table,
   TableBody,
@@ -74,15 +77,15 @@ export async function AuditLogTable({
 }) {
   const params = await searchParams;
   const actor = await requireActor();
-  const { items, total, page, pageSize } = await listAuditEntries(
-    { auditLog: drizzleAuditLogReader(getDb()) },
-    actor,
-    { page: Array.isArray(params.page) ? params.page[0] : params.page },
-  );
-  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+  const list = await listAuditEntries({ auditLog: drizzleAuditLogReader(getDb()) }, actor, {
+    page: first(params.page),
+    pages: first(params.pages),
+  });
+  const { items } = list;
 
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">Todavía no hay cambios registrados.</p>;
+    return <EmptyState icon={<HistoryIcon />} title="Todavía no hay cambios registrados" />;
   }
   return (
     <div className="flex flex-col gap-4">
@@ -90,19 +93,25 @@ export async function AuditLogTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-40">Fecha y hora</TableHead>
+              <TableHead className="w-44">Fecha y hora</TableHead>
               <TableHead className="w-48">Usuario</TableHead>
+              <TableHead className="w-32">Área</TableHead>
               <TableHead>Cambio</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((entry) => (
+            {pageRows(list).map((entry) => (
               <TableRow key={entry.id}>
-                <TableCell className="text-sm text-muted-foreground tabular-nums">
+                <TableCell className="text-xs text-muted-foreground tabular-nums">
                   {formatDateTime(entry.occurredAt)}
                 </TableCell>
-                <TableCell>{entry.actorName ?? "Instalación"}</TableCell>
                 <TableCell>
+                  <ActorName entry={entry} />
+                </TableCell>
+                <TableCell>
+                  <AreaBadge action={entry.action} />
+                </TableCell>
+                <TableCell className="whitespace-normal">
                   <ChangeDescription entry={entry} />
                 </TableCell>
               </TableRow>
@@ -113,43 +122,80 @@ export async function AuditLogTable({
       <CardList label="Cambios">
         {items.map((entry) => (
           <CardListItem key={entry.id}>
+            <div className="flex items-center justify-between gap-3">
+              <AreaBadge action={entry.action} />
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {formatDateTime(entry.occurredAt)}
+              </span>
+            </div>
             <span>
               <ChangeDescription entry={entry} />
             </span>
-            <span className="text-muted-foreground">
-              {entry.actorName ?? "Instalación"} ·{" "}
-              <span className="tabular-nums">{formatDateTime(entry.occurredAt)}</span>
+            <span className="text-xs">
+              <ActorName entry={entry} />
             </span>
           </CardListItem>
         ))}
       </CardList>
-      <footer className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{formatCount(total)} cambios</span>
-        {lastPage > 1 && (
-          <nav className="flex items-center gap-2" aria-label="Páginas">
-            {page > 1 && (
-              <Link
-                href={`${AUDIT_PATH}?page=${page - 1}`}
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
-              >
-                Más recientes
-              </Link>
-            )}
-            <span>
-              Página {page} de {lastPage}
-            </span>
-            {page < lastPage && (
-              <Link
-                href={`${AUDIT_PATH}?page=${page + 1}`}
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
-              >
-                Anteriores
-              </Link>
-            )}
-          </nav>
-        )}
-      </footer>
+      <ListPages
+        list={list}
+        href={(paging) => listHref(AUDIT_PATH, {}, paging)}
+        noun={["cambio", "cambios"]}
+      />
     </div>
+  );
+}
+
+/** The change log while it loads, laid out like `AuditLogTable`. */
+export function AuditLogTableSkeleton() {
+  return (
+    <Loading label="Cargando registro de cambios">
+      <TableSkeleton
+        columns={[
+          { shape: "short", className: "w-44" },
+          { shape: "text", className: "w-48" },
+          { shape: "badge", className: "w-32" },
+          { shape: "text" },
+        ]}
+      />
+      {/* Built here instead of `CardListSkeleton`: each card starts with the area badge and the time. */}
+      <ul aria-hidden className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs md:hidden">
+        {Array.from({ length: 5 }, (_, row) => (
+          <li key={row} className="flex flex-col gap-1.5 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+          </li>
+        ))}
+      </ul>
+      <ListFooterSkeleton />
+    </Loading>
+  );
+}
+
+/** The part of the system an action belongs to, read from its code ("catalog.save_prices"). */
+const AREA_LABELS: Record<string, string> = {
+  identity: "Usuarios",
+  customers: "Clientes",
+  campaigns: "Campañas",
+  catalog: "Catálogo",
+  sales: "Boletas",
+  migration: "Importación",
+};
+
+function AreaBadge({ action }: { action: string }) {
+  const area = action.split(".")[0] ?? "";
+  return <Badge variant="neutral">{AREA_LABELS[area] ?? area}</Badge>;
+}
+
+function ActorName({ entry }: { entry: AuditLogEntry }) {
+  return entry.actorName ? (
+    <span className="font-medium">{entry.actorName}</span>
+  ) : (
+    <span className="text-muted-foreground">Instalación</span>
   );
 }
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagingFields } from "@/shared/application/pagination";
 import { CONTENT_UNITS, PRODUCT_LINES, SALE_UNITS } from "../domain/product";
 
 // Shared by the forms and the use cases; the messages are shown next to the fields.
@@ -60,6 +61,9 @@ export const productSchema = z.object(productFields);
 export type ProductInput = z.input<typeof productSchema>;
 
 /** Comes from the URL, so bad values fall back to defaults. */
+/** The products list, a page at a time (D32). */
+export const productPageSchema = () => productSearchSchema.extend(pagingFields);
+
 export const productSearchSchema = z.object({
   text: z.string().trim().max(100).catch(""),
   line: z.enum(PRODUCT_LINES).optional().catch(undefined),

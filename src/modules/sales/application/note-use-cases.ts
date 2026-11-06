@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Actor } from "@/shared/application/actor";
 import type { AuditTrail } from "@/shared/application/audit-trail";
+import { paged, pageWindow, type Paged } from "@/shared/application/pagination";
 import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
@@ -13,8 +14,6 @@ import type { NoteListItem, NoteLookups, NoteRepository, NoteView } from "./note
 import { draftNoteSchema, noteSearchSchema } from "./note-schemas";
 
 export type NoteDeps = { notes: NoteRepository; lookups: NoteLookups; audit: AuditTrail };
-
-export const NOTES_PAGE_SIZE = 50;
 
 export async function createDraftNote(deps: NoteDeps, actor: Actor, input: unknown): Promise<{ id: string }> {
   assertCan(actor, "notes.manage");
@@ -82,16 +81,11 @@ export async function listNotes(
   deps: Pick<NoteDeps, "notes">,
   actor: Actor,
   input: unknown,
-): Promise<{ items: NoteListItem[]; total: number; page: number; pageSize: number }> {
+): Promise<Paged<NoteListItem>> {
   assertCan(actor, "notes.view");
-  const { status, customerId, page } = validateInput(noteSearchSchema, input);
-  const result = await deps.notes.list({
-    status,
-    customerId,
-    limit: NOTES_PAGE_SIZE,
-    offset: (page - 1) * NOTES_PAGE_SIZE,
-  });
-  return { ...result, page, pageSize: NOTES_PAGE_SIZE };
+  const { status, customerId, page, pages } = validateInput(noteSearchSchema, input);
+  const result = await deps.notes.list({ status, customerId, ...pageWindow({ page, pages }) });
+  return paged({ page, pages }, result);
 }
 
 /** Validates the form data and the facts it points at; the campaign comes from the date. */

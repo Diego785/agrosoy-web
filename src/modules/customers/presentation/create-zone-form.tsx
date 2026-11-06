@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PlusIcon } from "lucide-react";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -32,10 +33,13 @@ export const CreateZoneForm = resetOnLeave(function CreateZoneForm() {
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-2">
       <Field data-invalid={!!errors.name}>
-        <FieldLabel htmlFor="zone-name">Nueva zona</FieldLabel>
+        <FieldLabel htmlFor="zone-name" className="font-semibold">
+          Nueva zona
+        </FieldLabel>
         <div className="flex gap-2">
           <Input id="zone-name" aria-invalid={!!errors.name} {...form.register("name")} />
           <Button type="submit" disabled={isSaving}>
+            <PlusIcon aria-hidden />
             {isSaving ? "Agregando…" : "Agregar"}
           </Button>
         </div>

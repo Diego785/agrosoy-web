@@ -367,8 +367,8 @@ so the module replaces the spreadsheet instead of running beside it.
 **Decision:** with Cache Components, Next.js keeps the last screens mounted but hidden (React
 Activity), so a form comes back with what was typed, or with what was just saved. Forms are wrapped
 in `resetOnLeave` (`shared/presentation/reset-on-leave.tsx`), which mounts them again when their
-screen is hidden; it covers the browser's back button too. Filter forms are keyed by the search they
-show, so they always show the filter applied to the list. Components whose initial state comes from
+screen is hidden; it covers the browser's back button too. Filters always show the filter applied to the
+list (D33). Components whose initial state comes from
 stored data (the price sheet, a product's name) are also keyed by that data, so they start again
 when it changes elsewhere. Dates are typed and shown as dd/mm/aaaa (`DateInput`) whatever the
 browser's language, with the browser's calendar behind a button; amounts, quantities and codes
@@ -376,3 +376,48 @@ select their whole value when tapped (`selectOnFocus`).
 
 **Why:** Agrosoil's staff expect a new note or product to start empty and a list to show what its
 filters say; a half-typed draft left on a hidden screen is more likely a mistake than work to keep.
+
+## D32 · Lists come in pages of 20; phones keep scrolling
+
+**Decision:** lists that grow with the business (customers, notes, products, the change log, and
+payments and charges in week 3) read 20 rows at a time from the database (`shared/application/
+pagination.ts`). Wide screens show "Anterior / Siguiente" with the page in the URL. On a phone the
+next 20 are appended when the end of the list comes into view, by asking the server for one more
+page (`pages` in the URL, replaced, not added to the history), up to 200 rows; past that it moves on
+by link. Short or bounded lists (users, zones, campaigns, imported sheets) and the price sheet,
+which is edited as a whole, are not paged; neither are statements, which are reports with totals.
+
+**Why:** 20 rows fit a laptop screen with little scrolling and stay light on a phone's data plan;
+appending on a phone follows how lists are read there, while a page number in the URL lets a wide
+screen go back to the same page.
+
+## D33 · Filters apply as they change
+
+**Decision:** list filters have no "Buscar" button (`shared/presentation/live-filter-form.tsx`). A
+choice in a select applies at once; the search box applies once typing pauses for 350 ms, or right
+away with Enter. The filters replace the URL (the back button doesn't step through every letter)
+and drop the page, so a new search starts on page 1. "Buscando…" shows while the list loads, and
+only the last search asked for is shown. The fields keep what is being typed while results arrive;
+when the URL changes elsewhere (the menu, the back button, returning to the screen) they show it.
+The price sheet keeps its "Ver" button: it is a form of prices being typed, and reloading it on a
+choice would drop the ones not saved.
+
+**Why:** it is what people expect from a management system today, and it spares a tap per search on
+a phone; one query per pause over a few hundred rows is negligible for the server.
+
+## D34 · Agrosoil's look: its logo's colors, calm surfaces
+
+**Decision:** the interface takes its colors from Agrosoil's logo (`src/app/globals.css`): the green
+`#0b8135` for actions, links and the current place; the light green for focus; the orange `#e76b08`
+only for small accents (the current module's marker, stat icons, the user's initials), never for
+whole surfaces or buttons. Statuses have their own tints (`success`, `warning`, `info`,
+`destructive`). The sidebar is a deep green with the logo; pages sit on a soft off-white, with lists,
+tables and sections as white cards. Every list shows an empty state with an icon and what to do
+next; rows with a detail page open with a click anywhere on the row. The products list shows one row
+per product with its presentations as tags (code, content, price; a dashed tag when it has no price),
+at most four and "+N más", so every row has the same height. The home page greets the user with
+shortcuts and the counts they are allowed to see. While a screen loads it shows a skeleton with
+the same layout as its content, built from `shared/presentation/skeletons.tsx`.
+
+**Why:** a management system is used all day; the client should recognise their brand in it and find
+it calm and orderly. Color carries meaning (action, status), so it stays scarce.

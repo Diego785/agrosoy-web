@@ -5,6 +5,7 @@ import { notePath } from "@/modules/sales/presentation/note-routes";
 import { Money } from "@/shared/domain/money";
 import { formatDate, formatMoney, formatQuantity, formatRate, formatUsd } from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
+import { CardListSkeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import {
   Table,
   TableBody,
@@ -20,7 +21,14 @@ import type {
   CustomerStatementView,
   StatementLineView,
 } from "../application/statement-view";
-import { Figure, Figures, SourceNotice, StatusBadge } from "./statement-parts";
+import {
+  Figure,
+  Figures,
+  StatementFiguresSkeleton,
+  SourceNotice,
+  SourceNoticeSkeleton,
+  StatusBadge,
+} from "./statement-parts";
 import { CREDIT_KINDS, describeLine, documentLabel, withRunningBalance } from "./statement-text";
 
 /** One customer's movements with a running balance: deliveries and charges add, payments and returns subtract. */
@@ -167,19 +175,44 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
   );
 }
 
+/** `CustomerStatement` while it loads: the source, the four figures and the movements. */
+export function CustomerStatementSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-6">
+      <SourceNoticeSkeleton />
+      <StatementFiguresSkeleton />
+      <TableSkeleton
+        rows={9}
+        columns={[
+          { shape: "short" },
+          { shape: "code" },
+          { shape: "text" },
+          { shape: "code", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "code", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+        ]}
+      />
+      <CardListSkeleton lines={3} />
+    </div>
+  );
+}
+
 function DocumentCell({ line }: { line: StatementLineView }) {
   const label = documentLabel(line);
   if (!label) return <>—</>;
   if (line.document?.type === "payment") {
     return (
-      <Link href={paymentPath(line.document.id)} className="hover:underline">
+      <Link href={paymentPath(line.document.id)} className="font-medium hover:text-primary">
         {label}
       </Link>
     );
   }
   if (line.document?.type === "note") {
     return (
-      <Link href={notePath(line.document.id)} className="hover:underline">
+      <Link href={notePath(line.document.id)} className="font-medium hover:text-primary">
         {label}
       </Link>
     );

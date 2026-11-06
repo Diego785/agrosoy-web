@@ -1,3 +1,4 @@
+import { TriangleAlertIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ChangePasswordForm } from "@/modules/identity/presentation/change-password-form";
@@ -23,7 +24,8 @@ async function PendingChangeNotice() {
   const user = await getCurrentUser();
   if (!user?.mustChangePassword) return null;
   return (
-    <p className="max-w-sm rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+    <p className="flex max-w-md items-start gap-3 rounded-xl border border-warning/30 bg-warning/8 p-4 text-sm">
+      <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
       Estás usando una contraseña temporal. Elige una propia para continuar.
     </p>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -37,7 +38,13 @@ export const DiscardDraftButton = resetOnLeave(function DiscardDraftButton({ not
 
   return (
     <>
-      <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="ghost"
+        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        onClick={() => setOpen(true)}
+      >
+        <Trash2Icon aria-hidden />
         Descartar
       </Button>
       <AlertDialog open={open} onOpenChange={(next) => !isWorking && setOpen(next)}>

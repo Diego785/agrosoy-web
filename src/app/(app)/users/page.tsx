@@ -1,3 +1,4 @@
+import { PlusIcon, ShieldCheckIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -20,9 +21,11 @@ export default function UsersPage() {
             <RequirePermission permission="users.manage" fallback={null}>
               <div className="flex gap-2">
                 <Link href={PERMISSIONS_PATH} className={buttonVariants({ variant: "outline" })}>
+                  <ShieldCheckIcon aria-hidden />
                   Permisos
                 </Link>
                 <Link href={NEW_USER_PATH} className={buttonVariants()}>
+                  <PlusIcon aria-hidden />
                   Crear usuario
                 </Link>
               </div>

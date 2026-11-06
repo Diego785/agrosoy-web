@@ -1,3 +1,4 @@
+import { MapPinIcon, PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -20,9 +21,11 @@ export default function CustomersPage({ searchParams }: PageProps<"/customers">)
             <RequirePermission permission="customers.manage" fallback={null}>
               <div className="flex gap-2">
                 <Link href={ZONES_PATH} className={buttonVariants({ variant: "outline" })}>
+                  <MapPinIcon aria-hidden />
                   Zonas
                 </Link>
                 <Link href={NEW_CUSTOMER_PATH} className={buttonVariants()}>
+                  <PlusIcon aria-hidden />
                   Registrar cliente
                 </Link>
               </div>

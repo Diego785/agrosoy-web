@@ -1,3 +1,4 @@
+import { WalletIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
@@ -8,16 +9,17 @@ import { requireActor } from "@/modules/identity/presentation/current-user";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
+import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatDate } from "@/shared/presentation/format";
+import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
 import { PdfActions } from "@/shared/presentation/pdf-actions";
-import { buttonVariants } from "@/shared/presentation/ui/button";
+import { FiltersSkeleton, Loading, Skeleton } from "@/shared/presentation/skeletons";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { customerStatement, portfolioStatement } from "../application/statement-use-cases";
-import { CustomerStatement } from "./customer-statement";
-import { PortfolioStatement } from "./portfolio-statement";
+import { CustomerStatement, CustomerStatementSkeleton } from "./customer-statement";
+import { PortfolioStatement, PortfolioStatementSkeleton } from "./portfolio-statement";
 import { statementDeps as deps } from "./statement-deps";
 import { STATEMENTS_PATH, customerStatementPath, customerStatementPdfPath } from "./statement-routes";
-import { ResetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -40,43 +42,36 @@ export async function LedgerPortfolio({ searchParams }: { searchParams: SearchPa
 
   return (
     <div className="flex flex-col gap-6">
-      <ResetOnLeave
-        key={`${campaign?.id ?? ""}|${statement.technicianId ?? "all"}|${first(params.status) ?? "all"}`}
-      >
-        <form action={STATEMENTS_PATH} className="flex flex-wrap gap-2 print:hidden">
-          <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
-            <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
-            {statement.campaigns.map((option) => (
-              <NativeSelectOption key={option.id} value={option.id}>
-                {campaignLabel(option)}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <NativeSelect name="technician" defaultValue={statement.technicianId ?? "all"} aria-label="Técnico">
-            <NativeSelectOption value="all">Todos los técnicos</NativeSelectOption>
-            {technicians.map((technician) => (
-              <NativeSelectOption key={technician.id} value={technician.id}>
-                Cartera de {technician.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <NativeSelect name="status" defaultValue={first(params.status) ?? "all"} aria-label="Estado">
-            <NativeSelectOption value="all">Todos los clientes</NativeSelectOption>
-            <NativeSelectOption value="owing">Solo con deuda</NativeSelectOption>
-          </NativeSelect>
-          <button type="submit" className={buttonVariants({ variant: "outline" })}>
-            Filtrar
-          </button>
-        </form>
-      </ResetOnLeave>
+      <LiveFilterForm action={STATEMENTS_PATH} className="flex flex-wrap items-center gap-2 print:hidden">
+        <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
+          <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
+          {statement.campaigns.map((option) => (
+            <NativeSelectOption key={option.id} value={option.id}>
+              {campaignLabel(option)}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+        <NativeSelect name="technician" defaultValue={statement.technicianId ?? "all"} aria-label="Técnico">
+          <NativeSelectOption value="all">Todos los técnicos</NativeSelectOption>
+          {technicians.map((technician) => (
+            <NativeSelectOption key={technician.id} value={technician.id}>
+              Cartera de {technician.name}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+        <NativeSelect name="status" defaultValue={first(params.status) ?? "all"} aria-label="Estado">
+          <NativeSelectOption value="all">Todos los clientes</NativeSelectOption>
+          <NativeSelectOption value="owing">Solo con deuda</NativeSelectOption>
+        </NativeSelect>
+      </LiveFilterForm>
       <p className="text-sm text-muted-foreground">
         {campaign ? `Campaña ${campaignLabel(campaign)}` : "Todas las campañas"} · al{" "}
         {formatDate(todayInBolivia())}
       </p>
       {statement.customers.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">
-          No hay movimientos con estos filtros. Las boletas confirmadas y los pagos aparecen aquí.
-        </p>
+        <EmptyState icon={<WalletIcon />} title="Sin movimientos con estos filtros">
+          Las boletas confirmadas y los cobros aparecen aquí.
+        </EmptyState>
       ) : (
         <PortfolioStatement
           statement={statement}
@@ -84,6 +79,17 @@ export async function LedgerPortfolio({ searchParams }: { searchParams: SearchPa
         />
       )}
     </div>
+  );
+}
+
+/** The portfolio while it loads: filters, the date line and the customers. */
+export function LedgerPortfolioSkeleton() {
+  return (
+    <Loading label="Cargando estados de cuenta" className="gap-6">
+      <FiltersSkeleton search={false} selects={3} />
+      <Skeleton className="my-0.5 h-4 w-52" />
+      <PortfolioStatementSkeleton />
+    </Loading>
   );
 }
 
@@ -111,8 +117,8 @@ export async function LedgerCustomerStatement({
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">
-            <Link href={customerPath(statement.customerId)} className="hover:underline">
+          <h2 className="text-xl font-semibold tracking-tight">
+            <Link href={customerPath(statement.customerId)} className="hover:text-primary">
               {statement.customerName}
             </Link>
           </h2>
@@ -122,21 +128,19 @@ export async function LedgerCustomerStatement({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <ResetOnLeave key={campaign?.id ?? ""}>
-            <form action={`${STATEMENTS_PATH}/${statement.customerId}`} className="flex gap-2 print:hidden">
-              <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
-                <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
-                {statement.campaigns.map((option) => (
-                  <NativeSelectOption key={option.id} value={option.id}>
-                    {campaignLabel(option)}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-              <button type="submit" className={buttonVariants({ variant: "outline" })}>
-                Ver
-              </button>
-            </form>
-          </ResetOnLeave>
+          <LiveFilterForm
+            action={`${STATEMENTS_PATH}/${statement.customerId}`}
+            className="flex items-center gap-2 print:hidden"
+          >
+            <NativeSelect name="campaign" defaultValue={campaign?.id ?? ""} aria-label="Campaña">
+              <NativeSelectOption value="">Todas las campañas</NativeSelectOption>
+              {statement.campaigns.map((option) => (
+                <NativeSelectOption key={option.id} value={option.id}>
+                  {campaignLabel(option)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </LiveFilterForm>
           <PdfActions
             href={customerStatementPdfPath(statement.customerId, campaign?.id)}
             fileName={`estado-de-cuenta-${todayInBolivia()}.pdf`}
@@ -145,5 +149,25 @@ export async function LedgerCustomerStatement({
       </header>
       <CustomerStatement statement={statement} />
     </div>
+  );
+}
+
+/** A customer's statement while it loads: name and date, the campaign filter and the statement. */
+export function LedgerCustomerStatementSkeleton() {
+  return (
+    <Loading label="Cargando estado de cuenta" className="gap-6">
+      <div aria-hidden className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-6 w-56 max-w-[60vw]" />
+          <Skeleton className="h-4 w-44" />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-9 w-36 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+        </div>
+      </div>
+      <CustomerStatementSkeleton />
+    </Loading>
   );
 }

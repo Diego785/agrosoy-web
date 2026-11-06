@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
-import { LedgerCustomerStatement } from "@/modules/receivables/presentation/ledger-statements";
+import {
+  LedgerCustomerStatement,
+  LedgerCustomerStatementSkeleton,
+} from "@/modules/receivables/presentation/ledger-statements";
 import { PrintButton } from "@/modules/receivables/presentation/print-button";
 import { PageHeader } from "@/shared/presentation/app-shell";
 
@@ -13,8 +16,12 @@ export default function CustomerStatementPage({
 }: PageProps<"/statements/[customerId]">) {
   return (
     <>
-      <PageHeader title="Estado de cuenta" actions={<PrintButton />} />
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/60" />}>
+      <PageHeader
+        back={{ href: "/statements", label: "Estados de cuenta" }}
+        title="Estado de cuenta"
+        actions={<PrintButton />}
+      />
+      <Suspense fallback={<LedgerCustomerStatementSkeleton />}>
         <RequirePermission permission="statements.view">
           <LedgerCustomerStatement params={params} searchParams={searchParams} />
         </RequirePermission>

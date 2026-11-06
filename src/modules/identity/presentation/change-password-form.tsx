@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { KeyRoundIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -46,8 +47,12 @@ export const ChangePasswordForm = resetOnLeave(function ChangePasswordForm() {
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex max-w-sm flex-col gap-6">
-      <FieldGroup>
+    <form
+      onSubmit={submit}
+      noValidate
+      className="flex max-w-md flex-col gap-5 rounded-xl border bg-card p-5 shadow-xs"
+    >
+      <FieldGroup className="gap-4">
         <Field data-invalid={!!errors.currentPassword}>
           <FieldLabel htmlFor="currentPassword">Contraseña actual</FieldLabel>
           <Input
@@ -87,7 +92,8 @@ export const ChangePasswordForm = resetOnLeave(function ChangePasswordForm() {
 
       <FieldError errors={[errors.root]} />
 
-      <Button type="submit" disabled={isSaving} className="self-start">
+      <Button type="submit" disabled={isSaving} className="self-end">
+        <KeyRoundIcon aria-hidden />
         {isSaving ? "Guardando…" : "Cambiar contraseña"}
       </Button>
     </form>
