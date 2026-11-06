@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
+import { Field, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
@@ -17,6 +17,7 @@ import { chargeSchema, type ChargeInput } from "../application/collection-schema
 import { recordChargeAction } from "./collection-actions";
 import { CHARGES_PATH } from "./collection-routes";
 import { DateInput } from "@/shared/presentation/date-input";
+import { FormSection } from "@/shared/presentation/form-section";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 export const ChargeForm = resetOnLeave(function ChargeForm({
@@ -55,8 +56,8 @@ export const ChargeForm = resetOnLeave(function ChargeForm({
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex max-w-2xl flex-col gap-6">
-      <FieldGroup>
+    <form onSubmit={submit} noValidate className="flex max-w-3xl flex-col gap-6">
+      <FormSection title="Cargo">
         <Field data-invalid={!!errors.customerId}>
           <FieldLabel htmlFor="customerId">Cliente</FieldLabel>
           <NativeSelect id="customerId" aria-invalid={!!errors.customerId} {...form.register("customerId")}>
@@ -113,7 +114,7 @@ export const ChargeForm = resetOnLeave(function ChargeForm({
           />
           <FieldError errors={[errors.reason]} />
         </Field>
-      </FieldGroup>
+      </FormSection>
       <FieldError errors={[errors.root]} />
       <div className="flex gap-2">
         <Button type="submit" disabled={isSaving}>

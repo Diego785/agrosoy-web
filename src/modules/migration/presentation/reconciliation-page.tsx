@@ -1,3 +1,4 @@
+import { CheckCircle2Icon, InfoIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireActor } from "@/modules/identity/presentation/current-user";
@@ -7,6 +8,8 @@ import { Money } from "@/shared/domain/money";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { formatMoney } from "@/shared/presentation/format";
 import { notFoundAsNull } from "@/shared/presentation/not-found";
+import { Loading, Skeleton, TableSkeleton } from "@/shared/presentation/skeletons";
+import { buttonVariants } from "@/shared/presentation/ui/button";
 import {
   Table,
   TableBody,
@@ -40,14 +43,29 @@ export async function ReconciliationPage({ params }: { params: Promise<{ batchId
   const differing = rows.filter((row) => !row.difference.isZero()).length;
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <p className="text-sm text-muted-foreground">
-        Hoja «{batch.sheetName}». La deuda según la planilla se calcula con sus filas (cantidad × precio) y
-        los pagos y devoluciones del resumen; la pasada es lo que quedó en el sistema.{" "}
-        {differing === 0
-          ? "Todas coinciden."
-          : `${differing} ${differing === 1 ? "cliente tiene" : "clientes tienen"} diferencias por explicar antes de empezar a usar el sistema.`}
+    <div className="flex max-w-5xl flex-col gap-6">
+      <p className="flex items-start gap-3 rounded-xl border border-info/25 bg-info/5 px-4 py-3 text-sm">
+        <InfoIcon className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
+        <span>
+          <span className="font-medium">Hoja «{batch.sheetName}».</span>{" "}
+          <span className="text-muted-foreground">
+            La deuda según la planilla se calcula con sus filas (cantidad × precio) y los pagos y devoluciones
+            del resumen; la pasada es lo que quedó en el sistema.
+          </span>
+        </span>
       </p>
+      {differing === 0 ? (
+        <p className="flex items-center gap-2 text-sm font-medium text-success">
+          <CheckCircle2Icon className="size-4 shrink-0" aria-hidden />
+          Todas coinciden.
+        </p>
+      ) : (
+        <p className="flex items-center gap-2 text-sm font-medium text-warning">
+          <TriangleAlertIcon className="size-4 shrink-0" aria-hidden />
+          {differing} {differing === 1 ? "cliente tiene" : "clientes tienen"} diferencias por explicar antes
+          de empezar a usar el sistema.
+        </p>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -62,7 +80,10 @@ export async function ReconciliationPage({ params }: { params: Promise<{ batchId
             <TableRow key={row.customerName}>
               <TableCell>
                 {row.customerId ? (
-                  <Link href={customerStatementPath(row.customerId)} className="hover:underline">
+                  <Link
+                    href={customerStatementPath(row.customerId)}
+                    className="font-medium hover:text-primary"
+                  >
                     {row.customerName}
                   </Link>
                 ) : (
@@ -79,7 +100,7 @@ export async function ReconciliationPage({ params }: { params: Promise<{ batchId
                 {row.converted ? formatMoney(row.converted.balance.toDecimalString()) : "—"}
               </TableCell>
               <TableCell
-                className={`text-right font-medium tabular-nums ${row.difference.isZero() ? "text-muted-foreground" : "text-amber-800 dark:text-amber-200"}`}
+                className={`text-right font-medium tabular-nums ${row.difference.isZero() ? "text-muted-foreground" : "text-warning"}`}
               >
                 {formatMoney(row.difference.toDecimalString())}
               </TableCell>
@@ -103,29 +124,63 @@ export async function ReconciliationPage({ params }: { params: Promise<{ batchId
       </Table>
 
       {skipped.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium">Filas que no se pasaron</h3>
-          <ul className="flex flex-col gap-1 text-sm">
+        <section
+          aria-labelledby="skipped-rows"
+          className="overflow-hidden rounded-xl border bg-card shadow-xs"
+        >
+          <h3 id="skipped-rows" className="border-b px-5 py-3 text-sm font-semibold">
+            Filas que no se pasaron
+          </h3>
+          <ul className="divide-y text-sm">
             {skipped.map((row) => (
-              <li key={`${row.row}-${row.reason}`}>
-                Fila {row.row}: {SKIP_REASONS[row.reason]} ({row.label})
+              <li key={`${row.row}-${row.reason}`} className="px-5 py-3">
+                <span className="font-medium">Fila {row.row}:</span> {SKIP_REASONS[row.reason]} ({row.label})
               </li>
             ))}
           </ul>
-          <p className="text-sm text-muted-foreground">
+          <p className="border-t bg-muted/30 px-5 py-3 text-sm text-muted-foreground">
             Pasa los clientes o productos que faltan, deshaz la conversión y vuelve a pasarla.
           </p>
         </section>
       )}
-      <p className="text-sm">
-        <Link href={importReviewPath(batch.id)} className="hover:underline">
+      <div className="flex flex-wrap gap-2">
+        <Link href={importReviewPath(batch.id)} className={buttonVariants({ variant: "outline" })}>
           Observaciones de la planilla
-        </Link>{" "}
-        ·{" "}
-        <Link href={importConversionPath(batch.id)} className="hover:underline">
+        </Link>
+        <Link href={importConversionPath(batch.id)} className={buttonVariants({ variant: "outline" })}>
           Volver a pasar al sistema
         </Link>
-      </p>
+      </div>
     </div>
+  );
+}
+
+/** The reconciliation while it loads: the notice, the result, the customers and the links. */
+export function ReconciliationPageSkeleton() {
+  return (
+    <Loading label="Cargando conciliación" className="max-w-5xl gap-6">
+      <div
+        aria-hidden
+        className="flex items-start gap-3 rounded-xl border border-info/25 bg-info/5 px-4 py-3"
+      >
+        <Skeleton className="mt-0.5 size-4 shrink-0" />
+        <Skeleton className="my-[3px] h-3.5 w-full max-w-lg" />
+      </div>
+      <Skeleton className="my-0.5 h-4 w-64" />
+      <TableSkeleton
+        className="block"
+        rows={8}
+        columns={[
+          { shape: "text" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+          { shape: "short", align: "right" },
+        ]}
+      />
+      <div aria-hidden className="flex flex-wrap gap-2">
+        <Skeleton className="h-9 w-56 rounded-lg" />
+        <Skeleton className="h-9 w-48 rounded-lg" />
+      </div>
+    </Loading>
   );
 }

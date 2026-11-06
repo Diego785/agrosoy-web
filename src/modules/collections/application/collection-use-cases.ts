@@ -5,12 +5,13 @@ import { posting } from "@/modules/receivables/domain/ledger";
 import type { Actor } from "@/shared/application/actor";
 import type { AuditTrail } from "@/shared/application/audit-trail";
 import type { DocumentCounter } from "@/shared/application/document-counter";
+import { type Paged, pageWindow, paged } from "@/shared/application/pagination";
 import { assertCan, can } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
-import { optionalText } from "@/shared/domain/text";
+import { normalizeForComparison, optionalText } from "@/shared/domain/text";
 import { allocate, type AllocationTarget, type CampaignBalance } from "../domain/allocation";
 import { chargeRecord, paymentRecord } from "../domain/payment";
 import type {
@@ -26,6 +27,7 @@ import {
   chargeSchema,
   dailyRateSchema,
   paymentSchema,
+  chargeSearchSchema,
   paymentSearchSchema,
   voidReasonSchema,
 } from "./collection-schemas";
@@ -42,8 +44,6 @@ export type CollectionDeps = {
   /** Today's business date in Bolivia; voids are dated the day they happen. */
   today: () => string;
 };
-
-export const PAYMENTS_PAGE_SIZE = 50;
 
 /** Records a payment, applies it and credits the customer's debt (domain model, M6). */
 export async function recordPayment(
@@ -151,15 +151,16 @@ export async function listPayments(
   deps: Pick<CollectionDeps, "payments">,
   actor: Actor,
   input: unknown,
-): Promise<{ items: PaymentListItem[]; total: number; page: number; pageSize: number }> {
+): Promise<Paged<PaymentListItem>> {
   assertCan(actor, "payments.manage");
-  const { customerId, page } = validateInput(paymentSearchSchema, input);
+  const { text, status, customerId, page, pages } = validateInput(paymentSearchSchema, input);
   const result = await deps.payments.list({
+    text: normalizeForComparison(text),
+    status,
     customerId: customerId || undefined,
-    limit: PAYMENTS_PAGE_SIZE,
-    offset: (page - 1) * PAYMENTS_PAGE_SIZE,
+    ...pageWindow({ page, pages }),
   });
-  return { ...result, page, pageSize: PAYMENTS_PAGE_SIZE };
+  return paged({ page, pages }, result);
 }
 
 /** An extra debit, for example interest, in the chosen campaign. */
@@ -238,14 +239,15 @@ export async function listCharges(
   deps: Pick<CollectionDeps, "charges">,
   actor: Actor,
   input: unknown,
-): Promise<{ items: ChargeView[]; total: number; page: number; pageSize: number }> {
+): Promise<Paged<ChargeView>> {
   assertCan(actor, "payments.manage");
-  const { page } = validateInput(paymentSearchSchema, input);
+  const { text, status, page, pages } = validateInput(chargeSearchSchema, input);
   const result = await deps.charges.list({
-    limit: PAYMENTS_PAGE_SIZE,
-    offset: (page - 1) * PAYMENTS_PAGE_SIZE,
+    text: normalizeForComparison(text),
+    status,
+    ...pageWindow({ page, pages }),
   });
-  return { ...result, page, pageSize: PAYMENTS_PAGE_SIZE };
+  return paged({ page, pages }, result);
 }
 
 /** The day's rate, which notes and payments of `daily` customers use. */

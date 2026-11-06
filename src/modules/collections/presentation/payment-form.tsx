@@ -12,7 +12,7 @@ import { Money } from "@/shared/domain/money";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { formatDate, formatMoney, trimDecimalZeros } from "@/shared/presentation/format";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
@@ -22,6 +22,7 @@ import { recordPaymentAction } from "./collection-actions";
 import { CURRENCY_LABELS, METHOD_LABELS } from "./collection-labels";
 import { NEW_PAYMENT_PATH, PAYMENTS_PATH, newPaymentPath, paymentPath } from "./collection-routes";
 import { DateInput } from "@/shared/presentation/date-input";
+import { FormSection } from "@/shared/presentation/form-section";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 export type PaymentFormProps = {
@@ -82,8 +83,8 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex max-w-3xl flex-col gap-8">
-      <FieldGroup>
+    <form onSubmit={submit} noValidate className="flex max-w-4xl flex-col gap-6">
+      <FormSection title="Cliente">
         <Field data-invalid={!!errors.customerId}>
           <FieldLabel htmlFor="customerId">Cliente</FieldLabel>
           <NativeSelect
@@ -105,11 +106,11 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
         </Field>
 
         {customer && <Balances balances={customer.balances} />}
-      </FieldGroup>
+      </FormSection>
 
       {customer && (
         <>
-          <FieldGroup>
+          <FormSection title="Pago">
             <div className="grid gap-5 sm:grid-cols-3">
               <Field data-invalid={!!errors.paymentDate}>
                 <FieldLabel htmlFor="paymentDate">Fecha</FieldLabel>
@@ -190,21 +191,33 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
                 <FieldError errors={[errors.inKindDescription]} />
               </Field>
             )}
-            <p className="text-sm">
-              Baja la deuda en{" "}
-              <strong>US$ {formatMoney(usdValue(currency, amount, exchangeRate) ?? "0")}</strong>
-              {currency === "BOB" && " (Bs ÷ tipo de cambio)"}.
-            </p>
-          </FieldGroup>
+            <dl className="flex flex-wrap items-baseline justify-end gap-x-3 gap-y-1 border-t pt-4 text-sm">
+              <dt className="text-muted-foreground">
+                Baja la deuda en{currency === "BOB" && " (Bs ÷ tipo de cambio)"}
+              </dt>
+              <dd className="text-xl font-semibold tracking-tight tabular-nums">
+                US$ {formatMoney(usdValue(currency, amount, exchangeRate) ?? "0")}
+              </dd>
+            </dl>
+          </FormSection>
 
-          <fieldset className="flex flex-col gap-3">
-            <legend className="mb-2 text-sm font-medium">Aplicar a</legend>
+          <FormSection title="Aplicar a">
             <label className="flex items-center gap-2 text-sm">
-              <input type="radio" value="oldest_debt" className="size-4" {...form.register("target")} />
+              <input
+                type="radio"
+                value="oldest_debt"
+                className="size-4 accent-primary"
+                {...form.register("target")}
+              />
               La deuda más antigua primero
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <input type="radio" value="campaign" className="size-4" {...form.register("target")} />
+              <input
+                type="radio"
+                value="campaign"
+                className="size-4 accent-primary"
+                {...form.register("target")}
+              />
               Una campaña
             </label>
             {target === "campaign" && (
@@ -228,7 +241,7 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
               <input
                 type="radio"
                 value="note"
-                className="size-4"
+                className="size-4 accent-primary"
                 disabled={customer.notes.length === 0}
                 {...form.register("target")}
               />
@@ -250,13 +263,15 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
                 <FieldError errors={[errors.noteId]} />
               </Field>
             )}
-          </fieldset>
+          </FormSection>
 
-          <Field data-invalid={!!errors.observations}>
-            <FieldLabel htmlFor="observations">Observaciones (opcional)</FieldLabel>
-            <Textarea id="observations" {...form.register("observations")} />
-            <FieldError errors={[errors.observations]} />
-          </Field>
+          <FormSection title="Observaciones">
+            <Field data-invalid={!!errors.observations}>
+              <FieldLabel htmlFor="observations">Observaciones (opcional)</FieldLabel>
+              <Textarea id="observations" {...form.register("observations")} />
+              <FieldError errors={[errors.observations]} />
+            </Field>
+          </FormSection>
 
           <FieldError errors={[errors.root]} />
           <div className="flex gap-2">
@@ -277,11 +292,11 @@ function Balances({ balances }: { balances: NonNullable<PaymentFormProps["custom
   const owing = balances.filter((row) => Number(row.balance) !== 0);
   if (owing.length === 0) return <p className="text-sm text-muted-foreground">No tiene deuda registrada.</p>;
   return (
-    <dl className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+    <dl className="flex flex-wrap gap-3 text-sm">
       {owing.map((row) => (
-        <div key={row.campaignId}>
-          <dt className="text-muted-foreground">Debe en {row.label}</dt>
-          <dd className="font-medium tabular-nums">US$ {formatMoney(row.balance)}</dd>
+        <div key={row.campaignId} className="rounded-lg border border-warning/40 bg-warning/8 px-3 py-2">
+          <dt className="text-xs text-muted-foreground">Debe en {row.label}</dt>
+          <dd className="font-semibold tabular-nums">US$ {formatMoney(row.balance)}</dd>
         </div>
       ))}
     </dl>

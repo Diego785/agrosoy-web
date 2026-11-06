@@ -46,7 +46,7 @@ export const SalesConversion = resetOnLeave(function SalesConversion({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Ventas y pagos</h2>
+      <h2 className="text-base font-semibold">Ventas y pagos</h2>
       {conversion ? (
         <>
           <p className="text-sm">

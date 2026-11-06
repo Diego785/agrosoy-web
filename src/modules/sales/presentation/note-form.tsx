@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition, type ReactNode } from "react";
+import { useTransition } from "react";
 import { Controller, useFieldArray, useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { campaignOn } from "@/modules/campaigns/domain/campaign";
@@ -17,6 +17,7 @@ import { Quantity } from "@/shared/domain/quantity";
 import { DateInput } from "@/shared/presentation/date-input";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { formatMoney, formatQuantity, trimDecimalZeros } from "@/shared/presentation/format";
+import { FormSection } from "@/shared/presentation/form-section";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
@@ -438,17 +439,6 @@ function ReceiverFields({
 }
 
 /** A white card holding one group of the form's fields under a small title. */
-function FormSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="rounded-xl border bg-card p-5 shadow-xs">
-      <fieldset className="flex min-w-0 flex-col gap-4">
-        <legend className="mb-4 text-sm font-semibold">{title}</legend>
-        {children}
-      </fieldset>
-    </div>
-  );
-}
-
 function Total({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
   return (
     <div className="flex items-baseline gap-2">

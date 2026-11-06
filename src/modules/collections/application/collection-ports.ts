@@ -50,6 +50,14 @@ export type ChargeView = {
   voided: VoidInfo;
 };
 
+/** `text` is already normalized for comparison; it matches the customer's name or the document's number. */
+export type DocumentQuery = {
+  text?: string;
+  status?: DocumentStatus;
+  limit: number;
+  offset: number;
+};
+
 export interface PaymentRepository {
   insert(
     payment: PaymentRecord,
@@ -58,10 +66,7 @@ export interface PaymentRepository {
     createdBy: string,
   ): Promise<{ id: string }>;
   findById(id: string): Promise<PaymentView | undefined>;
-  list(query: { customerId?: string; limit: number; offset: number }): Promise<{
-    items: PaymentListItem[];
-    total: number;
-  }>;
+  list(query: DocumentQuery & { customerId?: string }): Promise<{ items: PaymentListItem[]; total: number }>;
   receiptNumberInUse(number: number): Promise<boolean>;
   /** Recorded → voided. INVALID_STATE if it was already voided. */
   markVoided(id: string, reason: string, actorId: string): Promise<void>;
@@ -72,7 +77,7 @@ export interface PaymentRepository {
 export interface ChargeRepository {
   insert(charge: ChargeRecord, createdBy: string): Promise<{ id: string }>;
   findById(id: string): Promise<ChargeView | undefined>;
-  list(query: { limit: number; offset: number }): Promise<{ items: ChargeView[]; total: number }>;
+  list(query: DocumentQuery): Promise<{ items: ChargeView[]; total: number }>;
   markVoided(id: string, reason: string, actorId: string): Promise<void>;
 }
 

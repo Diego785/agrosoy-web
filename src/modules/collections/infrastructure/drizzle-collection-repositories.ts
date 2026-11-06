@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -115,8 +115,18 @@ export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepositor
       };
     },
 
-    async list({ customerId, limit, offset }) {
-      const where = customerId ? eq(payments.customerId, customerId) : undefined;
+    async list({ text, status, customerId, limit, offset }) {
+      const matches: (SQL | undefined)[] = [];
+      if (text) {
+        matches.push(ilike(customers.comparisonName, `%${escapeLike(text)}%`));
+        // A number can also be the receipt's.
+        if (/^\d{1,9}$/.test(text)) matches.push(eq(payments.receiptNumber, Number(text)));
+      }
+      const where = and(
+        matches.length > 0 ? or(...matches) : undefined,
+        status ? eq(payments.status, status) : undefined,
+        customerId ? eq(payments.customerId, customerId) : undefined,
+      );
       const [items, counted] = await Promise.all([
         executor
           .select({
@@ -136,7 +146,11 @@ export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepositor
           .orderBy(desc(payments.paymentDate), desc(payments.receiptNumber))
           .limit(limit)
           .offset(offset),
-        executor.select({ total: count() }).from(payments).where(where),
+        executor
+          .select({ total: count() })
+          .from(payments)
+          .innerJoin(customers, eq(customers.id, payments.customerId))
+          .where(where),
       ]);
       return { items, total: counted[0]?.total ?? 0 };
     },
@@ -210,10 +224,22 @@ export function drizzleChargeRepository(executor: DbExecutor): ChargeRepository 
       return row ? view(row) : undefined;
     },
 
-    async list({ limit, offset }) {
+    async list({ text, status, limit, offset }) {
+      const where = and(
+        text ? ilike(customers.comparisonName, `%${escapeLike(text)}%`) : undefined,
+        status ? eq(charges.status, status) : undefined,
+      );
       const [rows, counted] = await Promise.all([
-        select().orderBy(desc(charges.chargeDate), desc(charges.createdAt)).limit(limit).offset(offset),
-        executor.select({ total: count() }).from(charges),
+        select()
+          .where(where)
+          .orderBy(desc(charges.chargeDate), desc(charges.createdAt))
+          .limit(limit)
+          .offset(offset),
+        executor
+          .select({ total: count() })
+          .from(charges)
+          .innerJoin(customers, eq(customers.id, charges.customerId))
+          .where(where),
       ]);
       return { items: rows.map(view), total: counted[0]?.total ?? 0 };
     },
@@ -247,4 +273,8 @@ export function drizzleDailyRateRepository(executor: DbExecutor): DailyRateRepos
         .onConflictDoUpdate({ target: dailyExchangeRates.rateDate, set: values });
     },
   };
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`);
 }

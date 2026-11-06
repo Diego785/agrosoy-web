@@ -26,6 +26,7 @@ import { EmptyState } from "@/shared/presentation/empty-state";
 import { PdfActions } from "@/shared/presentation/pdf-actions";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
+import { FormSectionSkeleton } from "@/shared/presentation/form-section";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
 import {
   CardListSkeleton,
@@ -56,14 +57,7 @@ import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecy
 import { NoteForm } from "./note-form";
 import { noteDeps } from "./note-deps";
 import { loadNoteFormOptions } from "./note-form-options";
-import {
-  NOTES_PATH,
-  editNotePath,
-  notePath,
-  notePdfPath,
-  returnNotePath,
-  transferNotePath,
-} from "./note-routes";
+import { NOTES_PATH, editNotePath, notePath, notePdfPath } from "./note-routes";
 
 const STATUS_LABELS: Record<NoteStatus, string> = {
   draft: "Borrador",
@@ -211,6 +205,7 @@ export async function NotesTable({
 export function NotesTableSkeleton() {
   return (
     <Loading label="Cargando boletas">
+      <Skeleton className="my-0.5 h-4 w-64 max-w-full" />
       <FiltersSkeleton search={false} selects={1} />
       <TableSkeleton
         columns={[
@@ -253,7 +248,6 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
   const isDelivery = note.type === "delivery";
   const followUps =
     isDelivery && note.status !== "draft" ? await listFollowUps(notesDeps(), actor, note.id) : [];
-  const canFollowUp = isDelivery && note.status === "confirmed" && can(actor, "notes.manage");
 
   const transport = [
     note.carrier.name,
@@ -313,16 +307,6 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                   Editar borrador
                 </Link>
                 <DiscardDraftButton noteId={note.id} />
-              </>
-            )}
-            {canFollowUp && (
-              <>
-                <Link href={returnNotePath(note.id)} className={buttonVariants({ variant: "outline" })}>
-                  Devolución
-                </Link>
-                <Link href={transferNotePath(note.id)} className={buttonVariants({ variant: "outline" })}>
-                  Pasar de campaña
-                </Link>
               </>
             )}
             <PdfActions
@@ -699,18 +683,6 @@ export function NoteFormSkeleton() {
         <Skeleton className="h-9 w-20 rounded-lg" />
       </div>
     </Loading>
-  );
-}
-
-/** `FormSection` of the note form: a white card with a small title. */
-function FormSectionSkeleton({ children }: { children: ReactNode }) {
-  return (
-    <div aria-hidden className="rounded-xl border bg-card p-5 shadow-xs">
-      <div className="mb-4 py-0.5">
-        <Skeleton className="h-4 w-32" />
-      </div>
-      <div className="flex flex-col gap-4">{children}</div>
-    </div>
   );
 }
 

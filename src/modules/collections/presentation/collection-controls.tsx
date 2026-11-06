@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeftRightIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -82,7 +83,13 @@ function VoidButton({
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="relative text-destructive hover:bg-destructive/10 hover:text-destructive"
+        onClick={() => setOpen(true)}
+      >
         Anular
       </Button>
       <AlertDialog open={open} onOpenChange={(next) => !isWorking && setOpen(next)}>
@@ -137,23 +144,26 @@ export const DailyRateForm = resetOnLeave(function DailyRateForm({
 
   if (!isEditing && rate) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Tipo de cambio del día ({formatDate(today)}):{" "}
-        <span className="font-medium text-foreground">{formatRate(rate)} Bs por US$</span>.{" "}
-        <button
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-sm shadow-xs">
+        <RateMark />
+        <span className="text-muted-foreground">Tipo de cambio del {formatDate(today)}</span>
+        <span className="font-semibold tabular-nums">{formatRate(rate)} Bs por US$</span>
+        <Button
           type="button"
-          className="underline underline-offset-2 hover:text-foreground"
+          variant="ghost"
+          size="sm"
+          className="ml-auto"
           onClick={() => setIsEditing(true)}
         >
           Cambiar
-        </button>
-      </p>
+        </Button>
+      </div>
     );
   }
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-1">
+    <form onSubmit={submit} noValidate className="rounded-xl border bg-card px-4 py-3 shadow-xs">
       <Field data-invalid={!!errors.rate}>
-        <FieldLabel htmlFor="dailyRate">Tipo de cambio del día ({formatDate(today)})</FieldLabel>
+        <FieldLabel htmlFor="dailyRate">Tipo de cambio del {formatDate(today)} (Bs por US$)</FieldLabel>
         <div className="flex gap-2">
           <Input
             id="dailyRate"
@@ -178,3 +188,11 @@ export const DailyRateForm = resetOnLeave(function DailyRateForm({
     </form>
   );
 });
+
+function RateMark() {
+  return (
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+      <ArrowLeftRightIcon className="size-4" aria-hidden />
+    </span>
+  );
+}

@@ -16,6 +16,8 @@ import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-t
 import {
   dailyRate,
   getPayment,
+  listCharges,
+  listPayments,
   recordCharge,
   recordPayment,
   setDailyRate,
@@ -225,5 +227,45 @@ describe("the day's exchange rate", () => {
     await expect(
       dailyRate(collectionDeps(), actorWithRole("warehouse_keeper"), "2026-11-02"),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("lists", () => {
+  it("finds payments by customer or receipt and filters by status", async () => {
+    const ids = await seedNoteFixtures();
+    await confirmedNote(ids);
+    const first = await recordPayment(collectionDeps(), admin, payment(ids, { amount: "100" }));
+    const second = await recordPayment(collectionDeps(), admin, payment(ids, { amount: "200" }));
+    await voidPayment(collectionDeps(), admin, second.id, { reason: "Se registró dos veces" });
+
+    const everything = await listPayments(collectionDeps(), admin, {});
+    expect(everything.total).toBe(2);
+    expect(everything.pageSize).toBe(20);
+
+    const voided = await listPayments(collectionDeps(), admin, { status: "voided" });
+    expect(voided.items.map((item) => item.id)).toEqual([second.id]);
+
+    const byReceipt = await listPayments(collectionDeps(), admin, {
+      text: String(first.receiptNumber),
+    });
+    expect(byReceipt.items.map((item) => item.id)).toContain(first.id);
+
+    const nobody = await listPayments(collectionDeps(), admin, { text: "nadie se llama asi" });
+    expect(nobody).toMatchObject({ items: [], total: 0 });
+  });
+
+  it("finds charges by customer and filters by status", async () => {
+    const ids = await seedNoteFixtures();
+    await recordCharge(collectionDeps(), admin, {
+      customerId: ids.customerId,
+      campaignId: (await collectionLookups(testDb).campaignOn("2026-10-26"))!.id,
+      chargeDate: "2026-11-02",
+      amount: "50",
+      reason: "Interés por mora acordado",
+    });
+
+    expect((await listCharges(collectionDeps(), admin, {})).total).toBe(1);
+    expect((await listCharges(collectionDeps(), admin, { status: "voided" })).total).toBe(0);
+    expect((await listCharges(collectionDeps(), admin, { text: "nadie se llama asi" })).total).toBe(0);
   });
 });

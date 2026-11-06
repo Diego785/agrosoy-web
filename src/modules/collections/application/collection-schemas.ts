@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagingFields } from "@/shared/application/pagination";
 import { CURRENCIES, PAYMENT_METHODS } from "../domain/payment";
 
 // Shared by the collection forms and the use cases; the messages are shown next to the fields.
@@ -83,11 +84,19 @@ export const dailyRateSchema = z.object({
 });
 
 export const paymentSearchSchema = z.object({
+  text: z.string().trim().max(100).catch(""),
+  status: z.enum(["recorded", "voided"]).optional().catch(undefined),
   customerId: z
     .union([z.literal(""), z.uuid()])
     .optional()
     .catch(undefined),
-  page: z.coerce.number().int().min(1).catch(1),
+  ...pagingFields,
+});
+
+export const chargeSearchSchema = z.object({
+  text: z.string().trim().max(100).catch(""),
+  status: z.enum(["recorded", "voided"]).optional().catch(undefined),
+  ...pagingFields,
 });
 
 export type PaymentInput = z.input<typeof paymentSchema>;

@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -88,7 +89,8 @@ export const ConfirmNoteButton = resetOnLeave(function ConfirmNoteButton({
 
   return (
     <>
-      <Button type="button" size="sm" onClick={() => setOpen(true)}>
+      <Button type="button" onClick={() => setOpen(true)}>
+        <CheckIcon aria-hidden />
         Confirmar
       </Button>
       <AlertDialog open={open} onOpenChange={(next) => !isWorking && setOpen(next)}>
@@ -152,7 +154,7 @@ export const ConfirmNoteButton = resetOnLeave(function ConfirmNoteButton({
                 type="checkbox"
                 checked={isPaper}
                 onChange={(event) => setIsPaper(event.target.checked)}
-                className="size-4"
+                className="size-4 accent-primary"
               />
               Es una boleta de papel con número impreso
             </label>
@@ -214,7 +216,12 @@ export const VoidNoteButton = resetOnLeave(function VoidNoteButton({
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="ghost"
+        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        onClick={() => setOpen(true)}
+      >
         Anular
       </Button>
       <AlertDialog open={open} onOpenChange={(next) => !isWorking && setOpen(next)}>
@@ -267,7 +274,7 @@ export const NextNumberForm = resetOnLeave(function NextNumberForm({ nextNumber 
         La próxima boleta será la <span className="font-medium text-foreground">N.º {nextNumber}</span>.{" "}
         <button
           type="button"
-          className="underline underline-offset-2 hover:text-foreground"
+          className="font-medium text-primary hover:underline"
           onClick={() => {
             form.reset({ nextNumber: String(nextNumber) });
             setIsEditing(true);
