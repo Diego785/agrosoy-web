@@ -61,3 +61,7 @@ export interface GeneralPrices {
 export interface TechnicianOptions {
   listActive(): Promise<{ id: string; name: string }[]>;
 }
+
+export interface CampaignLookup {
+  find(id: string): Promise<{ id: string; status: "open" | "closed" } | undefined>;
+}

@@ -24,7 +24,8 @@ export type DraftNote = {
   campaignId: string;
   technicianId: string | null;
   paymentTerms: PaymentTerms;
-  exchangeRate: ExchangeRate;
+  /** Null on a credit note whose rate is only agreed when the customer pays (D35). */
+  exchangeRate: ExchangeRate | null;
   receiver: { name: string; documentId: string | null; relationship: string | null };
   handedOverById: string | null;
   carrier: Carrier;
@@ -64,3 +65,20 @@ export function draftNote(input: DraftNote): DraftNote {
   }
   return input;
 }
+
+/**
+ * A sale brought in from a spreadsheet (M12): already confirmed, with the sheet's number (which
+ * may repeat) and its lines as written, a zero price included, since nothing says why.
+ */
+export type ImportedNote = {
+  importBatchId: string;
+  sheetNumber: number | null;
+  noteDate: string;
+  customerId: string;
+  campaignId: string;
+  /** Null where the sheet left it blank: it is agreed when the customer pays (D35). */
+  exchangeRate: ExchangeRate | null;
+  receiverName: string;
+  observations: string | null;
+  lines: { presentationId: string; quantity: Quantity; unitPrice: Money; total: Money }[];
+};

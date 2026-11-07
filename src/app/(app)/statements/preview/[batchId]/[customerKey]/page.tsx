@@ -10,10 +10,12 @@ import { PageHeader } from "@/shared/presentation/app-shell";
 
 export const metadata: Metadata = { title: "Estado de cuenta del cliente" };
 
-export default function CustomerStatementPage({ params }: PageProps<"/statements/[batchId]/[customerKey]">) {
+export default function CustomerStatementPage({
+  params,
+}: PageProps<"/statements/preview/[batchId]/[customerKey]">) {
   return (
     <>
-      <PageHeader title="Estado de cuenta" actions={<PrintButton />} />
+      <PageHeader title="Vista previa del estado de cuenta" actions={<PrintButton />} />
       <Suspense fallback={<CustomerStatementPreviewSkeleton />}>
         <RequirePermission permission="statements.view">
           <CustomerStatementPreview params={params} />

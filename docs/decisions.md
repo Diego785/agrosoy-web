@@ -176,9 +176,66 @@ reviewed step of M12.
 rows, reused note numbers). Keeping them apart lets Agrosoil review and correct them, and lets the
 statement preview show real figures in week 1 without polluting the ledger that M5–M7 will build.
 
-## D23 · Product codes belong to presentations and keep Agrosoil's numbers
+## D18 · Notes are confirmed before inventory exists
 
-_D18–D22 are recorded on the week 3 branch; the numbering is shared across branches._
+**Decision:** in week 3, confirming a delivery note gives its number and posts the ledger, but takes
+no stock. When inventory (M8) arrives in week 4, the same confirm use case also writes the stock
+movements in its transaction, and warehouse and lot become required on new notes.
+
+**Why:** the week 3 milestone is notes, collections and statements with real data; inventory is
+week 4. Go-live stock comes from a physical count (`opening` movements), so notes confirmed before
+then never needed a stock movement.
+
+## D19 · One number sequence for notes, given on confirmation
+
+**Decision:** delivery, return and campaign-transfer notes share one gapless counter
+(`document_counters`, row-locked while a number is taken). Drafts have no number. Administration
+sets where numbering continues; paper notes typed in later keep their printed number, which must
+be unused, and the counter skips numbers already taken. Receipts get their own counter.
+
+**Why:** Agrosoil uses one paper pad today (open question in the glossary; if the types turn out to
+have separate pads, the counter gets one row per type). Numbering at confirmation means discarded
+drafts leave no gaps.
+
+## D20 · Payments are applied per campaign, oldest debt first by default
+
+**Decision:** a payment becomes one ledger credit per campaign it pays (`payment_allocations`).
+Administration may apply it to one note (recorded on the allocation, credited in the note's
+campaign) or to one campaign; otherwise campaigns that owe are paid oldest first. An overpayment
+stays as a credit in favor in the payment date's campaign. Cash notes create their payment while
+they are confirmed, in the same transaction, for exactly the note's total.
+
+**Why:** debt is followed per campaign (the statement and the spreadsheets are organized that way),
+and "oldest first" is how administration applies an unspecified payment today. Keeping the
+allocation rows makes every credit traceable to its receipt.
+
+## D21 · PDFs with @react-pdf/renderer (completes D12)
+
+**Decision:** notes, receipts and customer statements are PDFs drawn with `@react-pdf/renderer`
+in route handlers (`/notes/[id]/pdf`, `/payments/[id]/pdf`, `/statements/[customerId]/pdf`) that
+call the same use cases as the pages. The pages offer "PDF" and "Compartir": the latter hands the
+file to the phone's share sheet (WhatsApp included) where the browser supports sharing files.
+Text only, Helvetica, until Agrosoil provides its logo.
+
+**Why:** it renders in the Node server already in the Docker image, with no headless browser to
+install or keep patched on the VPS, and Next.js already treats it as an external server package.
+
+## D22 · Spreadsheet sales become imported notes; undated payments become ledger entries
+
+**Decision:** converting a sheet's sales creates confirmed delivery notes marked `imported`, with
+the sheet's note number in `sheet_number` (the system's `number` stays empty), and posts their
+debt. The summary's payments and returns, which have no document and no date, are posted as
+ledger entries whose source is the import batch, dated on a cut-off date administration chooses.
+No payment records or receipts are invented. A converted sheet can't be re-imported until the
+conversion is undone, which voids the notes and reverses the entries.
+
+**Why:** the sheets reuse note numbers on different dates and their pads overlap the numbering
+the system continues (D19), so imported numbers can't share the unique column. Inventing dates,
+payment methods or receipt numbers would put false facts in the ledger; a dated cut-off entry is
+honest and still reconciles to the cent. Undo keeps the ledger append-only (D6) while letting
+administration fix a sheet and convert it again before go-live.
+
+## D23 · Product codes belong to presentations and keep Agrosoil's numbers
 
 **Decision:** a code identifies a presentation (a product in one container), as in Agrosoil's
 product list: "001" is Fulvin 40-22 in 20 L, "002" the same product in 5 L. Codes are text of three
@@ -223,6 +280,9 @@ points to a single original note; its PDF lists the deliveries it draws from.
 **Why:** the paper form has no "original note" field, and one return slip can bring back product
 from several deliveries. With one printed number it has to be one note.
 
+Until this is built, a confirmed note offers no return or transfer: the single-note version remains
+at its address only, so nobody learns a flow that is about to change.
+
 ## D26 · Notes and receipts print like Agrosoil's paper forms
 
 **Decision:** the PDFs follow the forms Agrosoil uses (photos of 28 Oct 2026).
@@ -241,7 +301,8 @@ Notes get optional carrier fields and a "handed over by" person: the technician 
 warehouse keeper once inventory exists); on a return the customer's person hands over and
 Agrosoil's receives. Users get an optional position ("Ejecutivo de ventas") and CI to print them.
 The company's name, logo and contact details come from a settings page; the documents carry the
-brand printed on the forms, **Agrosoil Bolivia**.
+brand printed on the forms, **Agrosoil Bolivia**. Until that page exists they live in
+`shared/presentation/company-profile.ts`.
 
 **Why:** customers and staff already know and sign these forms; the printed copy stays the
 physical record, so it must look like the one they trust.
@@ -364,3 +425,22 @@ the same layout as its content, built from `shared/presentation/skeletons.tsx`.
 
 **Why:** a management system is used all day; the client should recognise their brand in it and find
 it calm and orderly. Color carries meaning (action, status), so it stays scarce.
+
+## D35 · A credit note can leave its exchange rate for the payment
+
+**Decision:** the exchange rate is optional on credit notes and required on cash notes. Without one,
+the screen says "Se define al cobrar", and the note and its PDF show only the total in US$, with no
+amount in Bs and the T/C box empty. A return inherits what its note has. The conversion of a sheet
+keeps a blank rate blank instead of filling in a default. Payments always carry their own rate, so
+nothing changes in how debt is lowered. A campaign transfer still asks for a rate until D25 rebuilds
+it.
+
+**Why:** Agrosoil's sales manager (6 November 2026) says some customers have no exchange rate until
+they pay. The debt is in dollars and doesn't depend on it, but a rate chosen just to fill the field
+prints an amount in Bs nobody agreed to, which later differs from what the customer pays. A cash
+note is paid on the spot, so its rate is known and its payment needs one; a database check enforces
+that.
+
+**Known limit:** the form still suggests the customer's fixed rate or the day's rate, so a note for
+one of these customers needs the field cleared by hand. If that proves error-prone, the customer's
+exchange-rate agreement can gain a third option that leaves it empty.

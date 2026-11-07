@@ -3,6 +3,59 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-06
+
+- **Optional exchange rate on credit notes (D35):** Agrosoil's sales manager says some customers have
+  no rate until they pay. Without one, a note shows only US$, on screen and in its PDF; cash notes
+  still require it. The sheet conversion keeps blank rates blank and no longer asks for a default.
+  Migration `0018_optional_note_exchange_rate`.
+- **What Agrosoil will send:** each engineer sends a customer list by Monday 9 November. The sales
+  manager enters the debts herself once someone explains how, which needs the opening-balance screen
+  (D29).
+- **Week 3 merged into `main`** with what it has so far (developer's approval), to deploy to staging
+  for the meeting of Saturday 7 November. Week 3's list for 9–13 November (2026-11-05, below) stays on
+  `feature/week-3`.
+
+## 2026-11-05
+
+Getting week 3 ready to preview on Saturday 7 November (`feature/week-3`; not approved yet, nothing
+on `main`).
+
+- **`main` and week 2 merged into week 3.** The note, customer and statement screens keep week 2's
+  look with week 3's actions. All checks passed after the merge.
+- **Payments and charges** page and filter like the other lists (D32, D33), with search by customer
+  or receipt number and the look and skeletons of D34. "Cobros" joins the menu.
+- **Charge concepts (D24):** interest, price adjustment, notarized contract, other; only an
+  adjustment can lower the debt.
+- **Receipts keep their balances (D27)** and a concept that can be written or is built from what the
+  payment was applied to. Migration `0017_charge_concepts_and_receipt_balances`.
+- **Notes and receipts print like the paper forms (D26)**, compared with the photos of 28 October:
+  logo, boxes, six-digit numbers, amount in words, long date, signature blocks. The statement PDF
+  gets the letterhead too; it still said AGROSOY.
+- **Home:** total debt and debt older than 90 days, a technician's own portfolio for technicians.
+- **Returns and transfers leave the note's actions** until they gather several deliveries (D25).
+- **Walked through in the browser**, on a separate local database (`agrosoy_s3_demo`): the sample
+  sheet reconciles to the cent (US$ 31,932.00, no differences), then note → debt, payment → receipt
+  and statement, adjustment → lower debt.
+- **Left for 9–13 November:** printed receipt numbers and number ranges (D28), returns from several
+  deliveries (D25), opening balances and cut-off date (D29), the company settings page, Agrosoil's
+  customer list and real data.
+- **To confirm with Agrosoil:** the second mobile number. The details it sent say 72142142 and its
+  printed forms say 76662583; the documents use the former.
+
+## 2026-11-04
+
+- **Staging is on its domain:** `https://agrosoil.market-ia.shop`, with `main` at `fde4ea1` or later
+  and port 3100 closed. Recorded in `deploy/server-log.md`, with what could only be checked from
+  outside. The certificate expires on 31 January 2027 and nothing renews it yet (`deploy/README.md`,
+  B5). This site also answers unknown names on the shared nginx; left as it is, with the fix noted.
+- **Week 3's state, reviewed:** the base is built on `feature/week-3` but not approved. Left to do:
+  - merge `main` in (14 files conflict), page and filter payments and charges, and bring the new
+    look and skeletons to the week's own screens;
+  - charge concepts (D24), receipt balances (D27), printed receipt numbers and the system's range
+    (D28), company profile and PDFs like the paper forms (D26), returns and transfers from several
+    deliveries (D25), and opening balances, historical notes and payments with a cut-off date (D29).
+
 ## 2026-11-02
 
 - **Filters apply as they change (D33)** in products, customers and notes: no "Buscar" button,
@@ -18,7 +71,7 @@ up without re-reading the whole history.
 
 ## 2026-11-01
 
-- **The client is Agrosoil**, not Agrosoy: renamed in every screen, page title, document and doc.
+- **The client is Agrosoil**, not Agrosoil: renamed in every screen, page title, document and doc.
   Technical names stay (`agrosoy-web`, databases, containers, staging) until a planned change.
   Exchange-rate examples say 12.00, the current rate, instead of 6.96.
 - **Corrections from the developer's review of week 2** (`feature/week-2`):
@@ -68,6 +121,8 @@ up without re-reading the whole history.
   names (Drizzle's casing cache); restart `pnpm dev` after migrations.
 - **Week 2 branch:** `main` merged in; the week's migrations are now `0007_campaigns` to
   `0010_delivery_notes`.
+- **Week 3 branch:** week 2 merged in; the week's migrations are now
+  `0011_note_confirmation_and_ledger` to `0014_sales_import`.
 
 ## 2026-10-30
 
@@ -91,6 +146,10 @@ up without re-reading the whole history.
   too (marked), since their customers still need prices. Migrations shared with `main` keep their
   numbers and the week's own follow them, because Drizzle skips any migration older than the last
   one a database applied.
+- **Week 3 branch:** week 2 merged in (with `main`'s changes); only the docs needed hand merging:
+  decisions now run D1–D30 in order, and the domain model notes that returns and transfers are
+  still built against a single note until D25 is implemented. The week's own migrations follow
+  week 2's.
 
 ## 2026-10-29
 
@@ -128,6 +187,39 @@ up without re-reading the whole history.
   search can still filter by a deactivated zone. Audited.
 - The week 1 demo runs against its own local database (`agrosoy_s1` in `.env.local`), so the
   test data of weeks 2 and 3 (database `agrosoy`) doesn't show up.
+
+## 2026-10-26 (week 3, branch `feature/week-3`)
+
+Branched from `feature/week-2` (not merged into `main` yet). Everything planned for week 3 is
+built, each part tested in integration tests and in the browser:
+
+- **Ledger and confirmation (M5, M7):** append-only customer ledger (a trigger rejects UPDATE and
+  DELETE); confirming a note gives the next number (row-locked counter, D19) or keeps a paper
+  note's printed number and debits its total; voiding (`notes.void`) reverses it on the void date.
+  Notes are confirmed without stock until inventory exists (D18).
+- **Collections (M6):** payments in US$ or Bs with their rate, receipt numbers, applied to a note,
+  a campaign or the oldest debt first, overpayments kept as credit (D20); cash notes are confirmed
+  with their payment; charges; the day's exchange rate, prefilled in notes and payments
+  (`payments.manage`, "Cobranzas").
+- **Account statement (M7):** portfolio and customer statements from the ledger with the
+  spreadsheet's columns, per-campaign totals and aging (FIFO, 30/60/90/+90 days); spreadsheet
+  previews moved to `/statements/preview`.
+- **PDFs (D21):** delivery notes, receipts and customer statements with `@react-pdf/renderer`,
+  with a "Compartir" button for the phone's share sheet.
+- **Returns and campaign transfers (M5):** against the lines of a confirmed delivery note, up to
+  what is left of each line; returns credit the original price, transfers move the debt to the
+  new campaign at the new price.
+- **Migration of sales and payments (M12, D22):** imported notes keep the sheet's numbers; the
+  summary's payments go in on a cut-off date; reconciliation per customer; undo. With the real
+  `ventas.xlsx` the 15 customers reconcile exactly (US$ 31.932,00) once all its products exist.
+- Tests: 200 (unit and integration). CI runs on the branch.
+
+**Next:** week 4 — warehouses, lots, kardex, transfers and counts (M8): confirming a note will
+also take stock (D18), and lots arrive in note lines. Before go-live: Agrosoil's answers on note
+numbering, MP/SV/Agrosoil and interest; the staging server; campaign closing (M4).
+
+**Known debt:** a few repositories run queries in parallel (`Promise.all`) on one transaction's
+client, which `pg` warns will stop working in pg 9; sequence them when touching that code.
 
 ## 2026-10-26 (week 2, branch `feature/week-2`)
 

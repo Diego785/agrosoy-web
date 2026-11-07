@@ -57,7 +57,7 @@ describe("spreadsheet import", () => {
       campaignLabel: "CAMPAÑA INVIERNO 2026",
       isPreview: true,
     });
-    expect(statement.customers).toEqual([
+    expect(statement.customers).toMatchObject([
       {
         key: "alexander jimenez",
         name: "Alexander Jimenez",

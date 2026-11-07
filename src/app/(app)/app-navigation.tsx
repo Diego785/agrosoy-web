@@ -4,6 +4,7 @@ import {
   HistoryIcon,
   LayoutDashboardIcon,
   PackageIcon,
+  ReceiptTextIcon,
   SproutIcon,
   TagsIcon,
   UserCogIcon,
@@ -42,7 +43,13 @@ const NAVIGATION: readonly { title?: string; items: readonly NavigationItem[] }[
   {
     title: "Cobranzas",
     items: [
-      { label: "Estados de cuenta", href: "/statements", icon: WalletIcon, permission: "statements.view" },
+      { label: "Cobros", href: "/payments", icon: WalletIcon, permission: "payments.manage" },
+      {
+        label: "Estados de cuenta",
+        href: "/statements",
+        icon: ReceiptTextIcon,
+        permission: "statements.view",
+      },
       {
         label: "Importar planillas",
         href: "/imports",

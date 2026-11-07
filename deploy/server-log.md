@@ -20,6 +20,89 @@ How to operate the deployment itself is in [README.md](README.md).
 
 ---
 
+## 2026-11-02/03 · Staging moved to its domain, with HTTPS
+
+Phase B of [README.md](README.md), with the domain `agrosoil.market-ia.shop` instead of the one
+planned earlier. The app's image was updated in the same session.
+
+### Summary
+
+| Type                       | What                                                                                                                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Added                      | Domain `agrosoil.market-ia.shop`: alias (CNAME) of `market-ia.shop`, which points to this server. The DNS records live outside the server                              |
+| Added to shared components | Let's Encrypt certificate `agrosoil.market-ia.shop` in the proxy's `certbot/conf` (`live/`, `archive/`, `renewal/`)                                                    |
+| Changed, shared components | `conf/agrosoy-staging.conf`: reloaded over HTTP with the new name, then replaced with `nginx/agrosoy-staging.https.conf`. nginx reloaded, `nginx -t` first. No restart |
+| Changed, our folder        | `.env`: `COMPOSE_FILE` and `PUBLIC_PORT` removed, `BETTER_AUTH_URL=https://agrosoil.market-ia.shop`. Image `main` updated. Public port 3100 closed                     |
+| Not touched                | Every other project's folder, containers, volumes, images, `.conf` file and certificate; the proxy's compose file; firewall; SSH settings                              |
+
+The app's container now publishes no ports: it is reached only through nginx, by name, on
+`server-network`.
+
+### Verification (from outside the server, 2026-11-04)
+
+| Check                                        | Result                                                                        |
+| -------------------------------------------- | ----------------------------------------------------------------------------- |
+| `https://agrosoil.market-ia.shop/`           | `307` to `/login`, with `Strict-Transport-Security` (set by our HTTPS file)   |
+| `https://agrosoil.market-ia.shop/api/health` | `{"status":"ok","database":true}`                                             |
+| `http://agrosoil.market-ia.shop/`            | `301` to HTTPS                                                                |
+| `http://38.242.145.246:3100/`                | Connection refused: the port is closed                                        |
+| Certificate served                           | Let's Encrypt, `CN=agrosoil.market-ia.shop`, valid until 2027-01-31 22:43 UTC |
+| `/login` in a browser                        | Shows the new sign-in text, so the image is `main` at `fde4ea1` or later      |
+| `https://market-ia.shop/`                    | `200` with its own certificate: the other site on this alias is unaffected    |
+
+**Not verifiable from outside:** the value of `BETTER_AUTH_URL` and signing in on the domain (no
+credentials were used in this check); the backup taken before updating; the copies of the nginx
+file left in root's home.
+
+### Public ports, before and after
+
+| Port    | Before            | After                             |
+| ------- | ----------------- | --------------------------------- |
+| 80, 443 | `nginx`           | `nginx` (one more site, with TLS) |
+| 3100    | `agrosoy-staging` | free                              |
+
+### Observation: this site now answers for unknown names
+
+Requests for the bare IP or for a name no `.conf` claims reach this app: on 443 they get this
+certificate and the sign-in page, and on 80 a redirect to HTTPS. Apparently no file declares
+`default_server`, so nginx uses the first one alphabetically, `agrosoy-staging.conf`. Sites with
+their own `server_name` aren't affected. An HTTP-only site on this server opened with `https://`
+would land here too, with a certificate warning.
+
+Left as it is. The smallest fix, which leaves this choice to the next file in alphabetical order:
+
+```bash
+cd /home/apps/nginx-certbot-docker
+mv conf/agrosoy-staging.conf conf/zz-agrosoy-staging.conf
+docker exec nginx nginx -t && docker exec nginx nginx -s reload
+```
+
+- **Undo:** rename it back, test, reload.
+
+### Pending
+
+1. **Certificate renewal:** it can be renewed from about 2027-01-01 and expires on 2027-01-31. The
+   inventory of 2026-10-29 found no scheduled renewal on the server. See
+   [README.md](README.md), B5.
+2. **Copies of the nginx file** in root's home (`agrosoy-staging.conf.dominio-anterior.bak`,
+   `agrosoy-staging.http.conf.bak`): they can be deleted.
+3. **Retired projects:** final deletion, from the previous entry.
+
+### Undo
+
+Back to phase A:
+
+1. Put the old lines back in `.env` (`COMPOSE_FILE=compose.yaml:compose.ip.yaml`,
+   `PUBLIC_PORT=3100`, `BETTER_AUTH_URL=http://38.242.145.246:3100`) and run `docker compose up -d`.
+2. Copy `~/agrosoy-staging.http.conf.bak` to `conf/agrosoy-staging.conf`, run `nginx -t`, reload.
+3. In the proxy's folder, if the certificate is no longer wanted:
+   `docker compose run --rm certbot delete --cert-name agrosoil.market-ia.shop`.
+
+To remove staging completely, follow section 8 of the previous entry, and delete the certificate
+as in step 3 after removing the `.conf`.
+
+---
+
 ## 2026-10-29/30 · Agrosoy staging deployed; two unused projects retired
 
 ### Summary
@@ -166,6 +249,9 @@ the domain's DNS record exists, nobody reaches this block.
 | 3600, 5432, 5434, 127.0.0.1:8080 | other projects        | unchanged                                      |
 
 ### 6 · Pending
+
+Items 1 to 3 were done on 2026-11-02/03 with the domain `agrosoil.market-ia.shop`; see the entry
+above, which also carries items 4 and 5.
 
 1. **DNS:** A record `agrosoy.solution-services-tech.com` → `38.242.145.246`.
 2. **Certificate** for that name (certbot webroot, dry run first), then replace

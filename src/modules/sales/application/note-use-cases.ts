@@ -83,8 +83,8 @@ export async function listNotes(
   input: unknown,
 ): Promise<Paged<NoteListItem>> {
   assertCan(actor, "notes.view");
-  const { status, page, pages } = validateInput(noteSearchSchema, input);
-  const result = await deps.notes.list({ status, ...pageWindow({ page, pages }) });
+  const { status, customerId, page, pages } = validateInput(noteSearchSchema, input);
+  const result = await deps.notes.list({ status, customerId, ...pageWindow({ page, pages }) });
   return paged({ page, pages }, result);
 }
 
@@ -123,7 +123,7 @@ async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNot
     campaignId: campaign.id,
     technicianId: data.technicianId || null,
     paymentTerms: data.paymentTerms,
-    exchangeRate: ExchangeRate.parse(data.exchangeRate),
+    exchangeRate: data.exchangeRate ? ExchangeRate.parse(data.exchangeRate) : null,
     receiver: {
       name: data.receiverName,
       documentId: optionalText(data.receiverDocumentId) ?? null,

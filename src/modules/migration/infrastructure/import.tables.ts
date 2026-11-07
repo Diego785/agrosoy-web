@@ -1,4 +1,15 @@
-import { date, index, integer, jsonb, numeric, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  date,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { createdAt, id } from "@/shared/infrastructure/db/columns";
 
 /** One imported sheet. Re-importing the same sheet and campaign replaces it (D17). */
@@ -12,6 +23,12 @@ export const importBatches = pgTable(
     campaignLabel: text().notNull().default(""),
     importedBy: text().notNull(),
     importedAt: createdAt(),
+    /** Set while the sheet's sales and payments are in the ledger; cleared when that is undone. */
+    salesConvertedAt: timestamp({ withTimezone: true }),
+    salesConvertedBy: text(),
+    salesCampaignId: uuid(),
+    /** The date given to the summary's payments, which the sheet doesn't date. */
+    salesCutoffDate: date({ mode: "string" }),
   },
   (table) => [uniqueIndex("import_batches_sheet_campaign_key").on(table.sheetName, table.campaignLabel)],
 );

@@ -10,7 +10,7 @@ import {
   PortfolioStatement,
   PortfolioStatementSkeleton,
 } from "@/modules/receivables/presentation/portfolio-statement";
-import { customerStatementPath, statementPath } from "@/modules/receivables/presentation/statement-routes";
+import { customerPreviewPath, previewPath } from "@/modules/receivables/presentation/statement-routes";
 import { can } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
@@ -23,7 +23,7 @@ import { customerStatementFromImport, portfolioStatementFromImport } from "../ap
 import { migrationDeps } from "./migration-deps";
 import { IMPORTS_PATH } from "./migration-routes";
 
-/** Imported sheets to choose from. Until the ledger exists (M7) they are the only source. */
+/** Imported sheets to choose from, to compare what they say with the ledger. */
 export async function StatementSources() {
   const actor = await requireActor();
   const batches = await listImportBatches(migrationDeps(getDb()), actor);
@@ -49,7 +49,7 @@ export async function StatementSources() {
       {batches.map((batch) => (
         <li key={batch.id}>
           <Link
-            href={statementPath(batch.id)}
+            href={previewPath(batch.id)}
             className="group flex h-full items-start gap-4 rounded-xl border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
           >
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
@@ -105,7 +105,7 @@ export async function PortfolioStatementPreview({ params }: { params: Promise<{ 
   return (
     <PortfolioStatement
       statement={statement}
-      customerHref={(customerKey) => customerStatementPath(batchId, customerKey)}
+      customerHref={(customerKey) => customerPreviewPath(batchId, customerKey)}
     />
   );
 }
@@ -136,7 +136,7 @@ export async function CustomerStatementPreview({
       <h2 className="-mt-2 text-xl font-semibold tracking-tight">{statement.customerName}</h2>
       <CustomerStatement statement={statement} />
       <Link
-        href={statementPath(batchId)}
+        href={previewPath(batchId)}
         className={buttonVariants({ variant: "outline", className: "self-start print:hidden" })}
       >
         <ArrowLeftIcon aria-hidden />

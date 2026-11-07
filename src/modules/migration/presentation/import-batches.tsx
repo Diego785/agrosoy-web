@@ -1,7 +1,7 @@
 import { ArrowRightLeftIcon, FileSpreadsheetIcon, WalletIcon } from "lucide-react";
 import Link from "next/link";
 import { requireActor } from "@/modules/identity/presentation/current-user";
-import { statementPath } from "@/modules/receivables/presentation/statement-routes";
+import { previewPath } from "@/modules/receivables/presentation/statement-routes";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatCount, formatDateTime } from "@/shared/presentation/format";
@@ -138,7 +138,7 @@ export function ImportBatchesSkeleton() {
 function BatchLinks({ batchId }: { batchId: string }) {
   return (
     <div className="flex flex-wrap gap-2 md:justify-end">
-      <Link href={statementPath(batchId)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+      <Link href={previewPath(batchId)} className={buttonVariants({ variant: "outline", size: "sm" })}>
         <WalletIcon aria-hidden />
         Estado de cuenta
       </Link>

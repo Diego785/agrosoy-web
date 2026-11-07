@@ -6,16 +6,17 @@ import {
   PortfolioStatementPreviewSkeleton,
 } from "@/modules/migration/presentation/statement-preview";
 import { PrintButton } from "@/modules/receivables/presentation/print-button";
+import { STATEMENT_PREVIEWS_PATH } from "@/modules/receivables/presentation/statement-routes";
 import { PageHeader } from "@/shared/presentation/app-shell";
 
 export const metadata: Metadata = { title: "Estado de cuenta" };
 
-export default function PortfolioStatementPage({ params }: PageProps<"/statements/[batchId]">) {
+export default function PortfolioStatementPage({ params }: PageProps<"/statements/preview/[batchId]">) {
   return (
     <>
       <PageHeader
-        back={{ href: "/statements", label: "Estados de cuenta" }}
-        title="Estado de cuenta"
+        back={{ href: STATEMENT_PREVIEWS_PATH, label: "Vista previa con planillas" }}
+        title="Vista previa del estado de cuenta"
         actions={<PrintButton />}
       />
       <Suspense fallback={<PortfolioStatementPreviewSkeleton />}>

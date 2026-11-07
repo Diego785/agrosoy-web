@@ -15,6 +15,7 @@ import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import {
   formatDate,
+  formatDateTime,
   formatMoney,
   formatQuantity,
   formatRate,
@@ -22,8 +23,10 @@ import {
 } from "@/shared/presentation/format";
 import { ChevronRightIcon, ClipboardListIcon, PencilIcon, SproutIcon } from "lucide-react";
 import { EmptyState } from "@/shared/presentation/empty-state";
+import { PdfActions } from "@/shared/presentation/pdf-actions";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
+import { FormSectionSkeleton } from "@/shared/presentation/form-section";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
 import {
   CardListSkeleton,
@@ -44,13 +47,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/presentation/ui/table";
-import type { NoteStatus, NoteView } from "../application/note-ports";
+import type { NoteStatus } from "../application/note-ports";
+import { listFollowUps } from "../application/note-follow-ups";
+import type { NoteType } from "../domain/follow-up";
+import { nextNoteNumber } from "../application/note-lifecycle";
 import { getNote, listNotes } from "../application/note-use-cases";
-import { drizzleNoteRepository } from "../infrastructure/drizzle-note-repository";
 import { DiscardDraftButton } from "./discard-draft-button";
+import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecycle-forms";
 import { NoteForm } from "./note-form";
+import { noteDeps } from "./note-deps";
 import { loadNoteFormOptions } from "./note-form-options";
-import { NOTES_PATH, editNotePath, notePath } from "./note-routes";
+import { NOTES_PATH, editNotePath, notePath, notePdfPath } from "./note-routes";
 
 const STATUS_LABELS: Record<NoteStatus, string> = {
   draft: "Borrador",
@@ -63,8 +70,13 @@ const STATUS_VARIANTS = {
   voided: "destructive",
 } as const satisfies Record<NoteStatus, string>;
 const FREE_LABELS = { bonus: "Bonificación", sample: "Muestra" } as const;
+export const TYPE_TITLES: Record<NoteType, string> = {
+  delivery: "Boleta de entrega",
+  return: "Devolución",
+  campaign_transfer: "Traspaso de campaña",
+};
 
-const notesDeps = () => ({ notes: drizzleNoteRepository(getDb()) });
+const notesDeps = () => noteDeps(getDb());
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 export async function NotesTable({
@@ -81,9 +93,15 @@ export async function NotesTable({
     pages: first(params.pages),
   });
   const { items } = list;
+  const nextNumber = await nextNoteNumber(notesDeps(), actor);
 
   return (
     <div className="flex flex-col gap-4">
+      {can(actor, "notes.void") ? (
+        <NextNumberForm nextNumber={nextNumber} />
+      ) : (
+        <p className="text-sm text-muted-foreground">La próxima boleta será la N.º {nextNumber}.</p>
+      )}
       <LiveFilterForm action={NOTES_PATH} className="flex flex-wrap items-center gap-2">
         <NativeSelect name="status" defaultValue={status} aria-label="Estado">
           <NativeSelectOption value="">Todas</NativeSelectOption>
@@ -124,6 +142,9 @@ export async function NotesTable({
                       >
                         {note.number ?? "Sin número"}
                       </Link>
+                      {note.type !== "delivery" && (
+                        <span className="ml-2 text-xs text-muted-foreground">{TYPE_TITLES[note.type]}</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
                       {formatDate(note.noteDate)}
@@ -160,6 +181,7 @@ export async function NotesTable({
                   <NoteStatusBadge status={note.status} />
                 </div>
                 <span className="text-xs text-muted-foreground tabular-nums">
+                  {note.type !== "delivery" && `${TYPE_TITLES[note.type]} · `}
                   {formatDate(note.noteDate)} · {paymentLabel(note.paymentTerms)}
                 </span>
                 <CardField label="Total US$">
@@ -183,6 +205,7 @@ export async function NotesTable({
 export function NotesTableSkeleton() {
   return (
     <Loading label="Cargando boletas">
+      <Skeleton className="my-0.5 h-4 w-64 max-w-full" />
       <FiltersSkeleton search={false} selects={1} />
       <TableSkeleton
         columns={[
@@ -201,7 +224,7 @@ export function NotesTableSkeleton() {
   );
 }
 
-async function loadNote(params: Promise<{ id: string }>): Promise<{ note: NoteView; canEdit: boolean }> {
+async function loadNote(params: Promise<{ id: string }>) {
   const { id } = await params;
   const actor = await requireActor();
   const note = await getNote(notesDeps(), actor, id).catch((error: unknown) => {
@@ -209,13 +232,22 @@ async function loadNote(params: Promise<{ id: string }>): Promise<{ note: NoteVi
       notFound();
     throw error;
   });
-  return { note, canEdit: note.status === "draft" && can(actor, "notes.manage") };
+  return {
+    note,
+    canEdit: note.status === "draft" && can(actor, "notes.manage"),
+    canVoid: note.status === "confirmed" && can(actor, "notes.void"),
+    actor,
+  };
 }
 
 export async function NoteDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { note, canEdit } = await loadNote(params);
+  const { note, canEdit, canVoid, actor } = await loadNote(params);
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
-  const bob = ExchangeRate.parse(note.exchangeRate).toBob(total);
+  const bob = note.exchangeRate ? ExchangeRate.parse(note.exchangeRate).toBob(total) : null;
+  const nextNumber = canEdit ? await nextNoteNumber(notesDeps(), actor) : null;
+  const isDelivery = note.type === "delivery";
+  const followUps =
+    isDelivery && note.status !== "draft" ? await listFollowUps(notesDeps(), actor, note.id) : [];
 
   const transport = [
     note.carrier.name,
@@ -232,12 +264,16 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
           <div className="min-w-0">
             <h2>
               <span className="block text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                Boleta de entrega
+                {TYPE_TITLES[note.type]}
               </span>
               <span
-                className={`mt-1 block text-2xl font-semibold tracking-tight tabular-nums ${note.number ? "" : "text-muted-foreground"}`}
+                className={`mt-1 block text-2xl font-semibold tracking-tight tabular-nums ${note.number || note.imported ? "" : "text-muted-foreground"}`}
               >
-                {note.number ? `N.º ${note.number}` : "Sin número"}
+                {note.imported
+                  ? `N.º ${note.imported.sheetNumber ?? "—"} (de planilla)`
+                  : note.number
+                    ? `N.º ${note.number}`
+                    : "Sin número"}
               </span>
             </h2>
             <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
@@ -246,17 +282,49 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               <span aria-hidden>·</span>
               <span>Campaña {campaignLabel(note.campaign)}</span>
             </p>
+            {note.original && (
+              <p className="mt-2 text-sm">
+                Sobre la{" "}
+                <Link href={notePath(note.original.id)} className="font-medium hover:text-primary">
+                  boleta N.º {note.original.number}
+                </Link>{" "}
+                de la campaña {campaignLabel(note.original.campaign)}
+              </p>
+            )}
           </div>
-          {canEdit && (
-            <div className="flex flex-wrap gap-2">
-              <Link href={editNotePath(note.id)} className={buttonVariants({ variant: "outline" })}>
-                <PencilIcon aria-hidden />
-                Editar borrador
-              </Link>
-              <DiscardDraftButton noteId={note.id} />
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2 print:hidden">
+            {canEdit && nextNumber !== null && (
+              <>
+                <ConfirmNoteButton
+                  noteId={note.id}
+                  total={total.toDecimalString()}
+                  exchangeRate={note.exchangeRate ?? ""}
+                  isCash={note.paymentTerms === "cash"}
+                  nextNumber={nextNumber}
+                />
+                <Link href={editNotePath(note.id)} className={buttonVariants({ variant: "outline" })}>
+                  <PencilIcon aria-hidden />
+                  Editar borrador
+                </Link>
+                <DiscardDraftButton noteId={note.id} />
+              </>
+            )}
+            <PdfActions
+              href={notePdfPath(note.id)}
+              fileName={note.number ? `boleta-${note.number}.pdf` : "boleta-borrador.pdf"}
+            />
+            {canVoid && note.number !== null && <VoidNoteButton noteId={note.id} number={note.number} />}
+          </div>
         </header>
+        {note.voided && (
+          <div className="border-b border-destructive/25 bg-destructive/5 px-5 py-3 text-sm">
+            <p className="font-medium">
+              Anulada el {formatDateTime(note.voided.at)}
+              {note.voided.byName && ` por ${note.voided.byName}`}
+            </p>
+            <p className="mt-1 text-muted-foreground">Motivo: {note.voided.reason}</p>
+          </div>
+        )}
         <div className="grid gap-6 p-5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <div>
             <p className="text-xs tracking-wide text-muted-foreground uppercase">Cliente</p>
@@ -273,11 +341,23 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
           <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
             <Item label="Propiedad">{note.property?.name}</Item>
             <Item label="Técnico de venta">{note.technician?.name}</Item>
-            <Item label="Pago">{paymentLabel(note.paymentTerms)}</Item>
+            {isDelivery && <Item label="Pago">{paymentLabel(note.paymentTerms)}</Item>}
             <Item label="Tipo de cambio">
-              <span className="tabular-nums">{formatRate(note.exchangeRate)}</span> Bs por US$
+              {note.exchangeRate ? (
+                <>
+                  <span className="tabular-nums">{formatRate(note.exchangeRate)}</span> Bs por US$
+                </>
+              ) : (
+                "Se define al cobrar"
+              )}
             </Item>
-            <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>
+            {isDelivery && <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>}
+            {note.confirmed && (
+              <Item label="Confirmada">
+                {formatDateTime(note.confirmed.at)}
+                {note.confirmed.byName && ` por ${note.confirmed.byName}`}
+              </Item>
+            )}
           </dl>
         </div>
       </article>
@@ -356,19 +436,21 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               {formatMoney(total.toDecimalString())}
             </dd>
           </div>
-          <div className="flex items-baseline justify-between gap-6 text-sm">
-            <dt className="text-muted-foreground">Equivale a Bs</dt>
-            <dd className="font-medium tabular-nums">{formatMoney(bob.toDecimalString())}</dd>
-          </div>
+          {bob && (
+            <div className="flex items-baseline justify-between gap-6 text-sm">
+              <dt className="text-muted-foreground">Equivale a Bs</dt>
+              <dd className="font-medium tabular-nums">{formatMoney(bob.toDecimalString())}</dd>
+            </div>
+          )}
         </dl>
       </section>
 
       <section aria-labelledby="note-delivery" className="rounded-xl border bg-card shadow-xs">
         <h3 id="note-delivery" className="border-b px-5 py-3 text-sm font-semibold">
-          Entrega
+          {isDelivery ? "Entrega" : "Quién entrega y recibe"}
         </h3>
         <dl className="grid gap-x-6 gap-y-4 p-5 text-sm sm:grid-cols-3">
-          <Item label="Recibe">
+          <Item label={note.type === "return" ? "Devuelve" : "Recibe"}>
             {note.receiver.name}
             {(note.receiver.relationship || note.receiver.documentId) && (
               <span className="block text-xs font-normal text-muted-foreground">
@@ -378,7 +460,8 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               </span>
             )}
           </Item>
-          <Item label="Entrega">
+          {/* On a return the customer's person hands over and Agrosoil's receives (D26). */}
+          <Item label={isDelivery ? "Entrega" : "Recibe (Agrosoil)"}>
             {note.handedOverBy && (
               <>
                 {note.handedOverBy.name}
@@ -398,6 +481,25 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
           </Item>
         </dl>
       </section>
+
+      {followUps.length > 0 && (
+        <section aria-labelledby="note-follow-ups" className="rounded-xl border bg-card shadow-xs">
+          <h3 id="note-follow-ups" className="border-b px-5 py-3 text-sm font-semibold">
+            Devoluciones y traspasos
+          </h3>
+          <ul className="divide-y text-sm">
+            {followUps.map((followUp) => (
+              <li key={followUp.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 px-5 py-3">
+                <Link href={notePath(followUp.id)} className="font-medium hover:text-primary">
+                  {TYPE_TITLES[followUp.type]} N.º {followUp.number}
+                </Link>
+                <span className="text-muted-foreground tabular-nums">{formatDate(followUp.noteDate)}</span>
+                {followUp.status === "voided" && <Badge variant="destructive">Anulada</Badge>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
@@ -499,7 +601,7 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
           propertyId: note.property?.id ?? "",
           technicianId: note.technician?.id ?? "",
           paymentTerms: note.paymentTerms,
-          exchangeRate: trimDecimalZeros(note.exchangeRate),
+          exchangeRate: note.exchangeRate ? trimDecimalZeros(note.exchangeRate) : "",
           receiverName: note.receiver.name,
           receiverDocumentId: note.receiver.documentId ?? "",
           receiverRelationship: note.receiver.relationship ?? "",
@@ -589,18 +691,6 @@ export function NoteFormSkeleton() {
         <Skeleton className="h-9 w-20 rounded-lg" />
       </div>
     </Loading>
-  );
-}
-
-/** `FormSection` of the note form: a white card with a small title. */
-function FormSectionSkeleton({ children }: { children: ReactNode }) {
-  return (
-    <div aria-hidden className="rounded-xl border bg-card p-5 shadow-xs">
-      <div className="mb-4 py-0.5">
-        <Skeleton className="h-4 w-32" />
-      </div>
-      <div className="flex flex-col gap-4">{children}</div>
-    </div>
   );
 }
 

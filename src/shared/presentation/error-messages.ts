@@ -8,6 +8,7 @@ const MESSAGES: Record<ActionError["code"], string> = {
   VALIDATION_FAILED: "Revisa los campos marcados.",
   NOT_FOUND: "No encontramos ese registro. Puede que lo hayan cambiado; recarga la página.",
   DUPLICATE: "Ya existe un registro con esos datos.",
+  INVALID_STATE: "Este documento cambió de estado mientras lo veías. Recarga la página.",
   FORBIDDEN: "Tu usuario no tiene permiso para hacer esto.",
   INVALID_CREDENTIALS: "La contraseña actual no es correcta.",
   INVALID_FILE: "No se pudo leer el archivo. Sube una planilla de Excel (.xlsx) de hasta 5 MB.",

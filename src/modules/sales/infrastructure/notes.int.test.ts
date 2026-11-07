@@ -1,17 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { actorWithRole } from "@test/actors";
-import { testDb } from "@test/test-database";
-import { createCampaign } from "@/modules/campaigns/application/campaign-use-cases";
-import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
-import { createProduct } from "@/modules/catalog/application/catalog-use-cases";
-import { drizzleProductRepository } from "@/modules/catalog/infrastructure/drizzle-catalog-repositories";
-import { addCustomerProperty, registerCustomer } from "@/modules/customers/application/customer-use-cases";
-import { drizzleCustomerRepository } from "@/modules/customers/infrastructure/drizzle-customer-repository";
-import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
-import { identityTechnicianLookup } from "@/modules/customers/infrastructure/identity-technician-lookup";
+import { draftInput, noteDeps, seedNoteFixtures } from "@test/note-fixtures";
 import { newUserAccount } from "@/modules/identity/domain/user-account";
 import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
-import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
+import { testDb } from "@test/test-database";
 import {
   createDraftNote,
   discardDraftNote,
@@ -19,84 +11,14 @@ import {
   listNotes,
   updateDraftNote,
 } from "../application/note-use-cases";
-import { drizzleNoteRepository } from "./drizzle-note-repository";
-import { noteLookups } from "./note-lookups";
 
 const admin = actorWithRole("admin");
-const audit = () => drizzleAuditTrail(testDb);
-const deps = () => ({ notes: drizzleNoteRepository(testDb), lookups: noteLookups(testDb), audit: audit() });
-
-async function setup() {
-  await createCampaign({ campaigns: drizzleCampaignRepository(testDb), audit: audit() }, admin, {
-    season: "summer",
-    year: 2026,
-    startsOn: "2026-10-01",
-    endsOn: "2027-03-31",
-  });
-  const customerDeps = {
-    customers: drizzleCustomerRepository(testDb),
-    zones: drizzleZoneRepository(testDb),
-    technicians: identityTechnicianLookup(testDb),
-    audit: audit(),
-  };
-  const { id: customerId } = await registerCustomer(customerDeps, admin, {
-    name: "Roberto Mamani",
-    exchangeRateKind: "daily",
-  });
-  const { id: otherId } = await registerCustomer(customerDeps, admin, {
-    name: "Tito Cruz",
-    exchangeRateKind: "daily",
-  });
-  const { id: propertyId } = await addCustomerProperty(customerDeps, admin, customerId, {
-    name: "El Carmen",
-  });
-  const { id: foreignPropertyId } = await addCustomerProperty(customerDeps, admin, otherId, {
-    name: "La Loma",
-  });
-  const catalog = { products: drizzleProductRepository(testDb), audit: audit() };
-  await createProduct(catalog, admin, {
-    name: "Fulvin 40-22",
-    line: "fertilizers",
-    presentations: [{ content: "20", unit: "l", saleUnit: "measure" }],
-  });
-  await createProduct(catalog, admin, {
-    name: "4-energy",
-    line: "agrochemicals",
-    presentations: [{ content: "250", unit: "ml", saleUnit: "container" }],
-  });
-  const products = await drizzleProductRepository(testDb).search({ text: "" });
-  const presentationOf = (name: string) =>
-    products.find((product) => product.name === name)!.presentations[0]!.id;
-  return {
-    customerId,
-    propertyId,
-    foreignPropertyId,
-    fulvin: presentationOf("Fulvin 40-22"),
-    energy: presentationOf("4-energy"),
-  };
-}
-
-function draft(ids: Awaited<ReturnType<typeof setup>>, overrides: object = {}) {
-  return {
-    noteDate: "2026-10-26",
-    customerId: ids.customerId,
-    propertyId: ids.propertyId,
-    paymentTerms: "credit",
-    exchangeRate: "6,96",
-    receiverName: "Juan Mamani",
-    receiverRelationship: "Hijo",
-    lines: [
-      { presentationId: ids.fulvin, quantity: "200", unitPrice: "11", freeOfCharge: "" },
-      { presentationId: ids.energy, quantity: "2", unitPrice: "", freeOfCharge: "sample" },
-    ],
-    ...overrides,
-  };
-}
+const deps = () => noteDeps();
 
 describe("draft delivery notes", () => {
   it("saves a draft with its campaign, lines and totals", async () => {
-    const ids = await setup();
-    const { id } = await createDraftNote(deps(), actorWithRole("sales_technician"), draft(ids));
+    const ids = await seedNoteFixtures();
+    const { id } = await createDraftNote(deps(), actorWithRole("sales_technician"), draftInput(ids));
 
     const note = await getNote(deps(), actorWithRole("warehouse_keeper"), id);
     expect(note).toMatchObject({
@@ -125,14 +47,33 @@ describe("draft delivery notes", () => {
     expect(items).toMatchObject([{ id, customerName: "Roberto Mamani", total: "2200.00", status: "draft" }]);
   });
 
+  it("lets a credit note leave its rate for the payment, never a cash one (D35)", async () => {
+    const ids = await seedNoteFixtures();
+    const { id } = await createDraftNote(deps(), admin, draftInput(ids, { exchangeRate: "" }));
+    expect((await getNote(deps(), admin, id)).exchangeRate).toBeNull();
+
+    await expect(
+      createDraftNote(deps(), admin, draftInput(ids, { exchangeRate: "", paymentTerms: "cash" })),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { exchangeRate: [expect.any(String)] } },
+    });
+    await expect(
+      updateDraftNote(deps(), admin, id, draftInput(ids, { exchangeRate: "", paymentTerms: "cash" })),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    await expect(
+      createDraftNote(deps(), admin, draftInput(ids, { exchangeRate: "doce" })),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+  });
+
   it("replaces the lines when a draft is edited, and can discard it", async () => {
-    const ids = await setup();
-    const { id } = await createDraftNote(deps(), admin, draft(ids));
+    const ids = await seedNoteFixtures();
+    const { id } = await createDraftNote(deps(), admin, draftInput(ids));
     await updateDraftNote(
       deps(),
       admin,
       id,
-      draft(ids, {
+      draftInput(ids, {
         lines: [{ presentationId: ids.energy, quantity: "12", unitPrice: "62.5", freeOfCharge: "" }],
       }),
     );
@@ -143,12 +84,12 @@ describe("draft delivery notes", () => {
   });
 
   it("checks the date's campaign, the property's owner and the prices", async () => {
-    const ids = await setup();
+    const ids = await seedNoteFixtures();
     await expect(
       createDraftNote(
         deps(),
         admin,
-        draft(ids, {
+        draftInput(ids, {
           noteDate: "2026-09-30",
           propertyId: ids.foreignPropertyId,
           lines: [{ presentationId: ids.fulvin, quantity: "1", unitPrice: "", freeOfCharge: "" }],
@@ -162,7 +103,7 @@ describe("draft delivery notes", () => {
       createDraftNote(
         deps(),
         admin,
-        draft(ids, { noteDate: "2026-09-30", propertyId: ids.foreignPropertyId }),
+        draftInput(ids, { noteDate: "2026-09-30", propertyId: ids.foreignPropertyId }),
       ),
     ).rejects.toMatchObject({
       code: "VALIDATION_FAILED",
@@ -171,7 +112,7 @@ describe("draft delivery notes", () => {
   });
 
   it("records who hands the product over and the carrier", async () => {
-    const ids = await setup();
+    const ids = await seedNoteFixtures();
     const users = drizzleUserDirectory(testDb);
     const { id: keeperId } = await users.create(
       newUserAccount({
@@ -185,7 +126,7 @@ describe("draft delivery notes", () => {
     const { id } = await createDraftNote(
       deps(),
       admin,
-      draft(ids, {
+      draftInput(ids, {
         handedOverById: keeperId,
         carrierName: "Transportes Chiquitano",
         carrierVehicle: "Volvo 2345-XYZ",
@@ -197,13 +138,13 @@ describe("draft delivery notes", () => {
       carrier: { name: "Transportes Chiquitano", vehicle: "Volvo 2345-XYZ", documentId: "4567890 SC" },
     });
 
-    const { id: plain } = await createDraftNote(deps(), admin, draft(ids));
+    const { id: plain } = await createDraftNote(deps(), admin, draftInput(ids));
     expect(await getNote(deps(), admin, plain)).toMatchObject({
       handedOverBy: null,
       carrier: { name: null, vehicle: null, documentId: null },
     });
     await expect(
-      createDraftNote(deps(), admin, draft(ids, { handedOverById: crypto.randomUUID() })),
+      createDraftNote(deps(), admin, draftInput(ids, { handedOverById: crypto.randomUUID() })),
     ).rejects.toMatchObject({
       code: "VALIDATION_FAILED",
       details: { fieldErrors: { handedOverById: [expect.any(String)] } },
@@ -211,9 +152,9 @@ describe("draft delivery notes", () => {
   });
 
   it("lets warehouse keepers read notes but not write them", async () => {
-    const ids = await setup();
+    const ids = await seedNoteFixtures();
     await expect(
-      createDraftNote(deps(), actorWithRole("warehouse_keeper"), draft(ids)),
+      createDraftNote(deps(), actorWithRole("warehouse_keeper"), draftInput(ids)),
     ).rejects.toMatchObject({
       code: "FORBIDDEN",
     });

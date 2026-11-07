@@ -8,13 +8,13 @@ Two environments, same image: **staging** for the weekly demos and, later, **pro
 real use. "staging" is only the environment's internal name (folder and containers); people never
 see it in the address.
 
-Two phases:
+Staging is live at **`https://agrosoil.market-ia.shop`**. It went through two phases, kept here
+because production and any move to another domain repeat them:
 
-- **Phase A, now:** staging reached by IP and port, `http://38.242.145.246:3100`, which stays open
-  until phase B. nginx is already prepared for the domain `agrosoil.market-ia.shop`
-  (step A6), so nothing waits on us once the DNS record exists.
-- **Phase B, at the end:** the server's admin creates the DNS record; then the certificate, HTTPS,
-  and the public port is closed.
+- **Phase A, done:** reached by IP and port, `http://38.242.145.246:3100`, with nginx prepared for
+  the domain (step A6).
+- **Phase B, done on 2–3 November 2026:** DNS, certificate and HTTPS; the public port is closed.
+  Only the renewal is left (B5).
 
 ## Files
 
@@ -141,7 +141,9 @@ For the off-server copy, configure `rclone config` and set `RCLONE_REMOTE`.
 
 ### A6 · Prepare nginx for the domain
 
-Harmless before DNS exists: nginx only answers for this name when someone asks for it.
+Sites with their own name aren't affected. If no file on the server declares `default_server`,
+though, the first file alphabetically also answers unknown names and the bare IP, and this one
+sorts early (see [server-log.md](server-log.md), 2026-11-02/03).
 
 Copy `nginx/agrosoy-staging.http.conf` to the server as
 `/home/apps/nginx-certbot-docker/conf/agrosoy-staging.conf` (from your computer:
@@ -228,9 +230,21 @@ docker compose ps                       # no 0.0.0.0:3100 anymore
 
 ### B5 · Renewal
 
-Let's Encrypt certificates last 90 days and the server has no scheduled renewal. Agree with the
-server's admin on one (`docker compose run --rm certbot renew` plus `nginx -s reload`), since it
-renews every site on the server.
+Let's Encrypt certificates last 90 days. This one **expires on 31 January 2027** and can be renewed
+from about 1 January. The inventory of 29 October found no scheduled renewal on the server.
+
+To renew only ours, from `/home/apps/nginx-certbot-docker`:
+
+```bash
+docker compose run --rm certbot renew --cert-name agrosoil.market-ia.shop --dry-run
+docker compose run --rm certbot renew --cert-name agrosoil.market-ia.shop
+docker exec nginx nginx -t && docker exec nginx nginx -s reload
+```
+
+- **Check:** the expiry date moves forward:
+  `echo | openssl s_client -connect agrosoil.market-ia.shop:443 -servername agrosoil.market-ia.shop 2>/dev/null | openssl x509 -noout -enddate`.
+- Without `--cert-name`, `renew` also renews every other site's certificate that is due, so a
+  server-wide schedule is for the server's admin to agree on.
 
 ## Production (later)
 

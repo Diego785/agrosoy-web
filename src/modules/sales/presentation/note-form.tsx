@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition, type ReactNode } from "react";
+import { useTransition } from "react";
 import { Controller, useFieldArray, useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { campaignOn } from "@/modules/campaigns/domain/campaign";
@@ -17,9 +17,10 @@ import { Quantity } from "@/shared/domain/quantity";
 import { DateInput } from "@/shared/presentation/date-input";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { formatMoney, formatQuantity, trimDecimalZeros } from "@/shared/presentation/format";
+import { FormSection } from "@/shared/presentation/form-section";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
@@ -54,7 +55,7 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
         propertyId: "",
         technicianId: "",
         paymentTerms: "credit",
-        exchangeRate: "",
+        exchangeRate: options.todayRate ? trimDecimalZeros(options.todayRate) : "",
         receiverName: "",
         receiverDocumentId: "",
         receiverRelationship: "",
@@ -69,9 +70,9 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
   });
   const lines = useFieldArray({ control: form.control, name: "lines" });
   const { errors } = form.formState;
-  const [noteDate, customerId, exchangeRate, watchedLines] = useWatch({
+  const [noteDate, customerId, exchangeRate, paymentTerms, watchedLines] = useWatch({
     control: form.control,
-    name: ["noteDate", "customerId", "exchangeRate", "lines"],
+    name: ["noteDate", "customerId", "exchangeRate", "paymentTerms", "lines"],
   });
 
   const customer = options.customers.find((option) => option.id === customerId);
@@ -90,7 +91,9 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
     const chosen = options.customers.find((option) => option.id === id);
     form.setValue("propertyId", "");
     chooseTechnician(chosen?.technicianId ?? "");
-    if (chosen?.fixedExchangeRate) form.setValue("exchangeRate", trimDecimalZeros(chosen.fixedExchangeRate));
+    // Empty is a valid answer now (D35), so one customer's fixed rate must not stay on the next one.
+    const rate = chosen?.fixedExchangeRate ?? options.todayRate;
+    form.setValue("exchangeRate", rate ? trimDecimalZeros(rate) : "");
     // The customer receives unless someone else comes: their data is filled in, and stays editable.
     form.setValue("receiverName", chosen?.name ?? "");
     form.setValue("receiverDocumentId", chosen?.taxId ?? "");
@@ -211,11 +214,14 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
               <Input
                 id="exchangeRate"
                 inputMode="decimal"
-                placeholder="12.00"
+                placeholder={paymentTerms === "cash" ? "12.00" : "Se define al cobrar"}
                 selectOnFocus
                 aria-invalid={!!errors.exchangeRate}
                 {...form.register("exchangeRate")}
               />
+              {paymentTerms !== "cash" && (
+                <FieldDescription>Déjalo vacío si se define al cobrar.</FieldDescription>
+              )}
               <FieldError errors={[errors.exchangeRate]} />
             </Field>
           </div>
@@ -308,7 +314,7 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
           <dl className="flex flex-wrap items-baseline justify-end gap-x-8 gap-y-2 border-t pt-4 text-sm">
             {totals.liters && <Total label="Litros" value={totals.liters} />}
             {totals.kilos && <Total label="Kilos" value={totals.kilos} />}
-            <Total label="Equivale a Bs" value={totals.bob} />
+            {totals.bob && <Total label="Equivale a Bs" value={totals.bob} />}
             <Total label="Total US$" value={totals.usd} emphasis />
           </dl>
         </FormSection>
@@ -437,17 +443,6 @@ function ReceiverFields({
 }
 
 /** A white card holding one group of the form's fields under a small title. */
-function FormSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="rounded-xl border bg-card p-5 shadow-xs">
-      <fieldset className="flex min-w-0 flex-col gap-4">
-        <legend className="mb-4 text-sm font-semibold">{title}</legend>
-        {children}
-      </fieldset>
-    </div>
-  );
-}
-
 function Total({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
   return (
     <div className="flex items-baseline gap-2">
@@ -502,11 +497,11 @@ function noteTotals(
       // Ignored until the quantity is valid.
     }
   }
-  let bob = "—";
+  let bob: string | null = null;
   try {
     if (rate) bob = formatMoney(ExchangeRate.parse(rate.replace(",", ".")).toBob(usd).toDecimalString());
   } catch {
-    bob = "—";
+    // Not a rate yet: nothing to show until it is.
   }
   return {
     usd: formatMoney(usd.toDecimalString()),

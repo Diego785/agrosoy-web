@@ -1,8 +1,9 @@
-import { MapPinIcon, PencilIcon } from "lucide-react";
+import { MapPinIcon, PencilIcon, ReceiptTextIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "cn";
+import { customerStatementPath } from "@/modules/receivables/presentation/statement-routes";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { can } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
@@ -58,22 +59,33 @@ export async function CustomerDetail({ params }: { params: Promise<{ id: string 
               </p>
             </div>
           </div>
-          {canEdit && (
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            {can(actor, "statements.view") && (
               <Link
-                href={editCustomerPath(customer.id)}
+                href={customerStatementPath(customer.id)}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
-                <PencilIcon aria-hidden />
-                Editar datos
+                <ReceiptTextIcon aria-hidden />
+                Estado de cuenta
               </Link>
-              <CustomerStatusButton
-                customerId={customer.id}
-                name={customer.name}
-                active={customer.isActive}
-              />
-            </div>
-          )}
+            )}
+            {canEdit && (
+              <>
+                <Link
+                  href={editCustomerPath(customer.id)}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  <PencilIcon aria-hidden />
+                  Editar datos
+                </Link>
+                <CustomerStatusButton
+                  customerId={customer.id}
+                  name={customer.name}
+                  active={customer.isActive}
+                />
+              </>
+            )}
+          </div>
         </header>
 
         <dl className="grid gap-x-8 gap-y-4 border-t p-5 sm:grid-cols-2 lg:grid-cols-3">

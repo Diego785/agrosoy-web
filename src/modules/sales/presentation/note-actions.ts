@@ -2,28 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/modules/identity/presentation/current-user";
-import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
-import { withTransaction, type DbExecutor } from "@/shared/infrastructure/db/client";
+import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
-import type { DraftNoteInput } from "../application/note-schemas";
-import {
-  createDraftNote,
-  discardDraftNote,
-  updateDraftNote,
-  type NoteDeps,
-} from "../application/note-use-cases";
-import { drizzleNoteRepository } from "../infrastructure/drizzle-note-repository";
-import { noteLookups } from "../infrastructure/note-lookups";
+import { registerReturn, registerTransfer } from "../application/note-follow-ups";
+import { confirmNote, setNextNoteNumber, voidNote } from "../application/note-lifecycle";
+import type {
+  ConfirmNoteInput,
+  DraftNoteInput,
+  NextNoteNumberInput,
+  ReturnInput,
+  TransferInput,
+  VoidNoteInput,
+} from "../application/note-schemas";
+import { createDraftNote, discardDraftNote, updateDraftNote } from "../application/note-use-cases";
+import { noteDeps as deps } from "./note-deps";
 import { NOTES_PATH } from "./note-routes";
-
-function deps(executor: DbExecutor): NoteDeps {
-  return {
-    notes: drizzleNoteRepository(executor),
-    lookups: noteLookups(executor),
-    audit: drizzleAuditTrail(executor),
-  };
-}
 
 export async function createDraftNoteAction(input: DraftNoteInput): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
@@ -52,5 +46,59 @@ export async function discardDraftNoteAction(noteId: string): Promise<ActionResu
     await withTransaction((tx) => discardDraftNote(deps(tx), actor, noteId));
     revalidatePath(NOTES_PATH, "layout");
     return null;
+  });
+}
+
+export async function confirmNoteAction(
+  noteId: string,
+  input: ConfirmNoteInput,
+): Promise<ActionResult<{ number: number; receiptNumber: number | null }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const confirmed = await withTransaction((tx) => confirmNote(deps(tx), actor, noteId, input));
+    revalidatePath(NOTES_PATH, "layout");
+    return confirmed;
+  });
+}
+
+export async function voidNoteAction(noteId: string, input: VoidNoteInput): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => voidNote(deps(tx), actor, noteId, input));
+    revalidatePath(NOTES_PATH, "layout");
+    return null;
+  });
+}
+
+export async function setNextNoteNumberAction(input: NextNoteNumberInput): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setNextNoteNumber(deps(tx), actor, input));
+    revalidatePath(NOTES_PATH);
+    return null;
+  });
+}
+
+export async function registerReturnAction(
+  noteId: string,
+  input: ReturnInput,
+): Promise<ActionResult<{ id: string; number: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const registered = await withTransaction((tx) => registerReturn(deps(tx), actor, noteId, input));
+    revalidatePath("/", "layout");
+    return registered;
+  });
+}
+
+export async function registerTransferAction(
+  noteId: string,
+  input: TransferInput,
+): Promise<ActionResult<{ id: string; number: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const registered = await withTransaction((tx) => registerTransfer(deps(tx), actor, noteId, input));
+    revalidatePath("/", "layout");
+    return registered;
   });
 }

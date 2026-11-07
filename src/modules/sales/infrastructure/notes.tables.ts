@@ -1,4 +1,17 @@
-import { date, index, integer, numeric, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  check,
+  date,
+  index,
+  integer,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations } from "@/modules/catalog/infrastructure/catalog.tables";
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -6,8 +19,8 @@ import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { id, timestamps } from "@/shared/infrastructure/db/columns";
 
 /**
- * Delivery notes ("boletas", M5). Week 2 stores drafts; confirming (number, ledger, stock) and the
- * return and campaign-transfer types arrive in week 3 on these same tables.
+ * Delivery notes ("boletas", M5): drafts are edited freely; confirming gives the number and posts
+ * the debt; a confirmed note is only voided, with a reason (D6).
  */
 export const deliveryNotes = pgTable(
   "delivery_notes",
@@ -21,6 +34,13 @@ export const deliveryNotes = pgTable(
       .default("delivery"),
     /** Assigned on confirmation, continuing the paper pad; unique once set. */
     number: integer().unique(),
+    /** Returns and campaign transfers: the delivery note they act on. */
+    originalNoteId: uuid().references((): AnyPgColumn => deliveryNotes.id),
+    /** Notes brought in from a spreadsheet (M12): confirmed without a system number. */
+    imported: boolean().notNull().default(false),
+    importBatchId: uuid(),
+    /** The number written in the spreadsheet, which may repeat; never the system's numbering. */
+    sheetNumber: integer(),
     noteDate: date({ mode: "string" }).notNull(),
     customerId: uuid()
       .notNull()
@@ -31,7 +51,8 @@ export const deliveryNotes = pgTable(
       .references(() => campaigns.id),
     technicianId: uuid().references(() => users.id),
     paymentTerms: text({ enum: ["cash", "credit"] }).notNull(),
-    exchangeRate: numeric({ precision: 10, scale: 4 }).notNull(),
+    /** Null on a credit note whose rate is only agreed when the customer pays (D35). */
+    exchangeRate: numeric({ precision: 10, scale: 4 }),
     receiverName: text().notNull(),
     receiverDocumentId: text(),
     receiverRelationship: text(),
@@ -44,9 +65,35 @@ export const deliveryNotes = pgTable(
     observations: text(),
     taxInvoiceNumber: text(),
     createdBy: text().notNull(),
+    confirmedAt: timestamp({ withTimezone: true }),
+    confirmedBy: text(),
+    voidedAt: timestamp({ withTimezone: true }),
+    voidedBy: text(),
+    voidReason: text(),
     ...timestamps,
   },
-  (table) => [index().on(table.customerId), index().on(table.status, table.noteDate)],
+  (table) => [
+    index().on(table.customerId),
+    index().on(table.status, table.noteDate),
+    index().on(table.originalNoteId),
+    check(
+      "delivery_notes_follow_ups_have_original",
+      sql`(${table.type} = 'delivery') = (${table.originalNoteId} is null)`,
+    ),
+    check(
+      "delivery_notes_confirmed_have_number",
+      sql`${table.status} = 'draft' or ${table.number} is not null or ${table.imported}`,
+    ),
+    index().on(table.importBatchId),
+    check(
+      "delivery_notes_voided_have_reason",
+      sql`${table.status} <> 'voided' or ${table.voidReason} is not null`,
+    ),
+    check(
+      "delivery_notes_cash_have_rate",
+      sql`${table.paymentTerms} = 'credit' or ${table.exchangeRate} is not null`,
+    ),
+  ],
 );
 
 export const deliveryNoteLines = pgTable(
@@ -64,6 +111,8 @@ export const deliveryNoteLines = pgTable(
     unitPrice: numeric({ precision: 14, scale: 2 }).notNull(),
     freeOfCharge: text({ enum: ["bonus", "sample"] }),
     total: numeric({ precision: 14, scale: 2 }).notNull(),
+    /** Returns and campaign transfers: the delivered line they give back or move. */
+    originalLineId: uuid().references((): AnyPgColumn => deliveryNoteLines.id),
   },
-  (table) => [index().on(table.noteId)],
+  (table) => [index().on(table.noteId), index().on(table.originalLineId)],
 );

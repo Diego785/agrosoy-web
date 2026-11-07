@@ -3,6 +3,7 @@ import { assertCan } from "@/shared/application/permissions";
 import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
 import {
+  plainLine,
   totalsView,
   type CustomerStatementView,
   type PortfolioStatementView,
@@ -35,14 +36,18 @@ export async function portfolioStatementFromImport(
   const customers = customerNames(lines, summary).map(([key, name]) => ({
     key,
     name,
-    totals: totalsFor(key, lines, summary),
+    totals: sheetTotalsFor(key, lines, summary),
   }));
   customers.sort((a, b) => a.name.localeCompare(b.name, "es"));
   const totals = addTotals(customers.map((customer) => customer.totals));
 
   return {
     source: sourceOf(batch),
-    customers: customers.map((customer) => ({ ...customer, totals: totalsView(customer.totals) })),
+    customers: customers.map((customer) => ({
+      ...customer,
+      totals: totalsView(customer.totals),
+      over90: null,
+    })),
     totals: totalsView(totals),
     collectedPerMille: collectedPerMille(totals),
   };
@@ -67,11 +72,16 @@ export async function customerStatementFromImport(
     source: sourceOf(batch),
     customerName: name,
     lines: statementLines(lines, summary),
-    totals: totalsView(totalsFor(customerKey, lines, summary)),
+    totals: totalsView(sheetTotalsFor(customerKey, lines, summary)),
   };
 }
 
-function totalsFor(key: string, lines: StoredLine[], summary: StoredSummaryRow[]): StatementTotals {
+/** A customer's columns as the sheet computes them: lines recomputed, payments from the summary. */
+export function sheetTotalsFor(
+  key: string,
+  lines: StoredLine[],
+  summary: StoredSummaryRow[],
+): StatementTotals {
   const own = lines.filter((line) => line.customerKey === key);
   const ownSummary = summary.filter((row) => row.customerKey === key);
   const returnLines = own.filter((line) => line.kind === "return");
@@ -88,17 +98,19 @@ function totalsFor(key: string, lines: StoredLine[], summary: StoredSummaryRow[]
 function statementLines(lines: StoredLine[], summary: StoredSummaryRow[]): StatementLineView[] {
   const dated: StatementLineView[] = [...lines]
     .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999") || a.row - b.row)
-    .map((line) => ({
-      kind: line.kind,
-      date: line.date,
-      noteNumber: line.noteNumber,
-      description: line.product,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice,
-      amount: line.total,
-      exchangeRate: line.exchangeRate,
-      observation: line.observation,
-    }));
+    .map((line) =>
+      plainLine({
+        kind: line.kind,
+        date: line.date,
+        noteNumber: line.noteNumber,
+        description: line.product,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        amount: line.total,
+        exchangeRate: line.exchangeRate,
+        observation: line.observation,
+      }),
+    );
 
   const undated: StatementLineView[] = [];
   const hasReturnLines = lines.some((line) => line.kind === "return");
@@ -111,17 +123,7 @@ function statementLines(lines: StoredLine[], summary: StoredSummaryRow[]): State
 }
 
 function undatedLine(kind: "return" | "payment", amount: string): StatementLineView {
-  return {
-    kind,
-    date: null,
-    noteNumber: null,
-    description: "",
-    quantity: null,
-    unitPrice: null,
-    amount,
-    exchangeRate: null,
-    observation: null,
-  };
+  return plainLine({ kind, date: null, noteNumber: null, description: "", amount });
 }
 
 /** Every customer that appears in the lines or in the summary, with the name as first written. */

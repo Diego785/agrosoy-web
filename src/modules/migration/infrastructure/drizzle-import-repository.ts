@@ -1,4 +1,5 @@
-import { and, asc, count, countDistinct, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { DomainError } from "@/shared/domain/domain-error";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import type { ImportBatch, ImportRepository } from "../application/ports";
 import type { ImportIssue, ImportIssueCode } from "../domain/sales-sheet";
@@ -8,6 +9,18 @@ export function drizzleImportRepository(executor: DbExecutor): ImportRepository 
   return {
     async replaceSheet({ fileName, importedBy, sheet }) {
       const campaignLabel = sheet.campaignLabel ?? "";
+      const [converted] = await executor
+        .select({ id: importBatches.id })
+        .from(importBatches)
+        .where(
+          and(
+            eq(importBatches.sheetName, sheet.sheetName),
+            eq(importBatches.campaignLabel, campaignLabel),
+            isNotNull(importBatches.salesConvertedAt),
+          ),
+        );
+      if (converted)
+        throw new DomainError("INVALID_STATE", { reason: "sales_converted", batchId: converted.id });
       const removed = await executor
         .delete(importBatches)
         .where(
@@ -121,6 +134,25 @@ export function drizzleImportRepository(executor: DbExecutor): ImportRepository 
       }));
     },
 
+    async markSalesConverted(batchId, { campaignId, cutoffDate, actorId }) {
+      await executor
+        .update(importBatches)
+        .set({
+          salesConvertedAt: new Date(),
+          salesConvertedBy: actorId,
+          salesCampaignId: campaignId,
+          salesCutoffDate: cutoffDate,
+        })
+        .where(eq(importBatches.id, batchId));
+    },
+
+    async clearSalesConversion(batchId) {
+      await executor
+        .update(importBatches)
+        .set({ salesConvertedAt: null, salesConvertedBy: null, salesCampaignId: null, salesCutoffDate: null })
+        .where(eq(importBatches.id, batchId));
+    },
+
     async issues(batchId) {
       const rows = await executor
         .select()
@@ -166,5 +198,9 @@ async function batchesWithCounts(executor: DbExecutor, batchId?: string): Promis
     lineCount: lines.get(batch.id)?.lines ?? 0,
     customerCount: lines.get(batch.id)?.customers ?? 0,
     issueCount: issues.get(batch.id) ?? 0,
+    salesConversion:
+      batch.salesConvertedAt && batch.salesCampaignId && batch.salesCutoffDate
+        ? { campaignId: batch.salesCampaignId, cutoffDate: batch.salesCutoffDate, at: batch.salesConvertedAt }
+        : null,
   }));
 }

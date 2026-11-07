@@ -3,7 +3,7 @@ import type { Actor } from "@/shared/application/actor";
 import type { AuditTrail } from "@/shared/application/audit-trail";
 import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
-import { DomainError } from "@/shared/domain/domain-error";
+import { DomainError, isDomainError } from "@/shared/domain/domain-error";
 import { parseSalesSheet, type ImportIssue } from "../domain/sales-sheet";
 import type { ImportBatch, ImportRepository, WorkbookReader } from "./ports";
 
@@ -56,7 +56,20 @@ export async function importSalesWorkbook(
       skippedSheets.push(grid.name);
       continue;
     }
-    const { batchId, replaced } = await deps.imports.replaceSheet({ fileName, importedBy: actor.id, sheet });
+    const { batchId, replaced } = await deps.imports
+      .replaceSheet({ fileName, importedBy: actor.id, sheet })
+      .catch((error: unknown) => {
+        if (isDomainError(error) && error.code === "INVALID_STATE") {
+          throw new DomainError("VALIDATION_FAILED", {
+            fieldErrors: {
+              file: [
+                `Las ventas de la hoja «${sheet.sheetName}» ya están en el sistema; deshaz esa conversión antes de importarla de nuevo.`,
+              ],
+            },
+          });
+        }
+        throw error;
+      });
     await deps.audit.record({
       actorId: actor.id,
       action: "migration.import_sheet",

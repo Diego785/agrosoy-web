@@ -9,10 +9,7 @@ export const metadata: Metadata = { title: "Pasar al sistema" };
 export default function ConvertImportPage({ params }: PageProps<"/imports/[batchId]/convert">) {
   return (
     <>
-      <PageHeader
-        back={{ href: "/imports", label: "Planillas" }}
-        title="Pasar clientes y productos al sistema"
-      />
+      <PageHeader back={{ href: "/imports", label: "Planillas" }} title="Pasar la planilla al sistema" />
       <Suspense fallback={<ConversionPageSkeleton />}>
         <RequirePermission permission="imports.manage">
           <ConversionPage params={params} />

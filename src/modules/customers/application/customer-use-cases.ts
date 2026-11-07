@@ -13,6 +13,7 @@ import type {
   CustomerDetail,
   CustomerFormData,
   CustomerListItem,
+  CustomerOption,
   CustomerRepository,
   TechnicianLookup,
   Zone,
@@ -111,6 +112,24 @@ export async function searchCustomers(
     ...pageWindow({ page, pages }),
   });
   return paged({ page, pages }, result);
+}
+
+/** Active sales technicians, to filter portfolios. */
+export async function technicianOptions(
+  deps: Pick<CustomerDeps, "technicians">,
+  actor: Actor,
+): Promise<{ id: string; name: string }[]> {
+  assertCan(actor, "customers.view");
+  return deps.technicians.listActive();
+}
+
+/** Active customers for the pickers of other modules' forms (payments, charges, statements). */
+export async function customerOptions(
+  deps: Pick<CustomerDeps, "customers">,
+  actor: Actor,
+): Promise<CustomerOption[]> {
+  assertCan(actor, "customers.view");
+  return deps.customers.activeOptions();
 }
 
 /** Everything known about a customer, for the customer page. Every role can look customers up. */

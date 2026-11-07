@@ -14,8 +14,9 @@ inventory code. Terms follow the [glossary](glossary.md); the reasons behind the
    and records the audit entry together, or none of it happens.
 4. **Money is exact.** Amounts are integer cents (`Money`), quantities are integer thousandths
    (`Quantity`), exchange rates have four decimals (`ExchangeRate`). No floating point.
-5. **Every operation stores its own exchange rate.** Prices and debt are in US dollars; the rate
-   agreed for that operation is kept with it so bolivianos can always be reconstructed.
+5. **Every operation stores its own exchange rate, once it is agreed.** Prices and debt are in US
+   dollars; the rate agreed for that operation is kept with it so bolivianos can always be
+   reconstructed. A credit note can leave it for the payment (D35); a payment always has one.
 6. **Every command has an author.** Each write records user, date and time in the audit log.
 
 ## Modules
@@ -92,7 +93,8 @@ inventory (M8) and receivables (M7) inside one transaction.
 A note has a header and lines.
 
 - **Header:** number, type, date, customer, property, campaign, technician, warehouse, payment
-  terms (`cash` / `credit`), agreed exchange rate, receiver (name, CI, position or kinship),
+  terms (`cash` / `credit`), agreed exchange rate (optional on credit, D35), receiver (name, CI,
+  position or kinship),
   person who hands over (name, position, CI), carrier (company, vehicle, CI), observations,
   optional SIN invoice number, photo of the signed paper copy.
 - **PDF (D26):** printed like the paper form, one layout for the three types with the type's box
@@ -102,9 +104,10 @@ A note has a header and lines.
 - **Line:** presentation, lot, quantity, unit price in USD, line total, and a free-of-charge flag
   with its reason (`bonus` or `sample`, price 0).
 - **States:** `draft` → `confirmed` → `voided` (with reason). Only drafts can be edited.
-- **Numbering:** one gapless counter shared by the three types. Paper notes typed in later keep
-  their printed number; the system rejects a number that already exists. The system's own numbers
-  start in a range the paper pads won't reach (D28).
+- **Numbering (D19, D28):** one gapless counter, shared by the three types, given on confirmation.
+  Paper notes typed in later keep their printed number; the counter skips numbers already taken and
+  a repeated number is rejected. Administration sets where the counter starts: the system's own
+  numbers go in a range the paper pads won't reach.
 
 ### What confirming a note does
 
@@ -120,42 +123,61 @@ A note has a header and lines.
 Rules:
 
 - A delivery cannot take more than the warehouse + lot has, and warns when the lot is expired.
-- A return or campaign transfer lists lines from one or more confirmed deliveries of the same
-  customer and campaign (D25); each line cannot exceed what its delivered line has left.
+- Returns and campaign transfers take lines from confirmed delivery notes of the same customer and
+  campaign (D25; the week 3 build still takes them from a single note) and are saved already
+  confirmed (with their number, or the printed one). Each line can be returned or transferred only
+  up to what is left of it: delivered minus what confirmed returns and transfers already took.
+  This is the customer's consigned quantity of that delivery.
+- A return is credited in the original note's campaign, dated the day of the return.
+- A transfer is dated in the new campaign (a different, open one); it credits the old campaign at
+  the delivered price and charges the new one at the new price (suggested from the new
+  campaign's reference prices). Free lines owe nothing, so they are not transferred.
+- A delivery note with confirmed returns or transfers is voided only after them.
 
 ## Collections (M6)
 
 - **Payment:** date, customer, amount, currency (`USD` or `BOB`), exchange rate, USD equivalent,
   method (`cash`, `transfer`, `qr`, `in_kind` with description and agreed value), reference,
   receipt number (the next one, or the printed one of a paper receipt, D28).
-- **Allocation:** a payment is applied to a specific note, to a campaign, or by default to the
-  oldest debt first. Each allocation is a **credit** entry in that campaign.
-- **Receipt (D26, D27):** printed like the paper receipt, with the amount in words, the concept,
-  and the customer's balance before and after the payment as it was when it was recorded.
+- **Allocation (D20):** a payment is applied to a specific note, to a campaign, or by default to
+  the oldest debt first (campaigns in order of their start). What is left after every campaign is
+  settled stays as a credit in favor in the campaign of the payment date. Each allocation is a
+  **credit** entry in that campaign.
+- **Receipt (D19, D26, D27):** its own counter; printed like the paper receipt, with the amount in
+  words, the concept, and the customer's balance before and after the payment as it was when it
+  was recorded.
+- **Cash note:** confirming it records its payment at once, in the currency paid, for exactly the
+  note's total (in bolivianos: total × the note's rate). Voiding the note voids that payment.
 - **Exchange rate:** suggested from the customer's agreement; administration records the day's
   rate when the agreement is `daily`.
 - **Charge (D24):** entered by administration with a concept (interest, price adjustment,
-  notarized contract, other) and a reason. A price adjustment can also lower the debt.
+  notarized contract, other) and a reason, in an open campaign. A price adjustment can also lower
+  the debt. Payments and charges are voided with a reason, never deleted.
 - A payment in bolivianos stores both amounts: `usd = bob ÷ rate`, rounded half up to the cent.
 
 ## Receivables ledger and statement (M7)
 
 The **ledger** is an append-only table of entries:
 
-| Field              | Meaning                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| customer, campaign | whose debt and in which season                                                                                            |
-| date               | business date of the operation (Bolivia time)                                                                             |
-| kind               | `delivery`, `return`, `payment`, `charge`, `campaign_transfer_out`, `campaign_transfer_in`, `opening_balance`, `reversal` |
-| amount (USD)       | positive = debit (they owe more), negative = credit (they owe less)                                                       |
-| source             | the document that produced it (note, payment, charge, migration batch)                                                    |
+| Field              | Meaning                                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| customer, campaign | whose debt and in which season                                                                                         |
+| date               | business date of the operation (Bolivia time)                                                                          |
+| kind               | `delivery`, `return`, `payment`, `charge`, `campaign_transfer_out`, `campaign_transfer_in`, `opening_balance`          |
+| amount (USD)       | positive = debit (they owe more), negative = credit (they owe less)                                                    |
+| source             | the document that produced it (note, payment, charge, migration batch)                                                 |
+| reverses           | on the entries a void writes: the entry they cancel. They keep its kind, so a voided delivery nets out of "deliveries" |
 
 - **Balance** of a customer = sum of amounts; per campaign = sum filtered by campaign.
 - The **statement** keeps the columns Agrosoil uses today: deliveries, payments, returns, balance,
-  and status `settled` (balance 0) or `owing`, per campaign and in total, plus the dated detail
-  and the consigned product.
+  and status `settled` (balance 0 or in favor) or `owing`, per campaign and in total, plus the
+  dated detail (each note line, receipt and charge) and the consigned product. Charges, opening
+  balances and campaign transfers add an "others" column only when there are any. Voided
+  documents stay in the detail with their cancelling line and net out of their own column.
 - **Aging** pairs credits with the oldest debits (first in, first out) and reports the age of
-  what is still unpaid.
+  what is still unpaid in buckets of 30, 60, 90 and more than 90 days; voided documents and their
+  reversals are left out of the pairing. The portfolio shows each customer's debt older than 90
+  days. Technicians open the portfolio on their own customers and can switch to everyone's.
 - Every technician can see any statement; only administration writes payments and charges.
 
 ## Inventory (M8)
@@ -234,22 +256,35 @@ Each sheet with a sales table becomes an _import batch_ (D17):
 - Line totals are recomputed as quantity × price; the sheet's own totals are only compared.
 - Payments come from the summary's "Pago" column and have no date. Summary names are matched to
   the sales lines even when shortened ("ANDRES KAORU" → "Andres Kaoru Matsudo").
-- Findings for administration: missing exchange rates, zero prices, a "Total" formula that leaves
+- Findings for administration: sales with no exchange rate (normal for customers whose rate is
+  agreed at payment, D35), zero prices, a "Total" formula that leaves
   rows out, a note number reused on different dates, customers missing from the summary, summary
   totals that differ from the lines, rounded or unreadable values.
 - The account-statement preview reads these batches and renders with the same components the
   ledger-based statement (M7) will use.
 
-**Conversion (weeks 2–3, after Agrosoil answers the open questions):**
+**Conversion (weeks 2–3), on the "Pasar al sistema" page of each sheet, in three steps:**
 
-- Customers and products are normalized and receive codes.
-- Spreadsheet sales rows become confirmed notes marked `imported`, with their original numbers,
-  and spreadsheet payments become payments, so statements show real dated detail. Imported
-  notes post ledger entries but **no** stock movements.
+1. Customers are registered (with the technician the sheet's name suggests).
+2. Products and presentations are created once administration chooses their line and how they
+   are charged.
+3. Sales and payments (D22): each sale (customer + written number + date) becomes a confirmed
+   delivery note marked imported, keeping the sheet's number apart from the system's numbering;
+   the returns table (or the summary's "Dev.") and the summary's payments become ledger entries
+   of the import batch, dated on a cut-off date chosen by administration because the sheet
+   doesn't date them. A sale with a blank rate stays without one (D35). Everything goes to the
+   campaign chosen for the sheet. Rows whose customer
+   or product isn't in the system are skipped and listed, never guessed. Imported notes post
+   ledger entries but **no** stock movements, and can later take returns and transfers.
+
+- Converting sales is undone by voiding the imported notes and reversing the batch's entries;
+  only then can the sheet be imported again.
+- The reconciliation compares, per customer, the debt the sheet computes (lines recomputed,
+  payments and returns from the summary) with what the conversion recorded, and lists the skipped
+  rows. With the real `ventas.xlsx` and all products converted, the 15 customers match exactly
+  (US$ 31.932,00). The sheet's own "Total" formula leaves out its last two rows (US$ 1.920), which
+  the review page reports as a finding.
 - When a campaign's detail can't be reconstructed, the customer gets one `opening_balance` entry
-  for it instead.
+  for it instead (not built yet; no sheet has needed it).
 - Stock starts from a physical count per warehouse and lot (`opening` movements), not from the
   spreadsheets.
-- a reconciliation report compares each customer's debt with the spreadsheet. The current sales
-  sheet's total formula leaves out its last two rows (US$ 1.920), so differences are expected and
-  must be explained to administration before go-live.

@@ -16,6 +16,7 @@ export function StatusBadge({ status }: { status: StatementTotalsView["status"] 
 }
 
 export function SourceNotice({ source }: { source: StatementSource }) {
+  if (!source.label && !source.isPreview) return null;
   return (
     <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
       <span className="font-medium text-foreground">{source.label}</span>

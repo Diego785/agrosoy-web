@@ -9,6 +9,8 @@ export type ImportBatch = {
   lineCount: number;
   customerCount: number;
   issueCount: number;
+  /** Set while the sheet's sales and payments are in the system (M12, D22). */
+  salesConversion: { campaignId: string; cutoffDate: string; at: Date } | null;
 };
 
 /** A sales or return line as stored: decimal strings, ready for value objects or display. */
@@ -37,7 +39,8 @@ export type StoredSummaryRow = {
 
 /**
  * Imported spreadsheet data, kept apart from the system's own records (D17). Importing a sheet
- * again replaces its previous batch, so administration can fix the spreadsheet and retry.
+ * again replaces its previous batch, so administration can fix the spreadsheet and retry; a sheet
+ * whose sales are in the system can't be replaced until that conversion is undone (D22).
  */
 export interface ImportRepository {
   replaceSheet(input: {
@@ -50,6 +53,11 @@ export interface ImportRepository {
   lines(batchId: string, customerKey?: string): Promise<StoredLine[]>;
   summary(batchId: string, customerKey?: string): Promise<StoredSummaryRow[]>;
   issues(batchId: string): Promise<ImportIssue[]>;
+  markSalesConverted(
+    batchId: string,
+    conversion: { campaignId: string; cutoffDate: string; actorId: string },
+  ): Promise<void>;
+  clearSalesConversion(batchId: string): Promise<void>;
 }
 
 export interface WorkbookReader {

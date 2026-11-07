@@ -92,6 +92,48 @@
       "when": 1793505028962,
       "tag": "0012_note_carrier",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793505088962,
+      "tag": "0013_note_confirmation_and_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793505148962,
+      "tag": "0014_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793505208962,
+      "tag": "0015_note_follow_ups",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793505268962,
+      "tag": "0016_sales_import",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793928642679,
+      "tag": "0017_charge_concepts_and_receipt_balances",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794018541349,
+      "tag": "0018_optional_note_exchange_rate",
+      "breakpoints": true
     }
   ]
 }
