@@ -142,6 +142,7 @@ const AREA_LABELS: Record<string, string> = {
   audit: "Administración",
   customers: "Clientes y cobranzas",
   statements: "Clientes y cobranzas",
+  payments: "Clientes y cobranzas",
   imports: "Importación",
   catalog: "Catálogo",
   notes: "Boletas",

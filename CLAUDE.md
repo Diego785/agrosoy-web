@@ -18,7 +18,7 @@ Sales, accounts receivable and warehouse inventory system for Agrosoil (Bolivia)
   keeps the version shown in the last demo and receives the branch once the developer approves it.
 - A change goes on the branch of the week it belongs to and reaches the later weeks by merging
   forward: `main` → `feature/week-2` → `feature/week-3`. `main` holds what the developer has
-  approved: weeks 1 and 2, and week 3 as far as it went on 6 November. Week 3's remaining items go
+  approved: weeks 1 and 2, and week 3 as far as it went on 7 November. Week 3's remaining items go
   on `feature/week-3` and reach `main` the same way. Only approved work merges into `main`; nothing
   else merges backwards.
 - Each commit leaves `main` working: `corepack pnpm check` passes before committing.
