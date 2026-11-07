@@ -20,7 +20,7 @@ import { formatMoney, formatQuantity, trimDecimalZeros } from "@/shared/presenta
 import { FormSection } from "@/shared/presentation/form-section";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
@@ -55,7 +55,8 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
         propertyId: "",
         technicianId: "",
         paymentTerms: "credit",
-        exchangeRate: options.todayRate ? trimDecimalZeros(options.todayRate) : "",
+        exchangeRate: options.currentRate ? trimDecimalZeros(options.currentRate) : "",
+        rateAtPayment: false,
         receiverName: "",
         receiverDocumentId: "",
         receiverRelationship: "",
@@ -70,9 +71,9 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
   });
   const lines = useFieldArray({ control: form.control, name: "lines" });
   const { errors } = form.formState;
-  const [noteDate, customerId, exchangeRate, paymentTerms, watchedLines] = useWatch({
+  const [noteDate, customerId, exchangeRate, paymentTerms, rateAtPayment, watchedLines] = useWatch({
     control: form.control,
-    name: ["noteDate", "customerId", "exchangeRate", "paymentTerms", "lines"],
+    name: ["noteDate", "customerId", "exchangeRate", "paymentTerms", "rateAtPayment", "lines"],
   });
 
   const customer = options.customers.find((option) => option.id === customerId);
@@ -87,13 +88,26 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
     return byZone[customer?.zoneId ?? ""]?.[presentationId] ?? byZone[""]?.[presentationId] ?? "";
   }
 
+  /** The customer's fixed rate or, without one, the rate in force set in Cobros (D36). */
+  function suggestedRate(chosen: typeof customer): string {
+    const rate = chosen?.fixedExchangeRate ?? options.currentRate;
+    return rate ? trimDecimalZeros(rate) : "";
+  }
+
+  /** Blocks the rate until the customer pays, or gives the suggested one back (D35). */
+  function leaveRateForPayment(leave: boolean) {
+    form.setValue("rateAtPayment", leave);
+    form.setValue("exchangeRate", leave ? "" : suggestedRate(customer));
+    form.clearErrors("exchangeRate");
+  }
+
   function chooseCustomer(id: string) {
     const chosen = options.customers.find((option) => option.id === id);
     form.setValue("propertyId", "");
     chooseTechnician(chosen?.technicianId ?? "");
-    // Empty is a valid answer now (D35), so one customer's fixed rate must not stay on the next one.
-    const rate = chosen?.fixedExchangeRate ?? options.todayRate;
-    form.setValue("exchangeRate", rate ? trimDecimalZeros(rate) : "");
+    // Each customer starts from their own agreement, so nothing carries over from the previous one.
+    form.setValue("rateAtPayment", false);
+    form.setValue("exchangeRate", suggestedRate(chosen));
     // The customer receives unless someone else comes: their data is filled in, and stays editable.
     form.setValue("receiverName", chosen?.name ?? "");
     form.setValue("receiverDocumentId", chosen?.taxId ?? "");
@@ -204,7 +218,15 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
             </Field>
             <Field>
               <FieldLabel htmlFor="paymentTerms">Pago</FieldLabel>
-              <NativeSelect id="paymentTerms" {...form.register("paymentTerms")}>
+              <NativeSelect
+                id="paymentTerms"
+                {...form.register("paymentTerms", {
+                  // A cash note is paid on the spot, so it can't leave its rate for later.
+                  onChange: (event) => {
+                    if (event.target.value === "cash" && rateAtPayment) leaveRateForPayment(false);
+                  },
+                })}
+              >
                 <NativeSelectOption value="credit">Crédito</NativeSelectOption>
                 <NativeSelectOption value="cash">Contado</NativeSelectOption>
               </NativeSelect>
@@ -214,13 +236,23 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
               <Input
                 id="exchangeRate"
                 inputMode="decimal"
-                placeholder={paymentTerms === "cash" ? "12.00" : "Se define al cobrar"}
+                placeholder={rateAtPayment ? "Se define al cobrar" : "12.00"}
                 selectOnFocus
+                disabled={!!rateAtPayment}
                 aria-invalid={!!errors.exchangeRate}
                 {...form.register("exchangeRate")}
               />
               {paymentTerms !== "cash" && (
-                <FieldDescription>Déjalo vacío si se define al cobrar.</FieldDescription>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    {...form.register("rateAtPayment", {
+                      onChange: (event) => leaveRateForPayment(event.target.checked),
+                    })}
+                  />
+                  Se define al cobrar
+                </label>
               )}
               <FieldError errors={[errors.exchangeRate]} />
             </Field>

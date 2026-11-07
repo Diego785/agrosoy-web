@@ -47,20 +47,25 @@ describe("draft delivery notes", () => {
     expect(items).toMatchObject([{ id, customerName: "Roberto Mamani", total: "2200.00", status: "draft" }]);
   });
 
-  it("lets a credit note leave its rate for the payment, never a cash one (D35)", async () => {
+  it("leaves a credit note's rate for the payment only when marked, never a cash one's (D35)", async () => {
     const ids = await seedNoteFixtures();
-    const { id } = await createDraftNote(deps(), admin, draftInput(ids, { exchangeRate: "" }));
+    // The mark wins over whatever the field holds.
+    const { id } = await createDraftNote(deps(), admin, draftInput(ids, { rateAtPayment: true }));
     expect((await getNote(deps(), admin, id)).exchangeRate).toBeNull();
 
-    await expect(
-      createDraftNote(deps(), admin, draftInput(ids, { exchangeRate: "", paymentTerms: "cash" })),
-    ).rejects.toMatchObject({
+    const rateError = {
       code: "VALIDATION_FAILED",
       details: { fieldErrors: { exchangeRate: [expect.any(String)] } },
-    });
+    };
+    await expect(createDraftNote(deps(), admin, draftInput(ids, { exchangeRate: "" }))).rejects.toMatchObject(
+      rateError,
+    );
+    await expect(
+      createDraftNote(deps(), admin, draftInput(ids, { rateAtPayment: true, paymentTerms: "cash" })),
+    ).rejects.toMatchObject(rateError);
     await expect(
       updateDraftNote(deps(), admin, id, draftInput(ids, { exchangeRate: "", paymentTerms: "cash" })),
-    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    ).rejects.toMatchObject(rateError);
     await expect(
       createDraftNote(deps(), admin, draftInput(ids, { exchangeRate: "doce" })),
     ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });

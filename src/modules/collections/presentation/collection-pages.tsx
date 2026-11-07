@@ -1,7 +1,7 @@
 import { ChevronRightIcon, PercentIcon, WalletIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { cn } from "cn";
 import { campaignOn } from "@/modules/campaigns/domain/campaign";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
@@ -47,15 +47,17 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import {
+  currentRate,
   customerBalances,
-  dailyRate,
   getPayment,
   listCharges,
   listPayments,
+  officialRate,
 } from "../application/collection-use-cases";
 import type { DocumentStatus } from "../application/collection-ports";
+import { dolarApiOfficialRate } from "../infrastructure/dolarapi-official-rate";
 import { ChargeForm } from "./charge-form";
-import { DailyRateForm, VoidChargeButton, VoidPaymentButton } from "./collection-controls";
+import { DailyRateForm, OfficialRateHint, VoidChargeButton, VoidPaymentButton } from "./collection-controls";
 import { collectionDeps } from "./collection-deps";
 import { CHARGE_CONCEPT_LABELS, METHOD_LABELS, formatAmount, paymentConcept } from "./collection-labels";
 import { CHARGES_PATH, PAYMENTS_PATH, paymentPath, receiptPdfPath } from "./collection-routes";
@@ -82,7 +84,30 @@ async function campaignOptions(actor: Actor) {
 export async function DailyRateCard() {
   const actor = await requireActor();
   const today = todayInBolivia();
-  return <DailyRateForm today={today} rate={await dailyRate(deps(), actor, today)} />;
+  const current = await currentRate(deps(), actor, today);
+  return (
+    <DailyRateForm today={today} current={current}>
+      {/* It comes from outside: the page doesn't wait for it and works without it (D36). */}
+      <Suspense fallback={null}>
+        <OfficialRateReference actor={actor} today={today} current={current?.rate ?? null} />
+      </Suspense>
+    </DailyRateForm>
+  );
+}
+
+async function OfficialRateReference({
+  actor,
+  today,
+  current,
+}: {
+  actor: Actor;
+  today: string;
+  current: string | null;
+}) {
+  const official = await officialRate({ official: dolarApiOfficialRate }, actor);
+  return (
+    official && <OfficialRateHint today={today} official={official} isCurrent={official.rate === current} />
+  );
 }
 
 /** Search and status, the same for payments and charges. */
@@ -259,10 +284,10 @@ export async function NewPayment({ searchParams }: { searchParams: SearchParams 
   const params = await searchParams;
   const actor = await requireActor();
   const today = todayInBolivia();
-  const [customers, campaigns, todayRate] = await Promise.all([
+  const [customers, campaigns, current] = await Promise.all([
     customerOptions(customerDeps(getDb()), actor),
     campaignOptions(actor),
-    dailyRate(deps(), actor, today),
+    currentRate(deps(), actor, today),
   ]);
   const chosen = customers.find((customer) => customer.id === first(params.customer));
 
@@ -299,7 +324,7 @@ export async function NewPayment({ searchParams }: { searchParams: SearchParams 
       customer={customer}
       campaigns={campaigns.map(({ id, label }) => ({ id, label }))}
       today={today}
-      todayRate={todayRate}
+      currentRate={current?.rate ?? null}
     />
   );
 }

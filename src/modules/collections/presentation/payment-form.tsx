@@ -36,8 +36,8 @@ export type PaymentFormProps = {
   } | null;
   campaigns: { id: string; label: string }[];
   today: string;
-  /** The day's rate, if administration recorded it. */
-  todayRate: string | null;
+  /** The last rate administration recorded, if any (D36). */
+  currentRate: string | null;
 };
 
 export const PaymentForm = resetOnLeave(function PaymentForm({
@@ -45,11 +45,11 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
   customer,
   campaigns,
   today,
-  todayRate,
+  currentRate,
 }: PaymentFormProps) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
-  const suggestedRate = customer?.fixedExchangeRate ?? todayRate;
+  const suggestedRate = customer?.fixedExchangeRate ?? currentRate;
   const form = useForm({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
@@ -156,9 +156,9 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
                 <FieldDescription>
                   {customer.fixedExchangeRate
                     ? "Tipo de cambio fijo del cliente."
-                    : todayRate
-                      ? "Tipo de cambio del día."
-                      : "Todavía no se registró el tipo de cambio de hoy."}
+                    : currentRate
+                      ? "Tipo de cambio vigente."
+                      : "Todavía no se registró un tipo de cambio."}
                 </FieldDescription>
                 <FieldError errors={[errors.exchangeRate]} />
               </Field>

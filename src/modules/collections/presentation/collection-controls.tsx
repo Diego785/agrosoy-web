@@ -2,10 +2,11 @@
 
 import { ArrowLeftRightIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { ActionResult } from "@/shared/presentation/action-result";
+import { errorMessage } from "@/shared/presentation/error-messages";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { formatDate, formatRate, trimDecimalZeros } from "@/shared/presentation/format";
 import {
@@ -22,6 +23,7 @@ import { Button } from "@/shared/presentation/ui/button";
 import { Field, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { Textarea } from "@/shared/presentation/ui/textarea";
+import type { CurrentRate, OfficialRate } from "../application/collection-ports";
 import type { DailyRateInput, VoidReasonInput } from "../application/collection-schemas";
 import { setDailyRateAction, voidChargeAction, voidPaymentAction } from "./collection-actions";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
@@ -117,20 +119,23 @@ function VoidButton({
   );
 }
 
-/** The day's rate for `daily` customers: shown, and editable by administration. */
+/**
+ * The rate in force for customers without their own: shown, and changed by administration. It stays
+ * until someone replaces it (D36). `children` is what goes beside it: the official rate.
+ */
 export const DailyRateForm = resetOnLeave(function DailyRateForm({
   today,
-  rate,
+  current,
+  children,
 }: {
   today: string;
-  rate: string | null;
+  current: CurrentRate | null;
+  children?: ReactNode;
 }) {
   const router = useRouter();
-  const [isEditing, setIsEditing] = useState(rate === null);
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, startSaving] = useTransition();
-  const form = useForm<DailyRateInput>({
-    defaultValues: { rateDate: today, rate: rate ? trimDecimalZeros(rate) : "" },
-  });
+  const form = useForm<DailyRateInput>({ defaultValues: { rateDate: today, rate: "" } });
   const { errors } = form.formState;
 
   const submit = form.handleSubmit((values) =>
@@ -142,29 +147,34 @@ export const DailyRateForm = resetOnLeave(function DailyRateForm({
     }),
   );
 
-  if (!isEditing && rate) {
+  function startEditing(rate: string) {
+    form.reset({ rateDate: today, rate: trimDecimalZeros(rate) });
+    setIsEditing(true);
+  }
+
+  if (!isEditing && current) {
     return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-sm shadow-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border bg-card px-4 py-3 text-sm shadow-xs">
         <RateMark />
-        <span className="text-muted-foreground">Tipo de cambio del {formatDate(today)}</span>
-        <span className="font-semibold tabular-nums">{formatRate(rate)} Bs por US$</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="ml-auto"
-          onClick={() => setIsEditing(true)}
-        >
-          Cambiar
-        </Button>
+        <span className="text-muted-foreground">Tipo de cambio vigente</span>
+        <span className="font-semibold tabular-nums">{formatRate(current.rate)} Bs por US$</span>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          desde el {formatDate(current.since)}
+        </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {children}
+          <Button type="button" variant="ghost" size="sm" onClick={() => startEditing(current.rate)}>
+            Cambiar
+          </Button>
+        </div>
       </div>
     );
   }
   return (
     <form onSubmit={submit} noValidate className="rounded-xl border bg-card px-4 py-3 shadow-xs">
       <Field data-invalid={!!errors.rate}>
-        <FieldLabel htmlFor="dailyRate">Tipo de cambio del {formatDate(today)} (Bs por US$)</FieldLabel>
-        <div className="flex gap-2">
+        <FieldLabel htmlFor="dailyRate">Tipo de cambio vigente (Bs por US$)</FieldLabel>
+        <div className="flex flex-wrap items-center gap-2">
           <Input
             id="dailyRate"
             inputMode="decimal"
@@ -177,17 +187,52 @@ export const DailyRateForm = resetOnLeave(function DailyRateForm({
           <Button type="submit" variant="outline" disabled={isSaving}>
             Guardar
           </Button>
-          {rate && (
+          {current && (
             <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>
               Cancelar
             </Button>
           )}
+          {children}
         </div>
         <FieldError errors={[errors.rate ?? errors.rateDate ?? errors.root]} />
       </Field>
     </form>
   );
 });
+
+/** The central bank's rate with its date, to adopt it with one click (D36). */
+export function OfficialRateHint({
+  today,
+  official,
+  isCurrent,
+}: {
+  today: string;
+  official: OfficialRate;
+  isCurrent: boolean;
+}) {
+  const router = useRouter();
+  const [isSaving, startSaving] = useTransition();
+
+  function adoptOfficial() {
+    startSaving(async () => {
+      const result = await setDailyRateAction({ rateDate: today, rate: official.rate });
+      if (!result.ok) return void toast.error(errorMessage(result.error));
+      toast.success(`Tipo de cambio vigente: ${formatRate(official.rate)}`);
+      router.refresh();
+    });
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular-nums">
+      Oficial BCB {formatRate(official.rate)} ({formatDate(official.date)})
+      {!isCurrent && (
+        <Button type="button" variant="outline" size="sm" disabled={isSaving} onClick={adoptOfficial}>
+          Usar oficial
+        </Button>
+      )}
+    </span>
+  );
+}
 
 function RateMark() {
   return (

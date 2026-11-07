@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
-import { dailyRate } from "@/modules/collections/application/collection-use-cases";
+import { currentRate } from "@/modules/collections/application/collection-use-cases";
 import { drizzleDailyRateRepository } from "@/modules/collections/infrastructure/drizzle-collection-repositories";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { listProducts, priceSheet } from "@/modules/catalog/application/catalog-use-cases";
@@ -96,7 +96,8 @@ export async function loadNoteFormOptions(actor: Actor) {
     /** Who can hand the product over: any active user, shown with their position. */
     staff: users.filter((user) => user.active).map(({ id, name, position }) => ({ id, name, position })),
     prices,
-    /** Suggested for customers whose agreement is the day's rate. */
-    todayRate: await dailyRate({ rates: drizzleDailyRateRepository(db) }, actor, todayInBolivia()),
+    /** Suggested for customers without their own rate. */
+    currentRate:
+      (await currentRate({ rates: drizzleDailyRateRepository(db) }, actor, todayInBolivia()))?.rate ?? null,
   };
 }

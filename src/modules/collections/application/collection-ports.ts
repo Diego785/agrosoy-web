@@ -94,9 +94,20 @@ export interface ChargeRepository {
   markVoided(id: string, reason: string, actorId: string): Promise<void>;
 }
 
+/** The rate in force and the day it was recorded. */
+export type CurrentRate = { rate: string; since: string };
+
 export interface DailyRateRepository {
-  rateOn(isoDate: string): Promise<string | undefined>;
+  /** The last rate recorded on or before the date: it stays in force until another replaces it (D36). */
+  currentOn(isoDate: string): Promise<CurrentRate | undefined>;
   save(isoDate: string, rate: ExchangeRate, actorId: string): Promise<void>;
+}
+
+export type OfficialRate = { rate: string; date: string };
+
+/** The central bank's rate, from an outside service. Null when it can't be reached. */
+export interface OfficialRateSource {
+  latest(): Promise<OfficialRate | null>;
 }
 
 /** Facts from other modules a payment or charge needs. */

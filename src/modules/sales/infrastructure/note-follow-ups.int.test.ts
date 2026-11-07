@@ -46,7 +46,7 @@ describe("returns", () => {
     const { id: noteId } = await createDraftNote(
       noteDeps(),
       technician,
-      draftInput(ids, { exchangeRate: "" }),
+      draftInput(ids, { exchangeRate: "", rateAtPayment: true }),
     );
     await confirmNote(noteDeps(), technician, noteId, { paperNumber: "" });
     const lines = await lineIds(noteId);

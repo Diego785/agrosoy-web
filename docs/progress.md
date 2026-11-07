@@ -6,9 +6,13 @@ up without re-reading the whole history.
 ## 2026-11-06
 
 - **Optional exchange rate on credit notes (D35):** Agrosoil's sales manager says some customers have
-  no rate until they pay. Without one, a note shows only US$, on screen and in its PDF; cash notes
-  still require it. The sheet conversion keeps blank rates blank and no longer asks for a default.
+  no rate until they pay. A note starts from the fixed rate or the day's rate; ticking "Se define al
+  cobrar" blocks the field, and the note then shows only US$, on screen and in its PDF. Cash notes
+  still require a rate. The sheet conversion keeps blank rates blank and no longer asks for a default.
   Migration `0018_optional_note_exchange_rate`.
+- **The exchange rate in force (D36):** the last one recorded in Cobros stays until replaced and is
+  suggested everywhere, unless the customer has a fixed rate. Cobros shows the official rate with its
+  date and a button to adopt it. Not applied by itself; to ask Agrosoil where its rate comes from.
 - **What Agrosoil will send:** each engineer sends a customer list by Monday 9 November. The sales
   manager enters the debts herself once someone explains how, which needs the opening-balance screen
   (D29).

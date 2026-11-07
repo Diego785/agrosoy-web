@@ -14,10 +14,11 @@ import { confirmNote, voidNote } from "@/modules/sales/application/note-lifecycl
 import { createDraftNote } from "@/modules/sales/application/note-use-cases";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import {
-  dailyRate,
+  currentRate,
   getPayment,
   listCharges,
   listPayments,
+  officialRate,
   recordCharge,
   recordPayment,
   setDailyRate,
@@ -216,18 +217,43 @@ describe("charges", () => {
   });
 });
 
-describe("the day's exchange rate", () => {
+describe("the exchange rate in force", () => {
   it("is recorded by administration and read by whoever writes notes", async () => {
     await setDailyRate(collectionDeps(), admin, { rateDate: "2026-11-02", rate: "6,97" });
     await setDailyRate(collectionDeps(), admin, { rateDate: "2026-11-02", rate: "6.96" });
-    expect(await dailyRate(collectionDeps(), technician, "2026-11-02")).toBe("6.9600");
-    expect(await dailyRate(collectionDeps(), technician, "2026-11-03")).toBeNull();
+    expect(await currentRate(collectionDeps(), technician, "2026-11-02")).toEqual({
+      rate: "6.9600",
+      since: "2026-11-02",
+    });
     await expect(
       setDailyRate(collectionDeps(), technician, { rateDate: "2026-11-02", rate: "7" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(
-      dailyRate(collectionDeps(), actorWithRole("warehouse_keeper"), "2026-11-02"),
+      currentRate(collectionDeps(), actorWithRole("warehouse_keeper"), "2026-11-02"),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("stays the last one recorded until another replaces it (D36)", async () => {
+    expect(await currentRate(collectionDeps(), technician, "2026-11-02")).toBeNull();
+
+    await setDailyRate(collectionDeps(), admin, { rateDate: "2026-11-02", rate: "12" });
+    expect(await currentRate(collectionDeps(), technician, "2026-11-20")).toEqual({
+      rate: "12.0000",
+      since: "2026-11-02",
+    });
+
+    await setDailyRate(collectionDeps(), admin, { rateDate: "2026-11-05", rate: "11.89" });
+    expect(await currentRate(collectionDeps(), technician, "2026-11-20")).toMatchObject({ rate: "11.8900" });
+    // A later rate doesn't reach back to the days before it.
+    expect(await currentRate(collectionDeps(), technician, "2026-11-03")).toMatchObject({ rate: "12.0000" });
+    expect(await currentRate(collectionDeps(), technician, "2026-11-01")).toBeNull();
+  });
+
+  it("offers the official rate only to whoever records it, and copes without it", async () => {
+    const official = { latest: async () => ({ rate: "11.8900", date: "2026-11-06" }) };
+    expect(await officialRate({ official }, admin)).toEqual({ rate: "11.8900", date: "2026-11-06" });
+    await expect(officialRate({ official }, technician)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(await officialRate({ official: { latest: async () => null } }, admin)).toBeNull();
   });
 });
 

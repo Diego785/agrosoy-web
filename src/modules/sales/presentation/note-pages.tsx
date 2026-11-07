@@ -602,6 +602,7 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
           technicianId: note.technician?.id ?? "",
           paymentTerms: note.paymentTerms,
           exchangeRate: note.exchangeRate ? trimDecimalZeros(note.exchangeRate) : "",
+          rateAtPayment: note.exchangeRate === null,
           receiverName: note.receiver.name,
           receiverDocumentId: note.receiver.documentId ?? "",
           receiverRelationship: note.receiver.relationship ?? "",

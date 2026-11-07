@@ -43,7 +43,6 @@ export const draftNoteSchema = z
     propertyId: z.union([z.literal(""), z.uuid()]).optional(),
     technicianId: z.union([z.literal(""), z.uuid()]).optional(),
     paymentTerms: z.enum(PAYMENT_TERMS, { error: "Elige contado o crédito." }),
-    /** Empty on a credit note whose rate is only agreed when the customer pays (D35). */
     exchangeRate: z
       .string()
       .trim()
@@ -51,6 +50,8 @@ export const draftNoteSchema = z
       .pipe(
         z.string().regex(/^(\d+(\.\d{1,4})?)?$/, { error: "Escribe el tipo de cambio, por ejemplo 12.00." }),
       ),
+    /** Marked on a credit note whose rate is only agreed when the customer pays (D35). */
+    rateAtPayment: z.boolean().default(false),
     receiverName: z
       .string()
       .trim()
@@ -67,11 +68,17 @@ export const draftNoteSchema = z
     lines: z.array(noteLineSchema).min(1, { error: "Agrega al menos un producto." }),
   })
   .superRefine((note, context) => {
-    if (note.paymentTerms === "cash" && note.exchangeRate === "") {
+    if (note.paymentTerms === "cash" && (note.rateAtPayment || note.exchangeRate === "")) {
       context.addIssue({
         code: "custom",
         path: ["exchangeRate"],
         message: "Al contado se paga en el momento: escribe el tipo de cambio.",
+      });
+    } else if (!note.rateAtPayment && note.exchangeRate === "") {
+      context.addIssue({
+        code: "custom",
+        path: ["exchangeRate"],
+        message: "Escribe el tipo de cambio o marca «Se define al cobrar».",
       });
     }
     note.lines.forEach((line, index) => {
