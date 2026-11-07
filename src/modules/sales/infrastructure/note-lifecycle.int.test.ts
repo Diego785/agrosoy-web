@@ -69,7 +69,7 @@ describe("confirming delivery notes", () => {
 
   it("charges the same debt when the rate is left for the payment (D35)", async () => {
     const ids = await seedNoteFixtures();
-    const id = await draft(ids, { exchangeRate: "" });
+    const id = await draft(ids, { exchangeRate: "", rateAtPayment: true });
     await confirmNote(noteDeps(), technician, id, { paperNumber: "" });
 
     expect(await getNote(noteDeps(), admin, id)).toMatchObject({ status: "confirmed", exchangeRate: null });

@@ -18,7 +18,10 @@ import type {
   ChargeRepository,
   ChargeView,
   CollectionLookups,
+  CurrentRate,
   DailyRateRepository,
+  OfficialRate,
+  OfficialRateSource,
   PaymentListItem,
   PaymentRepository,
   PaymentView,
@@ -258,7 +261,7 @@ export async function listCharges(
   return paged({ page, pages }, result);
 }
 
-/** The day's rate, which notes and payments of `daily` customers use. */
+/** Records a day's rate; it stays in force for customers without their own until another replaces it (D36). */
 export async function setDailyRate(
   deps: Pick<CollectionDeps, "rates" | "audit">,
   actor: Actor,
@@ -277,14 +280,23 @@ export async function setDailyRate(
   });
 }
 
-/** The day's rate if administration recorded it; whoever writes notes or payments may read it. */
-export async function dailyRate(
+/** The last rate administration recorded; whoever writes notes or payments may read it (D36). */
+export async function currentRate(
   deps: Pick<CollectionDeps, "rates">,
   actor: Actor,
   isoDate: unknown,
-): Promise<string | null> {
+): Promise<CurrentRate | null> {
   if (!can(actor, "notes.manage")) assertCan(actor, "payments.manage");
-  return (await deps.rates.rateOn(validateInput(z.iso.date(), isoDate))) ?? null;
+  return (await deps.rates.currentOn(validateInput(z.iso.date(), isoDate))) ?? null;
+}
+
+/** The central bank's rate, as a reference for whoever records the rate; never applied by itself (D36). */
+export async function officialRate(
+  deps: { official: OfficialRateSource },
+  actor: Actor,
+): Promise<OfficialRate | null> {
+  assertCan(actor, "payments.manage");
+  return deps.official.latest();
 }
 
 /** What the customer owes per campaign, to decide where a payment goes. */

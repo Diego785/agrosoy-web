@@ -428,9 +428,10 @@ it calm and orderly. Color carries meaning (action, status), so it stays scarce.
 
 ## D35 · A credit note can leave its exchange rate for the payment
 
-**Decision:** the exchange rate is optional on credit notes and required on cash notes. Without one,
-the screen says "Se define al cobrar", and the note and its PDF show only the total in US$, with no
-amount in Bs and the T/C box empty. A return inherits what its note has. The conversion of a sheet
+**Decision:** a note starts from the customer's fixed rate or, without one, the rate in force (D36). A credit note can tick "Se define al cobrar", which blocks the field; a cash note can't. An
+empty field without the tick is rejected, so leaving the rate out is always a choice. Without a rate,
+the note says "Se define al cobrar", and it and its PDF show only the total in US$, with no amount in
+Bs and the T/C box empty. A return inherits what its note has. The conversion of a sheet
 keeps a blank rate blank instead of filling in a default. Payments always carry their own rate, so
 nothing changes in how debt is lowered. A campaign transfer still asks for a rate until D25 rebuilds
 it.
@@ -441,6 +442,27 @@ prints an amount in Bs nobody agreed to, which later differs from what the custo
 note is paid on the spot, so its rate is known and its payment needs one; a database check enforces
 that.
 
-**Known limit:** the form still suggests the customer's fixed rate or the day's rate, so a note for
-one of these customers needs the field cleared by hand. If that proves error-prone, the customer's
-exchange-rate agreement can gain a third option that leaves it empty.
+The tick belongs to each note, not to the customer: choosing a customer starts again from their
+agreement. If the same customers always need it, the agreement can gain a third option later.
+
+## D36 · The last exchange rate recorded stays in force
+
+**Decision:** administration records the rate in Cobros, by typing it or with one click on the
+official rate, and it stays in force until someone replaces it. Notes, payments and transfers suggest
+the customer's fixed rate or, without one, the rate in force, and each document keeps its own copy.
+The history stays in `daily_exchange_rates`, one row per day, and nothing is recalculated when the
+rate changes.
+
+The official rate comes from DolarApi (`bo.dolarapi.com`), which republishes the central bank's. It is
+only a reference, shown with its date: nothing applies it by itself, and if the service fails, the
+page works without it.
+
+**Why:** the developer asked for it (7 November 2026), so nobody has to type a rate every day.
+Agrosoil's sheet shows why the official rate can't simply replace theirs: on the six dates compared
+it never matched (22 September: 10.50 against the central bank's 11.90). DolarApi matched the central
+bank on 6 November, but was still on that value on the 7th, when the bank already showed 11.81, so
+the date has to be visible. Whether Agrosoil follows the official rate is still to be asked.
+
+**Replaces** the proposal's "administration records the day's rate" (M6): a day without a record now
+keeps the last rate instead of leaving the field empty. A stale rate is the risk, which is why the
+date it was recorded is on screen.

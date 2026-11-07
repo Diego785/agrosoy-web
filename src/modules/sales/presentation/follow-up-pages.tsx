@@ -40,7 +40,7 @@ export async function FollowUpPage({
     const campaign = campaignOn(formOptions.campaigns, today);
     const byZone = campaign ? (formOptions.prices[campaign.id] ?? {}) : {};
     suggested = { ...byZone[""], ...byZone[customer?.zoneId ?? ""] };
-    const rate = customer?.fixedExchangeRate ?? formOptions.todayRate;
+    const rate = customer?.fixedExchangeRate ?? formOptions.currentRate;
     if (rate) exchangeRate = trimDecimalZeros(rate);
   }
 

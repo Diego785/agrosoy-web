@@ -148,8 +148,8 @@ Rules:
   was recorded.
 - **Cash note:** confirming it records its payment at once, in the currency paid, for exactly the
   note's total (in bolivianos: total × the note's rate). Voiding the note voids that payment.
-- **Exchange rate:** suggested from the customer's agreement; administration records the day's
-  rate when the agreement is `daily`.
+- **Exchange rate (D36):** suggested from the customer's fixed rate or, without one, the rate in
+  force: the last one administration recorded, typed or taken from the official rate.
 - **Charge (D24):** entered by administration with a concept (interest, price adjustment,
   notarized contract, other) and a reason, in an open campaign. A price adjustment can also lower
   the debt. Payments and charges are voided with a reason, never deleted.

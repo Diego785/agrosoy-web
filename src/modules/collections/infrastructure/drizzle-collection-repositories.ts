@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, lte, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -274,12 +274,14 @@ export function drizzleChargeRepository(executor: DbExecutor): ChargeRepository 
 
 export function drizzleDailyRateRepository(executor: DbExecutor): DailyRateRepository {
   return {
-    async rateOn(isoDate) {
+    async currentOn(isoDate) {
       const [row] = await executor
-        .select({ rate: dailyExchangeRates.rate })
+        .select({ rate: dailyExchangeRates.rate, since: dailyExchangeRates.rateDate })
         .from(dailyExchangeRates)
-        .where(eq(dailyExchangeRates.rateDate, isoDate));
-      return row?.rate;
+        .where(lte(dailyExchangeRates.rateDate, isoDate))
+        .orderBy(desc(dailyExchangeRates.rateDate))
+        .limit(1);
+      return row;
     },
 
     async save(isoDate, rate, actorId) {
