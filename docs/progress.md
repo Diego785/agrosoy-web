@@ -3,6 +3,23 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-07
+
+- **Change log and permissions speak Spanish everywhere:** passing and undoing a sheet's sales,
+  returns and transfers, and the Cobros area showed their codes (`migration.convert_sales`,
+  `collections`…); the permission page showed `payments`. Merged into `main` for staging.
+- **Staging's sheet, fixed by the developer:** `Ga-3Activ` was registered after the sales were
+  passed, so rows 6, 9 and 23 stayed out (US$ 1,232 for Alexander Jimenez, 100 for Kazuo Maeshiro
+  Isa, and notes 12110 and 12132 missing). Undoing and passing again is the fix; checked first on
+  the test database with the same order (product registered later, undo, pass again: no
+  differences).
+- **Found, for 9–13 November:** the sales can be passed while products are still pending, and the
+  reconciliation works its left-out rows out again from today's catalog, so a product registered
+  later empties "Filas que no se pasaron" while the difference stays.
+- **Scope mapped against the proposal** (in chat, by module). Proposed slots for the items without a
+  date: note search and consignment in the statement with week 3; campaign closing and photos of
+  signed notes and payment proofs with week 5.
+
 ## 2026-11-06
 
 - **Optional exchange rate on credit notes (D35):** Agrosoil's sales manager says some customers have
