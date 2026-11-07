@@ -14,8 +14,9 @@ inventory code. Terms follow the [glossary](glossary.md); the reasons behind the
    and records the audit entry together, or none of it happens.
 4. **Money is exact.** Amounts are integer cents (`Money`), quantities are integer thousandths
    (`Quantity`), exchange rates have four decimals (`ExchangeRate`). No floating point.
-5. **Every operation stores its own exchange rate.** Prices and debt are in US dollars; the rate
-   agreed for that operation is kept with it so bolivianos can always be reconstructed.
+5. **Every operation stores its own exchange rate, once it is agreed.** Prices and debt are in US
+   dollars; the rate agreed for that operation is kept with it so bolivianos can always be
+   reconstructed. A credit note can leave it for the payment (D35); a payment always has one.
 6. **Every command has an author.** Each write records user, date and time in the audit log.
 
 ## Modules
@@ -92,7 +93,8 @@ inventory (M8) and receivables (M7) inside one transaction.
 A note has a header and lines.
 
 - **Header:** number, type, date, customer, property, campaign, technician, warehouse, payment
-  terms (`cash` / `credit`), agreed exchange rate, receiver (name, CI, position or kinship),
+  terms (`cash` / `credit`), agreed exchange rate (optional on credit, D35), receiver (name, CI,
+  position or kinship),
   person who hands over (name, position, CI), carrier (company, vehicle, CI), observations,
   optional SIN invoice number, photo of the signed paper copy.
 - **PDF (D26):** printed like the paper form, one layout for the three types with the type's box
@@ -254,7 +256,8 @@ Each sheet with a sales table becomes an _import batch_ (D17):
 - Line totals are recomputed as quantity × price; the sheet's own totals are only compared.
 - Payments come from the summary's "Pago" column and have no date. Summary names are matched to
   the sales lines even when shortened ("ANDRES KAORU" → "Andres Kaoru Matsudo").
-- Findings for administration: missing exchange rates, zero prices, a "Total" formula that leaves
+- Findings for administration: sales with no exchange rate (normal for customers whose rate is
+  agreed at payment, D35), zero prices, a "Total" formula that leaves
   rows out, a note number reused on different dates, customers missing from the summary, summary
   totals that differ from the lines, rounded or unreadable values.
 - The account-statement preview reads these batches and renders with the same components the
@@ -269,7 +272,8 @@ Each sheet with a sales table becomes an _import batch_ (D17):
    delivery note marked imported, keeping the sheet's number apart from the system's numbering;
    the returns table (or the summary's "Dev.") and the summary's payments become ledger entries
    of the import batch, dated on a cut-off date chosen by administration because the sheet
-   doesn't date them. Everything goes to the campaign chosen for the sheet. Rows whose customer
+   doesn't date them. A sale with a blank rate stays without one (D35). Everything goes to the
+   campaign chosen for the sheet. Rows whose customer
    or product isn't in the system are skipped and listed, never guessed. Imported notes post
    ledger entries but **no** stock movements, and can later take returns and transfers.
 

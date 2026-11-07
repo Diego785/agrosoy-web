@@ -33,7 +33,8 @@ export type NoteView = {
   campaign: { id: string; season: Season; year: number };
   technician: { id: string; name: string } | null;
   paymentTerms: PaymentTerms;
-  exchangeRate: string;
+  /** Null when it is agreed at payment (D35). */
+  exchangeRate: string | null;
   receiver: { name: string; documentId: string | null; relationship: string | null };
   handedOverBy: { id: string; name: string; position: string | null; documentId: string | null } | null;
   carrier: Carrier;

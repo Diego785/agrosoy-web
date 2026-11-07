@@ -23,10 +23,13 @@ const importDeps = () => ({
 const statements = { statements: drizzleStatementReader(testDb), today: () => "2026-10-01" };
 
 /** The test sheet imported, its customers converted and its products converted except `leaveOut`. */
-async function sheetReadyForSales({ leaveOut }: { leaveOut?: string } = {}) {
+async function sheetReadyForSales({
+  leaveOut,
+  extraRow = false,
+}: { leaveOut?: string; extraRow?: boolean } = {}) {
   const { sheets } = await importSalesWorkbook(importDeps(), admin, {
     fileName: "ventas.xlsx",
-    content: await salesWorkbook(),
+    content: await salesWorkbook({ extraRow }),
   });
   const batchId = sheets[0]!.batchId;
   const { id: campaignId } = await createCampaign(
@@ -50,7 +53,6 @@ const salesInput = (batchId: string, campaignId: string) => ({
   batchId,
   campaignId,
   cutoffDate: "2026-09-30",
-  defaultExchangeRate: "6.96",
 });
 
 async function balances(batchId: string) {
@@ -87,6 +89,21 @@ describe("converting a sheet's sales and payments", () => {
       ["2026-05-29", 11599, "delivery", "780.00", false],
       ["2026-09-30", null, "payment", "100.50", true],
     ]);
+  });
+
+  it("keeps the sheet's rate, and leaves a sale without one when the cell is blank (D35)", async () => {
+    const { batchId, campaignId } = await sheetReadyForSales({ extraRow: true });
+    const deps = salesConversionDeps(testDb, admin);
+    await convertSales(deps, admin, salesInput(batchId, campaignId));
+
+    const { rows } = await salesReconciliation(deps, admin, batchId);
+    const rateOf = async (name: string) => {
+      const customer = rows.find((row) => row.customerName === name)!;
+      const statement = await customerStatement(statements, admin, customer.customerId, {});
+      return statement.lines.find((line) => line.kind === "delivery")?.exchangeRate;
+    };
+    expect(await rateOf("Rodolfo Romero")).toBe("6.9600");
+    expect(await rateOf("Eduardo Cuaquira")).toBeNull();
   });
 
   it("reports rows it can't place and shows them as differences", async () => {

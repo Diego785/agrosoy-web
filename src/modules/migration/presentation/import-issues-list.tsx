@@ -35,7 +35,7 @@ const DESCRIPTIONS: Record<ImportIssueCode, Describe> = {
     `Falta el ${FIELD_LABELS[d.field ?? ""] ?? "dato"} o no es un número; la fila no se importó.`,
   INVALID_DATE: (d) => (d.value ? `La fecha «${d.value}» no es válida.` : "La fila no tiene fecha."),
   ROUNDED_VALUE: (d) => `El ${FIELD_LABELS[d.field ?? ""] ?? "valor"} ${d.value} se redondeó a ${d.rounded}.`,
-  MISSING_EXCHANGE_RATE: () => "Ventas sin tipo de cambio.",
+  MISSING_EXCHANGE_RATE: () => "Ventas sin tipo de cambio: se define al cobrar.",
   ZERO_PRICE: (d) =>
     `Precio 0${d.observation ? ` (observación «${d.observation}»)` : ""}: se toma como entrega sin costo.`,
   LINE_TOTAL_MISMATCH: (d) =>

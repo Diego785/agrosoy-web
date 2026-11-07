@@ -20,7 +20,7 @@ import { formatMoney, formatQuantity, trimDecimalZeros } from "@/shared/presenta
 import { FormSection } from "@/shared/presentation/form-section";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
@@ -70,9 +70,9 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
   });
   const lines = useFieldArray({ control: form.control, name: "lines" });
   const { errors } = form.formState;
-  const [noteDate, customerId, exchangeRate, watchedLines] = useWatch({
+  const [noteDate, customerId, exchangeRate, paymentTerms, watchedLines] = useWatch({
     control: form.control,
-    name: ["noteDate", "customerId", "exchangeRate", "lines"],
+    name: ["noteDate", "customerId", "exchangeRate", "paymentTerms", "lines"],
   });
 
   const customer = options.customers.find((option) => option.id === customerId);
@@ -91,8 +91,9 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
     const chosen = options.customers.find((option) => option.id === id);
     form.setValue("propertyId", "");
     chooseTechnician(chosen?.technicianId ?? "");
+    // Empty is a valid answer now (D35), so one customer's fixed rate must not stay on the next one.
     const rate = chosen?.fixedExchangeRate ?? options.todayRate;
-    if (rate) form.setValue("exchangeRate", trimDecimalZeros(rate));
+    form.setValue("exchangeRate", rate ? trimDecimalZeros(rate) : "");
     // The customer receives unless someone else comes: their data is filled in, and stays editable.
     form.setValue("receiverName", chosen?.name ?? "");
     form.setValue("receiverDocumentId", chosen?.taxId ?? "");
@@ -213,11 +214,14 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
               <Input
                 id="exchangeRate"
                 inputMode="decimal"
-                placeholder="12.00"
+                placeholder={paymentTerms === "cash" ? "12.00" : "Se define al cobrar"}
                 selectOnFocus
                 aria-invalid={!!errors.exchangeRate}
                 {...form.register("exchangeRate")}
               />
+              {paymentTerms !== "cash" && (
+                <FieldDescription>Déjalo vacío si se define al cobrar.</FieldDescription>
+              )}
               <FieldError errors={[errors.exchangeRate]} />
             </Field>
           </div>
@@ -310,7 +314,7 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
           <dl className="flex flex-wrap items-baseline justify-end gap-x-8 gap-y-2 border-t pt-4 text-sm">
             {totals.liters && <Total label="Litros" value={totals.liters} />}
             {totals.kilos && <Total label="Kilos" value={totals.kilos} />}
-            <Total label="Equivale a Bs" value={totals.bob} />
+            {totals.bob && <Total label="Equivale a Bs" value={totals.bob} />}
             <Total label="Total US$" value={totals.usd} emphasis />
           </dl>
         </FormSection>
@@ -493,11 +497,11 @@ function noteTotals(
       // Ignored until the quantity is valid.
     }
   }
-  let bob = "—";
+  let bob: string | null = null;
   try {
     if (rate) bob = formatMoney(ExchangeRate.parse(rate.replace(",", ".")).toBob(usd).toDecimalString());
   } catch {
-    bob = "—";
+    // Not a rate yet: nothing to show until it is.
   }
   return {
     usd: formatMoney(usd.toDecimalString()),

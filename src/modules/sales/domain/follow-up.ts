@@ -1,5 +1,4 @@
 import { DomainError } from "@/shared/domain/domain-error";
-import type { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import type { DraftNote, FreeReason } from "./delivery-note";
@@ -119,6 +118,5 @@ export function transferLines(
 export type FollowUpNote = Omit<DraftNote, "lines" | "taxInvoiceNumber"> & {
   type: Exclude<NoteType, "delivery">;
   originalNoteId: string;
-  exchangeRate: ExchangeRate;
   lines: FollowUpLine[];
 };

@@ -84,7 +84,7 @@ export async function registerReturn(
       ...followUpHeader(original, data),
       type: "return",
       campaignId: original.campaign.id,
-      exchangeRate: ExchangeRate.parse(original.exchangeRate),
+      exchangeRate: original.exchangeRate ? ExchangeRate.parse(original.exchangeRate) : null,
       receiver: { name: data.receiverName, documentId: null, relationship: null },
       lines,
     },

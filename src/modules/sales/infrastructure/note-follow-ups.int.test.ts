@@ -41,6 +41,27 @@ const returnInput = (lines: { originalLineId: string; quantity: string }[], over
 });
 
 describe("returns", () => {
+  it("work on a note whose rate was left for the payment, and stay without one (D35)", async () => {
+    const ids = await seedNoteFixtures();
+    const { id: noteId } = await createDraftNote(
+      noteDeps(),
+      technician,
+      draftInput(ids, { exchangeRate: "" }),
+    );
+    await confirmNote(noteDeps(), technician, noteId, { paperNumber: "" });
+    const lines = await lineIds(noteId);
+
+    const { id } = await registerReturn(
+      noteDeps(),
+      technician,
+      noteId,
+      returnInput([{ originalLineId: lines.fulvin, quantity: "50" }]),
+    );
+
+    expect((await getNote(noteDeps(), admin, id)).exchangeRate).toBeNull();
+    expect(await balances(ids.customerId)).toEqual({ summer: "1650.00" });
+  });
+
   it("credit the delivered price in the note's campaign and lower what is left", async () => {
     const ids = await seedNoteFixtures();
     const noteId = await delivered(ids);

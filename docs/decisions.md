@@ -425,3 +425,22 @@ the same layout as its content, built from `shared/presentation/skeletons.tsx`.
 
 **Why:** a management system is used all day; the client should recognise their brand in it and find
 it calm and orderly. Color carries meaning (action, status), so it stays scarce.
+
+## D35 · A credit note can leave its exchange rate for the payment
+
+**Decision:** the exchange rate is optional on credit notes and required on cash notes. Without one,
+the screen says "Se define al cobrar", and the note and its PDF show only the total in US$, with no
+amount in Bs and the T/C box empty. A return inherits what its note has. The conversion of a sheet
+keeps a blank rate blank instead of filling in a default. Payments always carry their own rate, so
+nothing changes in how debt is lowered. A campaign transfer still asks for a rate until D25 rebuilds
+it.
+
+**Why:** Agrosoil's sales manager (6 November 2026) says some customers have no exchange rate until
+they pay. The debt is in dollars and doesn't depend on it, but a rate chosen just to fill the field
+prints an amount in Bs nobody agreed to, which later differs from what the customer pays. A cash
+note is paid on the spot, so its rate is known and its payment needs one; a database check enforces
+that.
+
+**Known limit:** the form still suggests the customer's fixed rate or the day's rate, so a note for
+one of these customers needs the field cleared by hand. If that proves error-prone, the customer's
+exchange-rate agreement can gain a third option that leaves it empty.

@@ -10,16 +10,17 @@ Sales, accounts receivable and warehouse inventory system for Agrosoil (Bolivia)
 - `docs/progress.md`: where the last session stopped.
 - `docs/domain-model.md`: business rules for notes, collections, the ledger and inventory.
 - `docs/glossary.md`: the English name for every Spanish business term. Use it; don't invent synonyms.
-- `docs/decisions.md`: why things are built this way (D1–D34). Add a decision instead of quietly deviating.
+- `docs/decisions.md`: why things are built this way (D1–D35). Add a decision instead of quietly deviating.
 
 ## Working method
 
 - Follow the roadmap steps in order. Each week's work goes on a `feature/week-N` branch; `main`
   keeps the version shown in the last demo and receives the branch once the developer approves it.
 - A change goes on the branch of the week it belongs to and reaches the later weeks by merging
-  forward: `main` → `feature/week-2` → `feature/week-3`. `main` holds the approved weeks (1 and 2
-  since 31 October); week 2's last items still go on `feature/week-2` and reach `main` the same
-  way. Only an approved week merges into `main`; nothing else merges backwards.
+  forward: `main` → `feature/week-2` → `feature/week-3`. `main` holds what the developer has
+  approved: weeks 1 and 2, and week 3 as far as it went on 6 November. Week 3's remaining items go
+  on `feature/week-3` and reach `main` the same way. Only approved work merges into `main`; nothing
+  else merges backwards.
 - Each commit leaves `main` working: `corepack pnpm check` passes before committing.
 - End every session by adding an entry to `docs/progress.md`.
 

@@ -51,7 +51,8 @@ export const deliveryNotes = pgTable(
       .references(() => campaigns.id),
     technicianId: uuid().references(() => users.id),
     paymentTerms: text({ enum: ["cash", "credit"] }).notNull(),
-    exchangeRate: numeric({ precision: 10, scale: 4 }).notNull(),
+    /** Null on a credit note whose rate is only agreed when the customer pays (D35). */
+    exchangeRate: numeric({ precision: 10, scale: 4 }),
     receiverName: text().notNull(),
     receiverDocumentId: text(),
     receiverRelationship: text(),
@@ -87,6 +88,10 @@ export const deliveryNotes = pgTable(
     check(
       "delivery_notes_voided_have_reason",
       sql`${table.status} <> 'voided' or ${table.voidReason} is not null`,
+    ),
+    check(
+      "delivery_notes_cash_have_rate",
+      sql`${table.paymentTerms} = 'credit' or ${table.exchangeRate} is not null`,
     ),
   ],
 );

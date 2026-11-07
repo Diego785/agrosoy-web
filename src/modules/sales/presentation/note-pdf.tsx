@@ -83,7 +83,7 @@ function PersonBox({
 /** The note as Agrosoil prints it: one form for delivery, return and transfer (D26). */
 export function NotePdf({ note }: { note: NoteView }) {
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
-  const bob = ExchangeRate.parse(note.exchangeRate).toBob(total);
+  const bob = note.exchangeRate ? ExchangeRate.parse(note.exchangeRate).toBob(total) : null;
   const [year, month, day] = note.noteDate.split("-");
   const isReturn = note.type === "return";
   const isDelivery = note.type === "delivery";
@@ -266,7 +266,7 @@ export function NotePdf({ note }: { note: NoteView }) {
             <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 10.5 }}>
               US$ {formatMoney(total.toDecimalString())}
             </Text>
-            <Text style={{ color: MUTED }}>= Bs {formatMoney(bob.toDecimalString())}</Text>
+            {bob && <Text style={{ color: MUTED }}>= Bs {formatMoney(bob.toDecimalString())}</Text>}
           </View>
           <View
             style={{
@@ -280,7 +280,9 @@ export function NotePdf({ note }: { note: NoteView }) {
             }}
           >
             <Text style={{ fontFamily: "Helvetica-Bold", color: GREEN }}>T/C</Text>
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>{formatRate(note.exchangeRate)}</Text>
+            {note.exchangeRate && (
+              <Text style={{ fontFamily: "Helvetica-Bold" }}>{formatRate(note.exchangeRate)}</Text>
+            )}
           </View>
         </View>
 

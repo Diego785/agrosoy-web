@@ -20,7 +20,6 @@ import {
 } from "@/shared/presentation/ui/alert-dialog";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
-import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
 import { convertSalesAction, undoSalesConversionAction } from "./conversion-actions";
@@ -28,7 +27,7 @@ import { reconciliationPath } from "./migration-routes";
 import { DateInput } from "@/shared/presentation/date-input";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-type SalesValues = { campaignId: string; cutoffDate: string; defaultExchangeRate: string };
+type SalesValues = { campaignId: string; cutoffDate: string };
 
 /** Step 3 of the conversion: the sheet's sales and payments into the ledger, or what was done. */
 export const SalesConversion = resetOnLeave(function SalesConversion({
@@ -89,7 +88,6 @@ function SalesForm({
     defaultValues: {
       campaignId: suggestedCampaignId ?? "",
       cutoffDate: defaultCutoffDate,
-      defaultExchangeRate: "12.00",
     },
   });
   const { errors } = form.formState;
@@ -110,10 +108,10 @@ function SalesForm({
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         Cada venta pasa como boleta confirmada marcada «de planilla», con su número; los pagos y devoluciones
-        del resumen pasan con la fecha de corte. Antes, pasa los clientes y productos. No mueve stock: el
-        stock inicial sale del conteo físico.
+        del resumen pasan con la fecha de corte. Las ventas sin tipo de cambio quedan sin él, hasta que se
+        cobren. Antes, pasa los clientes y productos. No mueve stock: el stock inicial sale del conteo físico.
       </p>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field data-invalid={!!errors.campaignId}>
           <FieldLabel htmlFor="campaignId">Campaña de la planilla</FieldLabel>
           <NativeSelect id="campaignId" aria-invalid={!!errors.campaignId} {...form.register("campaignId")}>
@@ -135,17 +133,6 @@ function SalesForm({
           />
           <FieldDescription>La planilla no fecha los pagos del resumen.</FieldDescription>
           <FieldError errors={[errors.cutoffDate]} />
-        </Field>
-        <Field data-invalid={!!errors.defaultExchangeRate}>
-          <FieldLabel htmlFor="defaultExchangeRate">Tipo de cambio si falta</FieldLabel>
-          <Input
-            id="defaultExchangeRate"
-            inputMode="decimal"
-            selectOnFocus
-            aria-invalid={!!errors.defaultExchangeRate}
-            {...form.register("defaultExchangeRate")}
-          />
-          <FieldError errors={[errors.defaultExchangeRate]} />
         </Field>
       </div>
       <FieldError errors={[errors.root]} />

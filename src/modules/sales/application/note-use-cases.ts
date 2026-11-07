@@ -123,7 +123,7 @@ async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNot
     campaignId: campaign.id,
     technicianId: data.technicianId || null,
     paymentTerms: data.paymentTerms,
-    exchangeRate: ExchangeRate.parse(data.exchangeRate),
+    exchangeRate: data.exchangeRate ? ExchangeRate.parse(data.exchangeRate) : null,
     receiver: {
       name: data.receiverName,
       documentId: optionalText(data.receiverDocumentId) ?? null,

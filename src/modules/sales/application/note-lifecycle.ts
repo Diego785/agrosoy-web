@@ -60,6 +60,10 @@ export async function confirmNote(
       fieldErrors: { "payment.currency": ["Indica cómo pagó el cliente."] },
     });
   }
+  // The form and the database both keep a rate on cash notes (D35); a payment can't be saved without one.
+  if (isPaidNow && !note.exchangeRate) {
+    throw new DomainError("INVALID_STATE", { reason: "cash_note_without_rate" });
+  }
   if (paperNumber && (await deps.notes.numberInUse(paperNumber))) {
     throw new DomainError("DUPLICATE", { field: "paperNumber" });
   }
@@ -84,7 +88,7 @@ export async function confirmNote(
     );
   }
   let receiptNumber: number | null = null;
-  if (isPaidNow && payment) {
+  if (isPaidNow && payment && note.exchangeRate) {
     const record = cashNotePayment({
       paymentDate: note.noteDate,
       customerId: note.customer.id,

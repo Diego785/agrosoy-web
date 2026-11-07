@@ -3,6 +3,19 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-06
+
+- **Optional exchange rate on credit notes (D35):** Agrosoil's sales manager says some customers have
+  no rate until they pay. Without one, a note shows only US$, on screen and in its PDF; cash notes
+  still require it. The sheet conversion keeps blank rates blank and no longer asks for a default.
+  Migration `0018_optional_note_exchange_rate`.
+- **What Agrosoil will send:** each engineer sends a customer list by Monday 9 November. The sales
+  manager enters the debts herself once someone explains how, which needs the opening-balance screen
+  (D29).
+- **Week 3 merged into `main`** with what it has so far (developer's approval), to deploy to staging
+  for the meeting of Saturday 7 November. Week 3's list for 9–13 November (2026-11-05, below) stays on
+  `feature/week-3`.
+
 ## 2026-11-05
 
 Getting week 3 ready to preview on Saturday 7 November (`feature/week-3`; not approved yet, nothing

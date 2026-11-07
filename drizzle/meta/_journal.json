@@ -127,6 +127,13 @@
       "when": 1793928642679,
       "tag": "0017_charge_concepts_and_receipt_balances",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794018541349,
+      "tag": "0018_optional_note_exchange_rate",
+      "breakpoints": true
     }
   ]
 }

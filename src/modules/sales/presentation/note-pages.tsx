@@ -243,7 +243,7 @@ async function loadNote(params: Promise<{ id: string }>) {
 export async function NoteDetail({ params }: { params: Promise<{ id: string }> }) {
   const { note, canEdit, canVoid, actor } = await loadNote(params);
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
-  const bob = ExchangeRate.parse(note.exchangeRate).toBob(total);
+  const bob = note.exchangeRate ? ExchangeRate.parse(note.exchangeRate).toBob(total) : null;
   const nextNumber = canEdit ? await nextNoteNumber(notesDeps(), actor) : null;
   const isDelivery = note.type === "delivery";
   const followUps =
@@ -298,7 +298,7 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                 <ConfirmNoteButton
                   noteId={note.id}
                   total={total.toDecimalString()}
-                  exchangeRate={note.exchangeRate}
+                  exchangeRate={note.exchangeRate ?? ""}
                   isCash={note.paymentTerms === "cash"}
                   nextNumber={nextNumber}
                 />
@@ -343,7 +343,13 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
             <Item label="Técnico de venta">{note.technician?.name}</Item>
             {isDelivery && <Item label="Pago">{paymentLabel(note.paymentTerms)}</Item>}
             <Item label="Tipo de cambio">
-              <span className="tabular-nums">{formatRate(note.exchangeRate)}</span> Bs por US$
+              {note.exchangeRate ? (
+                <>
+                  <span className="tabular-nums">{formatRate(note.exchangeRate)}</span> Bs por US$
+                </>
+              ) : (
+                "Se define al cobrar"
+              )}
             </Item>
             {isDelivery && <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>}
             {note.confirmed && (
@@ -430,10 +436,12 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               {formatMoney(total.toDecimalString())}
             </dd>
           </div>
-          <div className="flex items-baseline justify-between gap-6 text-sm">
-            <dt className="text-muted-foreground">Equivale a Bs</dt>
-            <dd className="font-medium tabular-nums">{formatMoney(bob.toDecimalString())}</dd>
-          </div>
+          {bob && (
+            <div className="flex items-baseline justify-between gap-6 text-sm">
+              <dt className="text-muted-foreground">Equivale a Bs</dt>
+              <dd className="font-medium tabular-nums">{formatMoney(bob.toDecimalString())}</dd>
+            </div>
+          )}
         </dl>
       </section>
 
@@ -593,7 +601,7 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
           propertyId: note.property?.id ?? "",
           technicianId: note.technician?.id ?? "",
           paymentTerms: note.paymentTerms,
-          exchangeRate: trimDecimalZeros(note.exchangeRate),
+          exchangeRate: note.exchangeRate ? trimDecimalZeros(note.exchangeRate) : "",
           receiverName: note.receiver.name,
           receiverDocumentId: note.receiver.documentId ?? "",
           receiverRelationship: note.receiver.relationship ?? "",

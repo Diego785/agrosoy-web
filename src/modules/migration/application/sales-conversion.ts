@@ -41,11 +41,6 @@ const convertSalesSchema = z.object({
   batchId: z.uuid(),
   campaignId: z.uuid({ error: "Elige la campaña de la planilla." }),
   cutoffDate: z.iso.date({ error: "Escribe la fecha de corte como dd/mm/aaaa." }),
-  defaultExchangeRate: z
-    .string()
-    .trim()
-    .transform((value) => value.replace(",", "."))
-    .pipe(z.string().regex(/^\d+(\.\d{1,4})?$/, { error: "Escribe el tipo de cambio, por ejemplo 12.00." })),
 });
 
 const undoSchema = z.object({
@@ -54,10 +49,7 @@ const undoSchema = z.object({
 });
 
 type Plan = {
-  /** The rate is null where the sheet left it blank; the conversion fills in its default. */
-  notes: (Omit<ImportedNote, "importBatchId" | "campaignId" | "exchangeRate"> & {
-    exchangeRate: ExchangeRate | null;
-  })[];
+  notes: Omit<ImportedNote, "importBatchId" | "campaignId">[];
   /** Returns and payments the sheet records without a note. */
   entries: { customerId: string; kind: "return" | "payment"; date: string; amount: Money }[];
   skipped: SkippedRow[];
@@ -83,18 +75,8 @@ export async function convertSales(
     throw new DomainError("VALIDATION_FAILED", { fieldErrors: { campaignId: ["Elige una campaña."] } });
 
   const plan = await planSales(deps, batch, data.cutoffDate);
-  const defaultRate = ExchangeRate.parse(data.defaultExchangeRate);
   for (const note of plan.notes) {
-    await recordImportedNote(
-      deps,
-      {
-        ...note,
-        exchangeRate: note.exchangeRate ?? defaultRate,
-        importBatchId: batch.id,
-        campaignId: campaign.id,
-      },
-      actor.id,
-    );
+    await recordImportedNote(deps, { ...note, importBatchId: batch.id, campaignId: campaign.id }, actor.id);
   }
   const postings: LedgerPosting[] = plan.entries.map((entry) =>
     posting({

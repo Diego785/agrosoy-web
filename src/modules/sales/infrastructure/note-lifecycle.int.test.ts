@@ -67,6 +67,17 @@ describe("confirming delivery notes", () => {
     expect(await nextNoteNumber(noteDeps(), technician)).toBe(3);
   });
 
+  it("charges the same debt when the rate is left for the payment (D35)", async () => {
+    const ids = await seedNoteFixtures();
+    const id = await draft(ids, { exchangeRate: "" });
+    await confirmNote(noteDeps(), technician, id, { paperNumber: "" });
+
+    expect(await getNote(noteDeps(), admin, id)).toMatchObject({ status: "confirmed", exchangeRate: null });
+    expect(await ledger()).toEqual([
+      { kind: "delivery", date: "2026-10-26", amount: "2200.00", reverses: false },
+    ]);
+  });
+
   it("charges nothing for a note with only bonus or sample lines", async () => {
     const ids = await seedNoteFixtures();
     const id = await draft(ids, {

@@ -1,0 +1,2 @@
+ALTER TABLE "delivery_notes" ALTER COLUMN "exchange_rate" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "delivery_notes" ADD CONSTRAINT "delivery_notes_cash_have_rate" CHECK ("delivery_notes"."payment_terms" = 'credit' or "delivery_notes"."exchange_rate" is not null);

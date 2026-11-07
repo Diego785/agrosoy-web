@@ -33,7 +33,7 @@ export async function FollowUpPage({
 
   // A transfer suggests the new campaign's reference price for the customer's zone.
   let suggested: Record<string, string> = {};
-  let exchangeRate = trimDecimalZeros(note.exchangeRate);
+  let exchangeRate = note.exchangeRate ? trimDecimalZeros(note.exchangeRate) : "";
   if (mode === "transfer") {
     const formOptions = await loadNoteFormOptions(actor);
     const customer = formOptions.customers.find((option) => option.id === note.customer.id);

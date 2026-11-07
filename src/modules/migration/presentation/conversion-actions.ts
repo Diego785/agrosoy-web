@@ -41,7 +41,6 @@ export async function convertSalesAction(input: {
   batchId: string;
   campaignId: string;
   cutoffDate: string;
-  defaultExchangeRate: string;
 }): Promise<ActionResult<{ notes: number; entries: number; skipped: SkippedRow[] }>> {
   return runAction(async () => {
     const actor = await requireActor();

@@ -23,7 +23,7 @@ export type StatementCampaign = { id: string; season: Season; year: number; star
 
 export type NoteDetail = {
   number: number | null;
-  exchangeRate: string;
+  exchangeRate: string | null;
   observations: string | null;
   lines: {
     productName: string;
