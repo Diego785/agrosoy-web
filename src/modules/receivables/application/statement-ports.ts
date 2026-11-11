@@ -25,6 +25,7 @@ export type NoteDetail = {
   number: number | null;
   exchangeRate: string | null;
   observations: string | null;
+  taxInvoiceNumber: string | null;
   lines: {
     productName: string;
     content: string;

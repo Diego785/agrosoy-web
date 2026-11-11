@@ -145,6 +145,14 @@ export const nextNoteNumberSchema = z.object({
   nextNumber: noteNumber("Escribe un número entero mayor que 0."),
 });
 
+/** The SIN invoice of a confirmed note (D40); empty clears it. */
+export const noteInvoiceSchema = z.object({
+  taxInvoiceNumber: z.string().trim().max(30, { error: "Admite hasta 30 caracteres." }),
+  /** Other deliveries of the same customer and campaign that the same invoice covers. */
+  alsoNoteIds: z.array(z.uuid()).max(500).default([]),
+});
+
+export type NoteInvoiceInput = z.input<typeof noteInvoiceSchema>;
 export type ConfirmNoteInput = z.input<typeof confirmNoteSchema>;
 export type VoidNoteInput = z.input<typeof voidNoteSchema>;
 export type NextNoteNumberInput = z.input<typeof nextNoteNumberSchema>;

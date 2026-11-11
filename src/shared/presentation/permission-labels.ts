@@ -23,6 +23,10 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
     label: "Anular boletas",
     description: "Anular boletas confirmadas y fijar desde qué número sigue la numeración.",
   },
+  "notes.invoice": {
+    label: "Anotar facturas",
+    description: "Anotar el número de factura del SIN en boletas ya confirmadas.",
+  },
   "payments.manage": {
     label: "Cobranzas",
     description: "Registrar y anular pagos y cargos, y el tipo de cambio del día.",

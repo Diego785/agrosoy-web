@@ -55,6 +55,8 @@ export type StatementLineView = {
   amount: string;
   exchangeRate: string | null;
   observation: string | null;
+  /** The SIN invoice of a delivery, on its first line (D40). */
+  invoiceNumber: string | null;
   /** The payment behind a line: what was received, in its currency, and the whole of it in dollars. */
   receipt: {
     number: number;
@@ -123,6 +125,7 @@ export function plainLine(
     freeOfCharge: null,
     exchangeRate: null,
     observation: null,
+    invoiceNumber: null,
     receipt: null,
     isReversal: false,
     transfer: null,

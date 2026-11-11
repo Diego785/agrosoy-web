@@ -67,6 +67,8 @@ const ACTION_LABELS: Record<string, string> = {
   "sales.set_next_number": "Fijó la numeración de boletas desde el N.º",
   "sales.register_return": "Registró la devolución N.º",
   "sales.register_transfer": "Registró el traspaso N.º",
+  "sales.set_invoice": "Anotó la factura de la boleta N.º",
+  "sales.clear_invoice": "Quitó la factura de la boleta N.º",
   "collections.record_payment": "Registró el recibo N.º",
   "collections.void_payment": "Anuló el recibo N.º",
   "collections.record_charge": "Registró un cargo a",

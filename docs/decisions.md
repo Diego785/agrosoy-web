@@ -538,10 +538,11 @@ equivalent in bolivianos of every operation; until now only payments recorded in
 
 **Decision:** the SIN invoice number stays an optional reference. Administration can write, change
 or clear it on a confirmed or imported delivery note (permission `notes.invoice`, administration
-and management by default), and give one number to several notes of the same customer at once, for
-an invoice issued at the end of the campaign. Each change goes to the audit log. The statement shows
-it beside its note, on screen and in the PDF, and the note's PDF prints it. It never changes the
-debt, the numbering or the ledger.
+and management by default), and give the same number to other confirmed deliveries of the same
+customer and campaign at once, for an invoice issued at the end of the campaign. Each note that
+changes gets its own entry in the audit log. The statement shows it under its note's number ("Fact.
+4471"), on screen and in the PDF, and the note's PDF prints it with the observations, since the
+paper form has no box for it. It never changes the debt, the numbering or the ledger.
 
 **Why:** Agrosoil (7 November 2026): some companies ask for the invoice number in their statement,
 and the invoice is often issued after the deliveries, at the end of the campaign. A field only

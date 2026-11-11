@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
@@ -329,6 +329,45 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         .select({ id: deliveryNotes.id })
         .from(deliveryNotes)
         .where(and(eq(deliveryNotes.importBatchId, batchId), eq(deliveryNotes.status, "confirmed")));
+    },
+
+    async invoiceCandidates(customerId, campaignId) {
+      const rows = await executor
+        .select({
+          id: deliveryNotes.id,
+          number: sql<number | null>`coalesce(${deliveryNotes.number}, ${deliveryNotes.sheetNumber})`,
+          imported: deliveryNotes.imported,
+          noteDate: deliveryNotes.noteDate,
+          total: sql<string>`coalesce(sum(${deliveryNoteLines.total}), 0)::numeric(14,2)::text`,
+          taxInvoiceNumber: deliveryNotes.taxInvoiceNumber,
+        })
+        .from(deliveryNotes)
+        .leftJoin(deliveryNoteLines, eq(deliveryNoteLines.noteId, deliveryNotes.id))
+        .where(
+          and(
+            eq(deliveryNotes.customerId, customerId),
+            eq(deliveryNotes.campaignId, campaignId),
+            eq(deliveryNotes.type, "delivery"),
+            eq(deliveryNotes.status, "confirmed"),
+          ),
+        )
+        .groupBy(deliveryNotes.id)
+        .orderBy(asc(deliveryNotes.noteDate), asc(deliveryNotes.createdAt));
+      return rows;
+    },
+
+    async setTaxInvoiceNumber(ids, value) {
+      if (ids.length === 0) return;
+      await executor
+        .update(deliveryNotes)
+        .set({ taxInvoiceNumber: value })
+        .where(
+          and(
+            inArray(deliveryNotes.id, [...ids]),
+            eq(deliveryNotes.type, "delivery"),
+            eq(deliveryNotes.status, "confirmed"),
+          ),
+        );
     },
 
     async list({ status, customerId, limit, offset }) {

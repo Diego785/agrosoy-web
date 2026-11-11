@@ -124,6 +124,7 @@ export async function customerStatement(
       freeOfCharge: null,
       exchangeRate: null,
       observation: null,
+      invoiceNumber: null,
       receipt: null,
       transfer: null,
       fromSheet: entry.source.type === "import_batch",
@@ -157,6 +158,7 @@ export async function customerStatement(
         freeOfCharge: line.freeOfCharge,
         amount: line.total,
         observation: index === 0 ? note.observations : null,
+        invoiceNumber: index === 0 && kind === "delivery" ? note.taxInvoiceNumber : null,
       }));
     }
     if (entry.source.type === "payment") {

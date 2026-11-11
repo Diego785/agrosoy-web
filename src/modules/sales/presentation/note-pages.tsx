@@ -49,12 +49,14 @@ import {
 } from "@/shared/presentation/ui/table";
 import type { NoteStatus } from "../application/note-ports";
 import { listFollowUps } from "../application/note-follow-ups";
+import { invoiceCandidates } from "../application/note-invoices";
 import type { NoteType } from "../domain/follow-up";
 import { nextNoteNumber } from "../application/note-lifecycle";
 import { getNote, listNotes } from "../application/note-use-cases";
 import { DiscardDraftButton } from "./discard-draft-button";
 import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecycle-forms";
 import { NoteForm } from "./note-form";
+import { NoteInvoiceButton } from "./note-invoice-button";
 import { noteDeps } from "./note-deps";
 import { loadNoteFormOptions } from "./note-form-options";
 import { NOTES_PATH, editNotePath, notePath, notePdfPath } from "./note-routes";
@@ -236,18 +238,23 @@ async function loadNote(params: Promise<{ id: string }>) {
     note,
     canEdit: note.status === "draft" && can(actor, "notes.manage"),
     canVoid: note.status === "confirmed" && can(actor, "notes.void"),
+    // A confirmed delivery takes its invoice number later, imported ones included (D40).
+    canInvoice: note.type === "delivery" && note.status === "confirmed" && can(actor, "notes.invoice"),
     actor,
   };
 }
 
 export async function NoteDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { note, canEdit, canVoid, actor } = await loadNote(params);
+  const { note, canEdit, canVoid, canInvoice, actor } = await loadNote(params);
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
   const bob = note.exchangeRate ? ExchangeRate.parse(note.exchangeRate).toBob(total) : null;
   const nextNumber = canEdit ? await nextNoteNumber(notesDeps(), actor) : null;
   const isDelivery = note.type === "delivery";
   const followUps =
     isDelivery && note.status !== "draft" ? await listFollowUps(notesDeps(), actor, note.id) : [];
+  const invoiceOthers = canInvoice
+    ? (await invoiceCandidates(notesDeps(), actor, note.id)).filter((other) => other.id !== note.id)
+    : [];
 
   const transport = [
     note.carrier.name,
@@ -351,7 +358,24 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                 "Se define al cobrar"
               )}
             </Item>
-            {isDelivery && <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>}
+            {isDelivery && (
+              <Item label="Factura SIN">
+                {canInvoice ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {note.taxInvoiceNumber ?? <span className="text-muted-foreground">—</span>}
+                    <span className="print:hidden">
+                      <NoteInvoiceButton
+                        noteId={note.id}
+                        current={note.taxInvoiceNumber}
+                        others={invoiceOthers}
+                      />
+                    </span>
+                  </span>
+                ) : (
+                  note.taxInvoiceNumber
+                )}
+              </Item>
+            )}
             {note.confirmed && (
               <Item label="Confirmada">
                 {formatDateTime(note.confirmed.at)}

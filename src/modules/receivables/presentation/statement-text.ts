@@ -81,6 +81,11 @@ function paymentInBolivianos(line: StatementLineView): string | null {
   return `equivale a ${partInBolivianos}`;
 }
 
+/** "Fact. 4471" under a delivery's number, when it has a SIN invoice (D40). */
+export function invoiceLabel(line: StatementLineView): string | null {
+  return line.invoiceNumber ? `Fact. ${line.invoiceNumber}` : null;
+}
+
 /** "Boleta 12", "Recibo 3", the sheet's note number, or nothing. */
 export function documentLabel(line: StatementLineView): string {
   if (line.receipt) return `Recibo ${line.receipt.number}`;

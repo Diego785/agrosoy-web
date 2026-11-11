@@ -99,9 +99,11 @@ export function NotePdf({ note }: { note: NoteView }) {
     documentId: note.receiver.documentId,
   };
   const emptyRows = Math.max(0, MIN_ROWS - note.lines.length);
+  // The paper form has no invoice box, so the invoice goes with the observations (D40).
   const observations = [
     note.original &&
       `Sobre la boleta N.º ${note.original.number ? formatDocumentNumber(note.original.number) : "—"}.`,
+    note.taxInvoiceNumber && `Factura N.º ${note.taxInvoiceNumber}.`,
     note.observations,
     note.voided && `Anulada: ${note.voided.reason}`,
   ]

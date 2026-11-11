@@ -67,6 +67,17 @@ export type NoteListItem = {
   total: string;
 };
 
+/** A confirmed delivery note one invoice can cover (D40). */
+export type InvoiceCandidate = {
+  id: string;
+  /** The system's number, or the sheet's for imported notes. */
+  number: number | null;
+  imported: boolean;
+  noteDate: string;
+  total: string;
+  taxInvoiceNumber: string | null;
+};
+
 export interface NoteRepository {
   insertDraft(note: DraftNote, createdBy: string): Promise<{ id: string }>;
   /** Replaces header and lines of a draft. NOT_FOUND when it isn't a draft anymore. */
@@ -87,6 +98,10 @@ export interface NoteRepository {
   insertImported(note: ImportedNote, actorId: string): Promise<{ id: string }>;
   /** Confirmed notes brought in from one import batch. */
   importedFrom(batchId: string): Promise<{ id: string }[]>;
+  /** A customer's confirmed delivery notes in one campaign, oldest first. */
+  invoiceCandidates(customerId: string, campaignId: string): Promise<InvoiceCandidate[]>;
+  /** Writes or clears the SIN invoice number of confirmed delivery notes. */
+  setTaxInvoiceNumber(ids: readonly string[], value: string | null): Promise<void>;
   list(query: {
     status?: NoteStatus;
     customerId?: string;

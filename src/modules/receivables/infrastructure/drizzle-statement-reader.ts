@@ -76,6 +76,7 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
             number: sql<number | null>`coalesce(${deliveryNotes.number}, ${deliveryNotes.sheetNumber})`,
             exchangeRate: deliveryNotes.exchangeRate,
             observations: deliveryNotes.observations,
+            taxInvoiceNumber: deliveryNotes.taxInvoiceNumber,
           })
           .from(deliveryNotes)
           .where(inArray(deliveryNotes.id, [...ids])),

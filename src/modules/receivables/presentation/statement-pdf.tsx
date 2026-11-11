@@ -10,7 +10,13 @@ import { notFoundAsNull } from "@/shared/presentation/not-found";
 import { customerStatement } from "../application/statement-use-cases";
 import type { CustomerStatementView } from "../application/statement-view";
 import { statementDeps } from "./statement-deps";
-import { CREDIT_KINDS, describeLine, documentLabel, withRunningBalance } from "./statement-text";
+import {
+  CREDIT_KINDS,
+  describeLine,
+  documentLabel,
+  invoiceLabel,
+  withRunningBalance,
+} from "./statement-text";
 
 const STATUS_LABELS = { owing: "Debe", settled: "Cancelado" } as const;
 
@@ -92,9 +98,10 @@ export function StatementPdf({
             // The PDF has no "T/C" column, so a payment carries its rate in its text (D39).
             const { text, note } = describeLine(line, { withRate: true });
             const isCredit = CREDIT_KINDS.has(line.kind);
+            const invoice = invoiceLabel(line);
             return [
               line.date ? formatDate(line.date) : "—",
-              documentLabel(line),
+              invoice ? `${documentLabel(line)}\n${invoice}` : documentLabel(line),
               note ? `${text}\n${note}` : text,
               line.quantity ? formatQuantity(line.quantity) : "",
               line.unitPrice ? formatMoney(line.unitPrice) : "",

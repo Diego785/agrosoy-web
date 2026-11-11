@@ -29,7 +29,13 @@ import {
   SourceNoticeSkeleton,
   StatusBadge,
 } from "./statement-parts";
-import { CREDIT_KINDS, describeLine, documentLabel, withRunningBalance } from "./statement-text";
+import {
+  CREDIT_KINDS,
+  describeLine,
+  documentLabel,
+  invoiceLabel,
+  withRunningBalance,
+} from "./statement-text";
 
 /** One customer's movements with a running balance: deliveries and charges add, payments and returns subtract. */
 export function CustomerStatement({ statement }: { statement: CustomerStatementView }) {
@@ -78,6 +84,9 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
                     <TableCell className="tabular-nums">{line.date ? formatDate(line.date) : "—"}</TableCell>
                     <TableCell className="tabular-nums">
                       <DocumentCell line={line} />
+                      {invoiceLabel(line) && (
+                        <span className="block text-xs text-muted-foreground">{invoiceLabel(line)}</span>
+                      )}
                     </TableCell>
                     <TableCell className="whitespace-normal">
                       <Detail line={line} />
@@ -135,6 +144,7 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
                       <DocumentCell line={line} />
                     </>
                   )}
+                  {invoiceLabel(line) && ` · ${invoiceLabel(line)}`}
                 </span>
                 <span>
                   <Detail line={line} withRate />

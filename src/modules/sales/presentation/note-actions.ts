@@ -6,11 +6,13 @@ import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
 import { registerReturn, registerTransfer } from "../application/note-follow-ups";
+import { setNoteInvoice } from "../application/note-invoices";
 import { confirmNote, setNextNoteNumber, voidNote } from "../application/note-lifecycle";
 import type {
   ConfirmNoteInput,
   DraftNoteInput,
   NextNoteNumberInput,
+  NoteInvoiceInput,
   ReturnInput,
   TransferInput,
   VoidNoteInput,
@@ -67,6 +69,19 @@ export async function voidNoteAction(noteId: string, input: VoidNoteInput): Prom
     await withTransaction((tx) => voidNote(deps(tx), actor, noteId, input));
     revalidatePath(NOTES_PATH, "layout");
     return null;
+  });
+}
+
+export async function setNoteInvoiceAction(
+  noteId: string,
+  input: NoteInvoiceInput,
+): Promise<ActionResult<{ updated: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => setNoteInvoice(deps(tx), actor, noteId, input));
+    // Statements show the invoice beside its note.
+    revalidatePath("/", "layout");
+    return result;
   });
 }
 
