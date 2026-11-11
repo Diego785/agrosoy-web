@@ -492,6 +492,11 @@ passed. The statement, the portfolio and the home page show the overdue amount n
 aging still counts from each document's date. The notification about old debt warns about overdue
 debt instead.
 
+The campaign form proposes the due date from the season and the year its sales end, and a campaign
+created without one takes it. Administration (permission `payments.manage`) gives, changes or takes
+back an extension from the customer's statement, per campaign; each one is in the change log. The
+home page's "Con más de 90 días" became "Deuda vencida".
+
 Sales from the summer start date belong to summer in every zone, even where winter debt is still
 being collected until its due date.
 

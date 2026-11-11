@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
+import { campaigns, dueDateExtensions } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
 import { charges, payments } from "@/modules/collections/infrastructure/collections.tables";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -60,9 +60,23 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
           season: campaigns.season,
           year: campaigns.year,
           startsOn: campaigns.startsOn,
+          dueOn: campaigns.dueOn,
         })
         .from(campaigns)
         .orderBy(asc(campaigns.startsOn));
+    },
+
+    async extensions(customerIds) {
+      if (customerIds.length === 0) return [];
+      return executor
+        .select({
+          customerId: dueDateExtensions.customerId,
+          campaignId: dueDateExtensions.campaignId,
+          dueOn: dueDateExtensions.dueOn,
+          reason: dueDateExtensions.reason,
+        })
+        .from(dueDateExtensions)
+        .where(inArray(dueDateExtensions.customerId, [...customerIds]));
     },
 
     async notes(ids) {

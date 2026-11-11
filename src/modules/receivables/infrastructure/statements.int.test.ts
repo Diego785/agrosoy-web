@@ -9,7 +9,15 @@ import {
 } from "@test/note-fixtures";
 import { testDb } from "@test/test-database";
 import { createCampaign } from "@/modules/campaigns/application/campaign-use-cases";
-import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
+import {
+  removeDueDateExtension,
+  setDueDateExtension,
+} from "@/modules/campaigns/application/due-date-extensions";
+import {
+  customerExistence,
+  drizzleCampaignRepository,
+  drizzleDueDateExtensionRepository,
+} from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { recordCharge, recordPayment } from "@/modules/collections/application/collection-use-cases";
 import { confirmNote, voidNote } from "@/modules/sales/application/note-lifecycle";
 import { createDraftNote } from "@/modules/sales/application/note-use-cases";
@@ -119,6 +127,74 @@ describe("customer statement", () => {
       balance: "0.00",
       status: "settled",
     });
+  });
+});
+
+describe("overdue debt (D37)", () => {
+  /** Roberto owes a winter note of US$ 2.200 (due 30/11/2026) and a summer one (due 31/05/2027). */
+  async function owingBoth() {
+    const ids = await seedNoteFixtures();
+    const { id: winterId } = await createCampaign(
+      { campaigns: drizzleCampaignRepository(testDb), audit: drizzleAuditTrail(testDb) },
+      admin,
+      { season: "winter", year: 2026, startsOn: "2026-04-01", endsOn: "2026-09-30" },
+    );
+    await confirmed(ids, { noteDate: "2026-05-10" });
+    await confirmed(ids, { noteDate: "2026-10-26" });
+    return { ids, winterId };
+  }
+  const on = (today: string) => ({ statements: drizzleStatementReader(testDb), today: () => today });
+  const extensions = () => ({
+    campaigns: drizzleCampaignRepository(testDb),
+    extensions: drizzleDueDateExtensionRepository(testDb),
+    customers: customerExistence(testDb),
+    audit: drizzleAuditTrail(testDb),
+  });
+
+  it("counts a campaign's balance as overdue after its due date, also in the portfolio", async () => {
+    const { ids } = await owingBoth();
+    expect((await customerStatement(on("2026-11-30"), admin, ids.customerId, {})).overdue).toBe("0.00");
+
+    const statement = await customerStatement(on("2026-12-01"), admin, ids.customerId, {});
+    expect(statement.overdue).toBe("2200.00");
+    expect(statement.byCampaign?.map((row) => [row.season, row.dueOn, row.overdue])).toEqual([
+      ["winter", "2026-11-30", "2200.00"],
+      ["summer", "2027-05-31", "0.00"],
+    ]);
+    const portfolio = await portfolioStatement(on("2026-12-01"), admin, { technicianId: "all" });
+    expect(portfolio.customers).toMatchObject([{ name: "Roberto Mamani", overdue: "2200.00" }]);
+  });
+
+  it("waits for a customer's extension, and only administration gives one", async () => {
+    const { ids, winterId } = await owingBoth();
+    const extension = {
+      customerId: ids.customerId,
+      campaignId: winterId,
+      reason: "Cosecha tarde en el norte",
+    };
+
+    await expect(
+      setDueDateExtension(extensions(), admin, { ...extension, dueOn: "2026-11-15" }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { dueOn: expect.any(Array) } },
+    });
+    await expect(
+      setDueDateExtension(extensions(), technician, { ...extension, dueOn: "2026-12-15" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await setDueDateExtension(extensions(), admin, { ...extension, dueOn: "2026-12-15" });
+
+    const extended = await customerStatement(on("2026-12-01"), admin, ids.customerId, {});
+    expect(extended.overdue).toBe("0.00");
+    expect(extended.byCampaign?.[0]).toMatchObject({
+      dueOn: "2026-12-15",
+      campaignDueOn: "2026-11-30",
+      extension: { dueOn: "2026-12-15", reason: "Cosecha tarde en el norte" },
+    });
+    expect((await customerStatement(on("2026-12-16"), admin, ids.customerId, {})).overdue).toBe("2200.00");
+
+    await removeDueDateExtension(extensions(), admin, { customerId: ids.customerId, campaignId: winterId });
+    expect((await customerStatement(on("2026-12-01"), admin, ids.customerId, {})).overdue).toBe("2200.00");
   });
 });
 

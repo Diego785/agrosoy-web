@@ -19,7 +19,17 @@ export type LedgerRow = {
 
 export type StatementCustomer = { id: string; code: number; name: string };
 
-export type StatementCampaign = { id: string; season: Season; year: number; startsOn: string };
+export type StatementCampaign = {
+  id: string;
+  season: Season;
+  year: number;
+  startsOn: string;
+  /** When its debt falls due (D37). */
+  dueOn: string;
+};
+
+/** A customer's later due date in one campaign (D37). */
+export type StatementExtension = { customerId: string; campaignId: string; dueOn: string; reason: string };
 
 export type NoteDetail = {
   number: number | null;
@@ -53,6 +63,7 @@ export interface StatementReader {
   entries(filter: { customerId?: string; campaignId?: string; technicianId?: string }): Promise<LedgerRow[]>;
   customers(ids: readonly string[]): Promise<StatementCustomer[]>;
   campaigns(): Promise<StatementCampaign[]>;
+  extensions(customerIds: readonly string[]): Promise<StatementExtension[]>;
   notes(ids: readonly string[]): Promise<Map<string, NoteDetail>>;
   payments(ids: readonly string[]): Promise<Map<string, PaymentDetail>>;
   charges(ids: readonly string[]): Promise<Map<string, { reason: string; concept: ChargeConcept }>>;

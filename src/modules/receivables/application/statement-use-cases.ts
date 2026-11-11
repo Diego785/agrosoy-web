@@ -4,9 +4,11 @@ import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
+import { effectiveDueOn } from "@/modules/campaigns/domain/campaign";
 import { aging, withoutReversedPairs } from "../domain/aging";
+import { overdueByCampaign, totalOverdue } from "../domain/overdue";
 import { collectedPerMille, ledgerTotals } from "../domain/statement";
-import type { LedgerRow, StatementCampaign, StatementReader } from "./statement-ports";
+import type { LedgerRow, StatementCampaign, StatementExtension, StatementReader } from "./statement-ports";
 import {
   agingView,
   totalsView,
@@ -55,15 +57,22 @@ export async function portfolioStatement(
     deps.statements.campaigns(),
   ]);
   const byCustomer = Map.groupBy(entries, (entry) => entry.customerId);
-  const customers = await deps.statements.customers([...byCustomer.keys()]);
+  const [customers, extensions] = await Promise.all([
+    deps.statements.customers([...byCustomer.keys()]),
+    deps.statements.extensions([...byCustomer.keys()]),
+  ]);
   const today = deps.today();
+  const dueOf = dueDates(campaigns, extensions);
 
   const rows = customers
     .map((customer) => {
       const own = byCustomer.get(customer.id) ?? [];
       const totals = ledgerTotals(own.map(asMoney));
       const over90 = aging(withoutReversedPairs(own).map(asMoney), today).over90;
-      return { key: customer.id, name: customer.name, totals, over90 };
+      const overdue = totalOverdue(
+        overdueByCampaign(own.map(asMoney), (campaignId) => dueOf(customer.id, campaignId)?.dueOn, today),
+      );
+      return { key: customer.id, name: customer.name, totals, over90, overdue };
     })
     .filter((row) => filter.status === "all" || row.totals.status === "owing")
     .toSorted((a, b) => a.name.localeCompare(b.name, "es"));
@@ -76,6 +85,7 @@ export async function portfolioStatement(
       name: row.name,
       totals: totalsView(row.totals),
       over90: row.over90.isPositive() ? row.over90.toDecimalString() : null,
+      overdue: row.overdue.isPositive() ? row.overdue.toDecimalString() : null,
     })),
     totals: totalsView(totals),
     collectedPerMille: collectedPerMille(totals),
@@ -94,10 +104,11 @@ export async function customerStatement(
   assertCan(actor, "statements.view");
   const id = validateInput(z.uuid(), customerId);
   const { campaignId } = validateInput(customerStatementFilterSchema, input);
-  const [[customer], entries, campaigns] = await Promise.all([
+  const [[customer], entries, campaigns, extensions] = await Promise.all([
     deps.statements.customers([id]),
     deps.statements.entries({ customerId: id, campaignId }),
     deps.statements.campaigns(),
+    deps.statements.extensions([id]),
   ]);
   if (!customer) throw new DomainError("NOT_FOUND", { entity: "customer", id });
 
@@ -198,16 +209,30 @@ export async function customerStatement(
     return [{ ...base, kind: kindOf(entry), amount: signed(entry) }];
   });
 
+  const today = deps.today();
+  const dueOf = dueDates(campaigns, extensions);
+  const overdue = overdueByCampaign(
+    entries.map(asMoney),
+    (campaignOfEntry) => dueOf(customer.id, campaignOfEntry)?.dueOn,
+    today,
+  );
   const byCampaign = campaigns
     .filter((campaign) => entries.some((entry) => entry.campaignId === campaign.id))
-    .map((campaign) => ({
-      campaignId: campaign.id,
-      season: campaign.season,
-      year: campaign.year,
-      totals: totalsView(
-        ledgerTotals(entries.filter((entry) => entry.campaignId === campaign.id).map(asMoney)),
-      ),
-    }));
+    .map((campaign) => {
+      const due = dueOf(customer.id, campaign.id)!;
+      return {
+        campaignId: campaign.id,
+        season: campaign.season,
+        year: campaign.year,
+        totals: totalsView(
+          ledgerTotals(entries.filter((entry) => entry.campaignId === campaign.id).map(asMoney)),
+        ),
+        dueOn: due.dueOn,
+        campaignDueOn: campaign.dueOn,
+        extension: due.extension,
+        overdue: (overdue.get(campaign.id) ?? Money.zero()).toDecimalString(),
+      };
+    });
 
   return {
     source: LEDGER_SOURCE,
@@ -216,8 +241,31 @@ export async function customerStatement(
     lines,
     totals: totalsView(ledgerTotals(entries.map(asMoney))),
     byCampaign,
-    aging: agingView(aging(withoutReversedPairs(entries).map(asMoney), deps.today())),
+    aging: agingView(aging(withoutReversedPairs(entries).map(asMoney), today)),
+    overdue: totalOverdue(overdue).toDecimalString(),
     campaigns,
+  };
+}
+
+/**
+ * When a customer's debt in a campaign falls due: their extension when it is later than the
+ * campaign's date, otherwise the campaign's (D37).
+ */
+function dueDates(campaigns: readonly StatementCampaign[], extensions: readonly StatementExtension[]) {
+  const campaignDue = new Map(campaigns.map((campaign) => [campaign.id, campaign.dueOn]));
+  const extensionOf = new Map(
+    extensions.map((extension) => [`${extension.customerId}|${extension.campaignId}`, extension]),
+  );
+  return (customerId: string, campaignId: string) => {
+    const campaignDueOn = campaignDue.get(campaignId);
+    if (!campaignDueOn) return undefined;
+    const extension = extensionOf.get(`${customerId}|${campaignId}`);
+    const dueOn = effectiveDueOn(campaignDueOn, extension?.dueOn);
+    return {
+      dueOn,
+      extension:
+        extension && dueOn === extension.dueOn ? { dueOn: extension.dueOn, reason: extension.reason } : null,
+    };
   };
 }
 

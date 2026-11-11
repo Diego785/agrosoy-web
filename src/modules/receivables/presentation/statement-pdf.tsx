@@ -46,6 +46,9 @@ export function StatementPdf({
           ["Devoluciones", `US$ ${formatMoney(totals.returned)}`],
           ...(hasOther ? [["Cargos y otros", `US$ ${formatMoney(totals.other)}`] as [string, string]] : []),
           ["Deuda", `US$ ${formatMoney(totals.balance)} · ${STATUS_LABELS[totals.status]}`],
+          ...(statement.overdue && Money.parse(statement.overdue).isPositive()
+            ? [["Vencida", `US$ ${formatMoney(statement.overdue)}`] as [string, string]]
+            : []),
         ]}
       />
 
@@ -60,15 +63,16 @@ export function StatementPdf({
         />
       )}
 
-      {statement.byCampaign && statement.byCampaign.length > 1 && (
+      {statement.byCampaign && statement.byCampaign.length > 0 && (
         <PdfTable
           columns={[
-            { header: "Campaña", width: "25%" },
-            { header: "Entrega", width: "15%", align: "right" },
-            { header: "Pago", width: "15%", align: "right" },
-            { header: "Dev.", width: "15%", align: "right" },
-            { header: "Otros", width: "15%", align: "right" },
-            { header: "Saldo", width: "15%", align: "right" },
+            { header: "Campaña", width: "20%" },
+            { header: "Entrega", width: "13%", align: "right" },
+            { header: "Pago", width: "13%", align: "right" },
+            { header: "Dev.", width: "12%", align: "right" },
+            { header: "Otros", width: "12%", align: "right" },
+            { header: "Saldo", width: "14%", align: "right" },
+            { header: "Vence", width: "16%" },
           ]}
           rows={statement.byCampaign.map((campaign) => [
             campaignLabel(campaign),
@@ -77,6 +81,9 @@ export function StatementPdf({
             formatMoney(campaign.totals.returned),
             formatMoney(campaign.totals.other),
             formatMoney(campaign.totals.balance),
+            Money.parse(campaign.overdue).isPositive()
+              ? `${formatDate(campaign.dueOn)} (vencida)`
+              : formatDate(campaign.dueOn),
           ])}
         />
       )}

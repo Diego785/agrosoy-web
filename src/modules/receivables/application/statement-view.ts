@@ -31,7 +31,14 @@ export type AgingView = Record<AgingBucket, string>;
 
 export type PortfolioStatementView = {
   source: StatementSource;
-  customers: { key: string; name: string; totals: StatementTotalsView; over90: string | null }[];
+  customers: {
+    key: string;
+    name: string;
+    totals: StatementTotalsView;
+    over90: string | null;
+    /** Owed in campaigns past their due date (D37); null when nothing is, and in previews. */
+    overdue: string | null;
+  }[];
   totals: StatementTotalsView;
   /** Tenths of a percent of net sales collected (67 = 6.7 %). */
   collectedPerMille: number | null;
@@ -81,6 +88,12 @@ export type CampaignTotalsView = {
   season: Season;
   year: number;
   totals: StatementTotalsView;
+  /** When the customer's debt in it falls due: their extension, or the campaign's date (D37). */
+  dueOn: string;
+  campaignDueOn: string;
+  extension: { dueOn: string; reason: string } | null;
+  /** The balance, once the due date has passed and something is owed; "0.00" otherwise. */
+  overdue: string;
 };
 
 export type CustomerStatementView = {
@@ -91,6 +104,8 @@ export type CustomerStatementView = {
   /** Ledger statements only. */
   byCampaign?: CampaignTotalsView[];
   aging?: AgingView;
+  /** Ledger statements only: what is owed past the due dates (D37). */
+  overdue?: string;
 };
 
 export function totalsView(totals: StatementTotals): StatementTotalsView {

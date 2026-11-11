@@ -35,6 +35,8 @@ export function PortfolioStatement({
   const owing = statement.customers.filter((customer) => customer.totals.status === "owing").length;
   const hasOther = !Money.parse(totals.other).isZero();
   const hasAging = statement.customers.some((customer) => customer.over90 !== null);
+  const hasOverdue = statement.customers.some((customer) => customer.overdue !== null);
+  const overdueTotal = Money.sum(statement.customers.map((customer) => Money.parse(customer.overdue ?? "0")));
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,6 +45,7 @@ export function PortfolioStatement({
         <Figure label="Ventas" value={formatUsd(totals.delivered)} />
         <Figure label="Cobrado" value={formatUsd(totals.paid)} />
         <Figure label="Deuda total" value={formatUsd(totals.balance)} emphasis />
+        {hasOverdue && <Figure label="Vencida" value={formatUsd(overdueTotal.toDecimalString())} emphasis />}
         <Figure
           label="Cobrado de las ventas"
           value={statement.collectedPerMille === null ? "—" : formatPerMille(statement.collectedPerMille)}
@@ -59,6 +62,7 @@ export function PortfolioStatement({
               <TableHead className="text-right">Dev.</TableHead>
               {hasOther && <TableHead className="text-right">Otros</TableHead>}
               <TableHead className="text-right">Deuda</TableHead>
+              {hasOverdue && <TableHead className="text-right">Vencida</TableHead>}
               {hasAging && <TableHead className="text-right">Más de 90 días</TableHead>}
               <TableHead>Estado</TableHead>
               <TableHead className="w-10 print:hidden">
@@ -83,6 +87,7 @@ export function PortfolioStatement({
                 <Amount value={customer.totals.returned} />
                 {hasOther && <Amount value={customer.totals.other} />}
                 <Amount value={customer.totals.balance} strong />
+                {hasOverdue && <Amount value={customer.overdue ?? "0"} />}
                 {hasAging && <Amount value={customer.over90 ?? "0"} />}
                 <TableCell>
                   <StatusBadge status={customer.totals.status} />
@@ -106,6 +111,7 @@ export function PortfolioStatement({
               <Amount value={totals.returned} />
               {hasOther && <Amount value={totals.other} />}
               <Amount value={totals.balance} strong />
+              {hasOverdue && <Amount value={overdueTotal.toDecimalString()} />}
               {hasAging && (
                 <Amount
                   value={Money.sum(
@@ -132,6 +138,7 @@ export function PortfolioStatement({
             <CardField label="Pago">{amountText(customer.totals.paid)}</CardField>
             <CardField label="Devolución">{amountText(customer.totals.returned)}</CardField>
             {hasOther && <CardField label="Otros">{amountText(customer.totals.other)}</CardField>}
+            {hasOverdue && <CardField label="Vencida">{amountText(customer.overdue ?? "0")}</CardField>}
             {hasAging && <CardField label="Más de 90 días">{amountText(customer.over90 ?? "0")}</CardField>}
             <CardField label="Deuda">
               <span className="font-semibold">{amountText(customer.totals.balance)}</span>

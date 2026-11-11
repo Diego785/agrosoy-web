@@ -6,6 +6,7 @@ import { technicianOptions } from "@/modules/customers/application/customer-use-
 import { customerDeps } from "@/modules/customers/presentation/customer-deps";
 import { customerPath } from "@/modules/customers/presentation/customer-routes";
 import { requireActor } from "@/modules/identity/presentation/current-user";
+import { can } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
@@ -147,7 +148,10 @@ export async function LedgerCustomerStatement({
           />
         </div>
       </header>
-      <CustomerStatement statement={statement} />
+      <CustomerStatement
+        statement={statement}
+        extendFor={can(actor, "payments.manage") ? { customerId: statement.customerId } : undefined}
+      />
     </div>
   );
 }

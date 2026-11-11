@@ -47,6 +47,7 @@ export async function portfolioStatementFromImport(
       ...customer,
       totals: totalsView(customer.totals),
       over90: null,
+      overdue: null,
     })),
     totals: totalsView(totals),
     collectedPerMille: collectedPerMille(totals),

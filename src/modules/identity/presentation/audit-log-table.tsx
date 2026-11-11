@@ -50,6 +50,8 @@ const ACTION_LABELS: Record<string, string> = {
   "migration.undo_sales": "Deshizo el paso de ventas y pagos de la hoja",
   "campaigns.create": "Creó la campaña",
   "campaigns.update": "Editó la campaña",
+  "campaigns.extend_due_date": "Dio más plazo de pago a",
+  "campaigns.remove_extension": "Quitó el plazo extra de",
   "catalog.create_product": "Creó el producto",
   "catalog.update_product": "Editó el producto",
   "catalog.add_presentation": "Agregó una presentación a",

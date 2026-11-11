@@ -87,6 +87,7 @@ export async function CampaignsTable() {
               <TableHead>Campaña</TableHead>
               <TableHead>Desde</TableHead>
               <TableHead>Hasta</TableHead>
+              <TableHead>Vence la deuda</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="w-10">
                 <span className="sr-only">Abrir</span>
@@ -109,6 +110,7 @@ export async function CampaignsTable() {
                 <TableCell className="text-muted-foreground tabular-nums">
                   {formatDate(campaign.endsOn)}
                 </TableCell>
+                <TableCell className="tabular-nums">{formatDate(campaign.dueOn)}</TableCell>
                 <TableCell>{status(campaign)}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {editable(campaign) && (
@@ -140,6 +142,7 @@ export async function CampaignsTable() {
             <CardField label="Del">
               {formatDate(campaign.startsOn)} al {formatDate(campaign.endsOn)}
             </CardField>
+            <CardField label="Vence la deuda">{formatDate(campaign.dueOn)}</CardField>
           </CardListItem>
         ))}
       </CardList>
@@ -155,6 +158,7 @@ export function CampaignsTableSkeleton() {
         rows={4}
         columns={[
           { shape: "icon" },
+          { shape: "short" },
           { shape: "short" },
           { shape: "short" },
           { shape: "badge" },

@@ -218,7 +218,10 @@ async function homeFigures(actor: Actor): Promise<{ campaign?: string; items: Fi
   const items: Figure[] = [];
   if (portfolio) {
     const owing = portfolio.customers.filter((customer) => customer.totals.status === "owing").length;
-    const old = Money.sum(portfolio.customers.map((customer) => Money.parse(customer.over90 ?? "0")));
+    // Overdue is what passed its campaign's due date (D37); age alone would count winter debt as
+    // late months before it is due.
+    const overdue = Money.sum(portfolio.customers.map((customer) => Money.parse(customer.overdue ?? "0")));
+    const overdueCustomers = portfolio.customers.filter((customer) => customer.overdue !== null).length;
     items.push(
       {
         label: "Deuda total",
@@ -228,9 +231,14 @@ async function homeFigures(actor: Actor): Promise<{ campaign?: string; items: Fi
         icon: WalletIcon,
       },
       {
-        label: "Con más de 90 días",
-        value: formatUsd(old.toDecimalString()),
-        note: "De esa deuda",
+        label: "Deuda vencida",
+        value: formatUsd(overdue.toDecimalString()),
+        note:
+          overdueCustomers === 0
+            ? "Ninguna campaña vencida por cobrar"
+            : overdueCustomers === 1
+              ? "1 cliente pasó el vencimiento"
+              : `${formatCount(overdueCustomers)} clientes pasaron el vencimiento`,
         href: `${STATEMENTS_PATH}?status=owing`,
         icon: HourglassIcon,
       },
