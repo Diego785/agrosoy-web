@@ -1,4 +1,4 @@
-import { PercentIcon, PlusIcon } from "lucide-react";
+import { LandmarkIcon, PercentIcon, PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -7,7 +7,11 @@ import {
   PaymentsPageSkeleton,
   PaymentsTable,
 } from "@/modules/collections/presentation/collection-pages";
-import { CHARGES_PATH, NEW_PAYMENT_PATH } from "@/modules/collections/presentation/collection-routes";
+import {
+  CHARGES_PATH,
+  NEW_PAYMENT_PATH,
+  OPENING_BALANCES_PATH,
+} from "@/modules/collections/presentation/collection-routes";
 import { RequirePermission } from "@/modules/identity/presentation/require-permission";
 import { PageHeader } from "@/shared/presentation/app-shell";
 import { buttonVariants } from "@/shared/presentation/ui/button";
@@ -24,6 +28,10 @@ export default function PaymentsPage({ searchParams }: PageProps<"/payments">) {
           <Suspense>
             <RequirePermission permission="payments.manage" fallback={null}>
               <div className="flex gap-2">
+                <Link href={OPENING_BALANCES_PATH} className={buttonVariants({ variant: "outline" })}>
+                  <LandmarkIcon aria-hidden />
+                  Saldos iniciales
+                </Link>
                 <Link href={CHARGES_PATH} className={buttonVariants({ variant: "outline" })}>
                   <PercentIcon aria-hidden />
                   Cargos

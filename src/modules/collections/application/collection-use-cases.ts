@@ -20,6 +20,7 @@ import type {
   CollectionLookups,
   CurrentRate,
   DailyRateRepository,
+  OpeningBalanceRepository,
   OfficialRate,
   OfficialRateSource,
   PaymentListItem,
@@ -45,6 +46,7 @@ export type CollectionDeps = {
   rates: DailyRateRepository;
   /** Whether the rate in force follows the official one (D42). */
   settings: SettingsStore;
+  openingBalances: OpeningBalanceRepository;
   receipts: DocumentCounter;
   ledger: LedgerRepository;
   lookups: CollectionLookups;

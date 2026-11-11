@@ -75,6 +75,8 @@ const ACTION_LABELS: Record<string, string> = {
   "collections.void_payment": "Anuló el recibo N.º",
   "collections.record_charge": "Registró un cargo a",
   "collections.void_charge": "Anuló un cargo de",
+  "collections.record_opening_balance": "Registró el saldo inicial de",
+  "collections.void_opening_balance": "Anuló el saldo inicial de",
   "collections.set_daily_rate": "Registró el tipo de cambio del día",
   "collections.set_next_receipt_number": "Fijó la numeración de recibos desde el N.º",
   "collections.follow_official_rate": "Activó «Seguir el oficial» en el tipo de cambio",

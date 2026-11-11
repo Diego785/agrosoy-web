@@ -100,6 +100,25 @@ export const chargeSchema = z
     }
   });
 
+/** Debt a customer carries in at go-live in one campaign, without its detail (D29). */
+export const openingBalanceSchema = z.object({
+  customerId: z.uuid({ error: "Elige el cliente." }),
+  campaignId: z.uuid({ error: "Elige la campaña." }),
+  balanceDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
+  amount: decimal(2, "Escribe el monto en US$, por ejemplo 1500 o 1500.50."),
+  /** Most customers owe; one who paid ahead starts in their favor. */
+  direction: z.enum(["owes", "in_favor"]).default("owes"),
+  note: optionalText(300),
+});
+
+export const openingBalanceSearchSchema = z.object({
+  text: z.string().trim().max(100).catch(""),
+  status: z.enum(["recorded", "voided"]).optional().catch(undefined),
+  ...pagingFields,
+});
+
+export type OpeningBalanceInput = z.input<typeof openingBalanceSchema>;
+
 export const voidReasonSchema = z.object({
   reason: z
     .string()

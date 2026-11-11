@@ -29,7 +29,9 @@ export function describeLine(
   line: StatementLineView,
   { withRate = false }: { withRate?: boolean } = {},
 ): { text: string; note: string | null } {
-  if (line.isReversal) return { text: VOIDED[line.kind], note: null };
+  if (line.isReversal) {
+    return { text: line.opening ? "Anulación del saldo inicial" : VOIDED[line.kind], note: null };
+  }
   if (line.receipt) {
     const bolivianos = paymentInBolivianos(line);
     const rate = withRate && line.exchangeRate ? ` · T/C ${formatRate(line.exchangeRate)}` : "";
@@ -41,6 +43,13 @@ export function describeLine(
   if (line.kind === "charge") {
     const concept = line.chargeConcept ? CHARGE_CONCEPT_LABELS[line.chargeConcept] : "Cargo";
     return { text: `${concept}: ${line.description}`, note: null };
+  }
+  if (line.opening) {
+    const inFavor = Money.parse(line.amount).isNegative();
+    return {
+      text: inFavor ? "Saldo inicial a favor del cliente" : "Saldo inicial",
+      note: line.opening.note,
+    };
   }
   if (line.fromSheet && line.kind === "payment") return { text: "Pagos según la planilla", note: null };
   if (line.fromSheet && line.kind === "return") return { text: "Devoluciones según la planilla", note: null };

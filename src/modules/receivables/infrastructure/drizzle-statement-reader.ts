@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { campaigns, dueDateExtensions } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
-import { charges, payments } from "@/modules/collections/infrastructure/collections.tables";
+import { charges, openingBalances, payments } from "@/modules/collections/infrastructure/collections.tables";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
 import { deliveryNoteLines, deliveryNotes } from "@/modules/sales/infrastructure/notes.tables";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
@@ -136,6 +136,15 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
         .from(payments)
         .where(inArray(payments.id, [...ids]));
       return new Map(rows.map(({ id, ...payment }) => [id, payment]));
+    },
+
+    async openingBalances(ids) {
+      if (ids.length === 0) return new Map();
+      const rows = await executor
+        .select({ id: openingBalances.id, note: openingBalances.note })
+        .from(openingBalances)
+        .where(inArray(openingBalances.id, [...ids]));
+      return new Map(rows.map(({ id, note }) => [id, { note }]));
     },
 
     async charges(ids) {

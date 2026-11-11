@@ -10,9 +10,16 @@ import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-er
 import type {
   ChargeRepository,
   DailyRateRepository,
+  OpeningBalanceRepository,
   PaymentRepository,
 } from "../application/collection-ports";
-import { charges, dailyExchangeRates, paymentAllocations, payments } from "./collections.tables";
+import {
+  charges,
+  dailyExchangeRates,
+  openingBalances,
+  paymentAllocations,
+  payments,
+} from "./collections.tables";
 
 const RECEIPT_NUMBER_KEY = "payments_receiptNumber_unique";
 const recorder = alias(users, "recorder");
@@ -277,6 +284,98 @@ export function drizzleChargeRepository(executor: DbExecutor): ChargeRepository 
         .where(and(eq(charges.id, id), eq(charges.status, "recorded")))
         .returning({ id: charges.id });
       if (updated.length === 0) throw new DomainError("INVALID_STATE", { entity: "charge", id });
+    },
+  };
+}
+
+export function drizzleOpeningBalanceRepository(executor: DbExecutor): OpeningBalanceRepository {
+  const select = () =>
+    executor
+      .select({
+        balance: openingBalances,
+        customer: customerRef,
+        campaign: campaignRef,
+        voiderName: voider.name,
+      })
+      .from(openingBalances)
+      .innerJoin(customers, eq(customers.id, openingBalances.customerId))
+      .innerJoin(campaigns, eq(campaigns.id, openingBalances.campaignId))
+      .leftJoin(voider, sql`${voider.id}::text = ${openingBalances.voidedBy}`);
+  type Row = Awaited<ReturnType<typeof select>>[number];
+  const view = (row: Row) => ({
+    id: row.balance.id,
+    status: row.balance.status,
+    balanceDate: row.balance.balanceDate,
+    customer: row.customer,
+    campaign: row.campaign,
+    usdAmount: row.balance.usdAmount,
+    note: row.balance.note,
+    voided: voidInfo(row.balance, row.voiderName),
+  });
+
+  return {
+    async insert(balance, createdBy) {
+      const [row] = await executor
+        .insert(openingBalances)
+        .values({
+          balanceDate: balance.balanceDate,
+          customerId: balance.customerId,
+          campaignId: balance.campaignId,
+          usdAmount: balance.amount.toDecimalString(),
+          note: balance.note,
+          createdBy,
+        })
+        .returning({ id: openingBalances.id });
+      if (!row) throw new Error("Insert returned no opening balance");
+      return row;
+    },
+
+    async findById(id) {
+      const [row] = await select().where(eq(openingBalances.id, id));
+      return row ? view(row) : undefined;
+    },
+
+    async list({ text, status, limit, offset }) {
+      const where = and(
+        text ? ilike(customers.comparisonName, `%${escapeLike(text)}%`) : undefined,
+        status ? eq(openingBalances.status, status) : undefined,
+      );
+      const [rows, counted] = await Promise.all([
+        select()
+          .where(where)
+          .orderBy(asc(customers.comparisonName), asc(campaigns.startsOn), desc(openingBalances.createdAt))
+          .limit(limit)
+          .offset(offset),
+        executor
+          .select({ total: count() })
+          .from(openingBalances)
+          .innerJoin(customers, eq(customers.id, openingBalances.customerId))
+          .where(where),
+      ]);
+      return { items: rows.map(view), total: counted[0]?.total ?? 0 };
+    },
+
+    async hasRecorded(customerId, campaignId) {
+      const [row] = await executor
+        .select({ id: openingBalances.id })
+        .from(openingBalances)
+        .where(
+          and(
+            eq(openingBalances.customerId, customerId),
+            eq(openingBalances.campaignId, campaignId),
+            eq(openingBalances.status, "recorded"),
+          ),
+        );
+      return row !== undefined;
+    },
+
+    async markVoided(id, reason, actorId) {
+      const updated = await executor
+        .update(openingBalances)
+        .set({ status: "voided", voidReason: reason, voidedAt: new Date(), voidedBy: actorId })
+        .where(and(eq(openingBalances.id, id), eq(openingBalances.status, "recorded")))
+        .returning({ id: openingBalances.id });
+      if (updated.length === 0) throw new DomainError("INVALID_STATE", { entity: "opening_balance", id });
     },
   };
 }

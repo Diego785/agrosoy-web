@@ -80,6 +80,8 @@ export type StatementLineView = {
   fromSheet: boolean;
   /** What a charge is for (D24). */
   chargeConcept?: ChargeConcept | null;
+  /** Debt carried in at go-live, with administration's note (D29). */
+  opening?: { note: string | null } | null;
   document: { type: "note" | "payment" | "charge"; id: string } | null;
 };
 

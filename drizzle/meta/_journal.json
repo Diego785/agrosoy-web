@@ -155,6 +155,13 @@
       "when": 1794408791403,
       "tag": "0021_customer_locality",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794409638843,
+      "tag": "0022_opening_balances",
+      "breakpoints": true
     }
   ]
 }

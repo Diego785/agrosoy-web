@@ -29,6 +29,7 @@ import {
   setDailyRateAction,
   setFollowOfficialRateAction,
   voidChargeAction,
+  voidOpeningBalanceAction,
   voidPaymentAction,
 } from "./collection-actions";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
@@ -57,6 +58,21 @@ export const VoidChargeButton = resetOnLeave(function VoidChargeButton({ chargeI
       description="Se descuenta de la deuda del cliente con fecha de hoy. El cargo queda como anulado, con el motivo."
       done="Cargo anulado"
       run={(input) => voidChargeAction(chargeId, input)}
+    />
+  );
+});
+
+export const VoidOpeningBalanceButton = resetOnLeave(function VoidOpeningBalanceButton({
+  openingBalanceId,
+}: {
+  openingBalanceId: string;
+}) {
+  return (
+    <VoidButton
+      title="¿Anular este saldo inicial?"
+      description="Se revierte en la deuda del cliente con fecha de hoy. Queda como anulado, con el motivo; después puedes registrar el correcto."
+      done="Saldo inicial anulado"
+      run={(input) => voidOpeningBalanceAction(openingBalanceId, input)}
     />
   );
 });

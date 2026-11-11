@@ -62,6 +62,36 @@ export type ChargeView = {
   voided: VoidInfo;
 };
 
+/** Debt carried in at go-live (D29); `usdAmount` is negative when it is in the customer's favor. */
+export type OpeningBalanceView = {
+  id: string;
+  status: DocumentStatus;
+  balanceDate: string;
+  customer: CustomerRef;
+  campaign: CampaignRef;
+  usdAmount: string;
+  note: string | null;
+  voided: VoidInfo;
+};
+
+export type OpeningBalanceRecord = {
+  balanceDate: string;
+  customerId: string;
+  campaignId: string;
+  /** Positive owes, negative is in favor. */
+  amount: Money;
+  note: string | null;
+};
+
+export interface OpeningBalanceRepository {
+  insert(balance: OpeningBalanceRecord, createdBy: string): Promise<{ id: string }>;
+  findById(id: string): Promise<OpeningBalanceView | undefined>;
+  list(query: DocumentQuery): Promise<{ items: OpeningBalanceView[]; total: number }>;
+  /** Whether the customer already has one in force in the campaign. */
+  hasRecorded(customerId: string, campaignId: string): Promise<boolean>;
+  markVoided(id: string, reason: string, actorId: string): Promise<void>;
+}
+
 /** `text` is already normalized for comparison; it matches the customer's name or the document's number. */
 export type DocumentQuery = {
   text?: string;

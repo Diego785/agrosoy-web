@@ -9,6 +9,7 @@ import type {
   ChargeInput,
   DailyRateInput,
   NextReceiptNumberInput,
+  OpeningBalanceInput,
   PaymentInput,
   VoidReasonInput,
 } from "../application/collection-schemas";
@@ -21,6 +22,7 @@ import {
   voidPayment,
 } from "../application/collection-use-cases";
 import { setFollowOfficialRate } from "../application/official-rate";
+import { recordOpeningBalance, voidOpeningBalance } from "../application/opening-balances";
 import { collectionDeps } from "./collection-deps";
 import { PAYMENTS_PATH } from "./collection-routes";
 
@@ -66,6 +68,29 @@ export async function voidChargeAction(
   return runAction(async () => {
     const actor = await requireActor();
     await withTransaction((tx) => voidCharge(collectionDeps(tx), actor, chargeId, input));
+    refresh();
+    return null;
+  });
+}
+
+export async function recordOpeningBalanceAction(
+  input: OpeningBalanceInput,
+): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const recorded = await withTransaction((tx) => recordOpeningBalance(collectionDeps(tx), actor, input));
+    refresh();
+    return recorded;
+  });
+}
+
+export async function voidOpeningBalanceAction(
+  openingBalanceId: string,
+  input: VoidReasonInput,
+): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => voidOpeningBalance(collectionDeps(tx), actor, openingBalanceId, input));
     refresh();
     return null;
   });

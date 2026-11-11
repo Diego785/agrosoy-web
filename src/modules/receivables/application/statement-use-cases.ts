@@ -115,10 +115,11 @@ export async function customerStatement(
   const idsOf = (type: LedgerRow["source"]["type"]) => [
     ...new Set(entries.filter((entry) => entry.source.type === type).map((entry) => entry.source.id)),
   ];
-  const [notes, payments, charges] = await Promise.all([
+  const [notes, payments, charges, openings] = await Promise.all([
     deps.statements.notes(idsOf("delivery_note")),
     deps.statements.payments(idsOf("payment")),
     deps.statements.charges(idsOf("charge")),
+    deps.statements.openingBalances(idsOf("opening_balance")),
   ]);
 
   const lines = entries.flatMap((entry): StatementLineView[] => {
@@ -203,6 +204,16 @@ export async function customerStatement(
           description: charges.get(entry.source.id)?.reason ?? "",
           chargeConcept: charges.get(entry.source.id)?.concept ?? null,
           document: { type: "charge", id: entry.source.id },
+        },
+      ];
+    }
+    if (entry.source.type === "opening_balance") {
+      return [
+        {
+          ...base,
+          kind: "other",
+          amount: signed(entry),
+          opening: { note: openings.get(entry.source.id)?.note ?? null },
         },
       ];
     }

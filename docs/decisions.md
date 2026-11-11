@@ -355,6 +355,13 @@ too much work; only consigned product needs its lines.
 **Amended by D43 (10 November 2026):** Agrosoil will fill and import its full spreadsheets after
 all; opening balances and historical notes cover the debt that has no sheet.
 
+**Opening balances as built (11 November 2026):** Cobros → Saldos iniciales, for administration. One
+in force per customer and campaign, closed campaigns included; it can start in the customer's favor;
+a mistake is voided (its entry reversed the day of the void) and entered again. The statement shows
+it as "Saldo inicial" with its note, in the "others" column, and it falls due with its campaign (D37).
+Historical notes are typed as paper notes with their printed number; historical payments as paper
+receipts with theirs (D28).
+
 ## D30 · Travel allowances follow Agrosoil's weekly expense report
 
 **Decision:** M10 is a **weekly expense report** per technician, modeled on Agrosoil's spreadsheet

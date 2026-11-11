@@ -12,6 +12,7 @@ import { collectionLookups } from "@/modules/collections/infrastructure/collecti
 import {
   drizzleChargeRepository,
   drizzleDailyRateRepository,
+  drizzleOpeningBalanceRepository,
   drizzlePaymentRepository,
 } from "@/modules/collections/infrastructure/drizzle-collection-repositories";
 import { drizzleLedgerRepository } from "@/modules/receivables/infrastructure/drizzle-ledger-repository";
@@ -43,6 +44,7 @@ export function collectionDeps(today = "2026-11-02") {
   return {
     payments: drizzlePaymentRepository(testDb),
     charges: drizzleChargeRepository(testDb),
+    openingBalances: drizzleOpeningBalanceRepository(testDb),
     rates: drizzleDailyRateRepository(testDb),
     settings: drizzleSettingsStore(testDb),
     receipts: drizzleDocumentCounter(testDb, "receipt"),

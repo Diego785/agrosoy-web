@@ -103,6 +103,37 @@ export const charges = pgTable(
   ],
 );
 
+/**
+ * Debt carried in at go-live for a customer and campaign, without its detail (D29). The amount is
+ * signed: positive owes, negative is in the customer's favor.
+ */
+export const openingBalances = pgTable(
+  "opening_balances",
+  {
+    id: id(),
+    balanceDate: date({ mode: "string" }).notNull(),
+    customerId: uuid()
+      .notNull()
+      .references(() => customers.id),
+    campaignId: uuid()
+      .notNull()
+      .references(() => campaigns.id),
+    usdAmount: numeric({ precision: 14, scale: 2 }).notNull(),
+    note: text(),
+    ...voidColumns,
+    createdBy: text().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index().on(table.customerId),
+    check("opening_balances_amount_not_zero", sql`${table.usdAmount} <> 0`),
+    check(
+      "opening_balances_voided_have_reason",
+      sql`${table.status} <> 'voided' or ${table.voidReason} is not null`,
+    ),
+  ],
+);
+
 /** The day's rate, recorded by administration for customers whose agreement is `daily`. */
 export const dailyExchangeRates = pgTable("daily_exchange_rates", {
   rateDate: date({ mode: "string" }).primaryKey(),

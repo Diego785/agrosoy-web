@@ -10,6 +10,7 @@ import { collectionLookups } from "../infrastructure/collection-lookups";
 import {
   drizzleChargeRepository,
   drizzleDailyRateRepository,
+  drizzleOpeningBalanceRepository,
   drizzlePaymentRepository,
 } from "../infrastructure/drizzle-collection-repositories";
 
@@ -18,6 +19,7 @@ export function collectionDeps(executor: DbExecutor): CollectionDeps {
   return {
     payments: drizzlePaymentRepository(executor),
     charges: drizzleChargeRepository(executor),
+    openingBalances: drizzleOpeningBalanceRepository(executor),
     rates: drizzleDailyRateRepository(executor),
     settings: drizzleSettingsStore(executor),
     receipts: drizzleDocumentCounter(executor, "receipt"),

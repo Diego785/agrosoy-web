@@ -67,4 +67,6 @@ export interface StatementReader {
   notes(ids: readonly string[]): Promise<Map<string, NoteDetail>>;
   payments(ids: readonly string[]): Promise<Map<string, PaymentDetail>>;
   charges(ids: readonly string[]): Promise<Map<string, { reason: string; concept: ChargeConcept }>>;
+  /** Opening balances (D29) by id, with the note administration wrote. */
+  openingBalances(ids: readonly string[]): Promise<Map<string, { note: string | null }>>;
 }
