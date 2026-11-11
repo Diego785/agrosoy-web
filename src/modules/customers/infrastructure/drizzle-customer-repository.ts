@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, ilike, isNull, or, sql, type SQL } from "dri
 import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { DomainError } from "@/shared/domain/domain-error";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
+import { comparableText } from "@/shared/infrastructure/db/comparable-text";
 import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
 import type { CustomerQuery, CustomerRepository } from "../application/ports";
 import type { CustomerRecord } from "../domain/customer";
@@ -48,6 +49,7 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
         taxId: row.taxId,
         phone: row.phone,
         zoneId: row.zoneId,
+        locality: row.locality,
         technicianId: row.technicianId,
         exchangeRateKind: row.exchangeRateKind,
         fixedExchangeRate: row.fixedExchangeRate,
@@ -102,6 +104,7 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
         taxId: customer.taxId,
         phone: customer.phone,
         zoneId: customer.zoneId,
+        locality: customer.locality,
         technicianId: customer.technicianId,
         exchangeRateKind: customer.exchangeRateKind,
         fixedExchangeRate: customer.fixedExchangeRate,
@@ -215,6 +218,7 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
             taxId: customers.taxId,
             phone: customers.phone,
             zoneName: zones.name,
+            locality: customers.locality,
             technicianName: users.name,
           })
           .from(customers)
@@ -239,6 +243,7 @@ function toRow(customer: CustomerRecord) {
     taxId: rest.taxId ?? null,
     phone: rest.phone ?? null,
     zoneId: rest.zoneId ?? null,
+    locality: rest.locality ?? null,
     technicianId: rest.technicianId ?? null,
     notes: rest.notes ?? null,
     exchangeRateKind: exchangeRateAgreement.kind,
@@ -263,7 +268,11 @@ function searchFilter({ text, zoneId, status }: CustomerQuery): SQL | undefined 
   if (zoneId) conditions.push(eq(customers.zoneId, zoneId));
   if (text) {
     const pattern = `%${escapeLike(text)}%`;
-    const matches: SQL[] = [ilike(customers.comparisonName, pattern), ilike(customers.taxId, pattern)];
+    const matches: SQL[] = [
+      ilike(customers.comparisonName, pattern),
+      ilike(customers.taxId, pattern),
+      ilike(comparableText(customers.locality), pattern),
+    ];
     // "42" and "0042" both find customer code 42.
     if (/^\d{1,9}$/.test(text)) matches.push(eq(customers.code, Number(text)));
     conditions.push(or(...matches));

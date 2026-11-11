@@ -9,6 +9,7 @@ export type CustomerListItem = {
   taxId: string | null;
   phone: string | null;
   zoneName: string | null;
+  locality: string | null;
   technicianName: string | null;
 };
 
@@ -22,6 +23,7 @@ export type CustomerFormData = {
   taxId: string | null;
   phone: string | null;
   zoneId: string | null;
+  locality: string | null;
   technicianId: string | null;
   exchangeRateKind: "daily" | "fixed";
   /** "6.9600" or null. */

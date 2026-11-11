@@ -206,6 +206,7 @@ describe("draft delivery notes", () => {
     expect(await found({ text: "2" })).toEqual([tito]);
     expect(await found({ text: "MAMANI" })).toEqual([roberto]);
     expect(await found({ text: "añez" })).toEqual([roberto]);
+    expect(await found({ text: "FAVIO" })).toEqual([roberto]);
     // Roberto's note brings 4-energy as a sample; Tito's sells it.
     expect(await found({ text: "energy" })).toEqual([tito, roberto]);
     expect(await found({ text: "fulvin" })).toEqual([roberto]);

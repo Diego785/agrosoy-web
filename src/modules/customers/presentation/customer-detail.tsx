@@ -92,6 +92,7 @@ export async function CustomerDetail({ params }: { params: Promise<{ id: string 
           <Fact label="NIT o CI">{customer.taxId}</Fact>
           <Fact label="Teléfono">{customer.phone}</Fact>
           <Fact label="Zona">{customer.zoneName}</Fact>
+          <Fact label="Localidad">{customer.locality}</Fact>
           <Fact label="Técnico de venta">{customer.technicianName}</Fact>
           <Fact label="Tipo de cambio">
             {customer.exchangeRateKind === "fixed" && customer.fixedExchangeRate

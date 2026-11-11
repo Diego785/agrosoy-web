@@ -23,6 +23,7 @@ import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
+import { comparableText } from "@/shared/infrastructure/db/comparable-text";
 import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
 import type { NoteRepository } from "../application/note-ports";
 import { lineTotal, type DraftNote, type ImportedNote } from "../domain/delivery-note";
@@ -408,7 +409,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         const pattern = `%${escapeLike(text)}%`;
         matches.push(
           ilike(customers.comparisonName, pattern),
-          ilike(users.name, pattern),
+          ilike(comparableText(users.name), pattern),
           // A product of any of its lines.
           exists(
             executor

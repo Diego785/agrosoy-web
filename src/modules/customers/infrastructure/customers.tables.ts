@@ -40,6 +40,8 @@ export const customers = pgTable(
     taxId: text(),
     phone: text(),
     zoneId: uuid().references(() => zones.id),
+    /** The technician's own area within the zone. */
+    locality: text(),
     technicianId: uuid().references(() => users.id),
     exchangeRateKind: text({ enum: ["daily", "fixed"] })
       .notNull()

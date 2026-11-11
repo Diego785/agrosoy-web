@@ -13,7 +13,10 @@ export type CustomerDetails = {
   /** NIT or CI. */
   taxId?: string;
   phone?: string;
+  /** Agrosoil's sales zone: Norte or Este (meeting of 7 November 2026). */
   zoneId?: string;
+  /** The technician's own area within the zone, e.g. Yapacaní; information only. */
+  locality?: string;
   /** The sales technician whose portfolio the customer belongs to. */
   technicianId?: string;
   exchangeRateAgreement: ExchangeRateAgreement;
@@ -42,6 +45,7 @@ export function customerRecord(details: CustomerDetails): CustomerRecord {
       .toUpperCase(),
     phone: optionalText(details.phone),
     zoneId: details.zoneId || undefined,
+    locality: optionalText(details.locality),
     technicianId: details.technicianId || undefined,
     exchangeRateAgreement: details.exchangeRateAgreement,
     notes: optionalText(details.notes),

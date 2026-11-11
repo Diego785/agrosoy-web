@@ -148,6 +148,13 @@
       "when": 1794408238945,
       "tag": "0020_app_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794408791403,
+      "tag": "0021_customer_locality",
+      "breakpoints": true
     }
   ]
 }

@@ -22,6 +22,7 @@ export const customerSchema = z
       .optional(),
     phone: optionalText(30, "El teléfono admite hasta 30 caracteres."),
     zoneId: z.union([z.literal(""), z.uuid()]).optional(),
+    locality: optionalText(60, "La localidad admite hasta 60 caracteres."),
     technicianId: z.union([z.literal(""), z.uuid()]).optional(),
     exchangeRateKind: z.enum(["daily", "fixed"], { error: "Elige el tipo de cambio acordado." }),
     fixedExchangeRate: z.string().trim().optional(),

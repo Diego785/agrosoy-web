@@ -110,6 +110,12 @@ export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technici
             </NativeSelect>
             <FieldError errors={[errors.technicianId]} />
           </Field>
+          <Field data-invalid={!!errors.locality}>
+            <FieldLabel htmlFor="locality">Localidad (opcional)</FieldLabel>
+            <Input id="locality" aria-invalid={!!errors.locality} {...form.register("locality")} />
+            <FieldDescription>El lugar dentro de la zona, como lo ubica el técnico.</FieldDescription>
+            <FieldError errors={[errors.locality]} />
+          </Field>
         </div>
       </FormSection>
 
@@ -182,6 +188,7 @@ function initialValues(customer: CustomerFormData | undefined): CustomerInput {
     taxId: customer?.taxId ?? "",
     phone: customer?.phone ?? "",
     zoneId: customer?.zoneId ?? "",
+    locality: customer?.locality ?? "",
     technicianId: customer?.technicianId ?? "",
     exchangeRateKind: customer?.exchangeRateKind ?? "daily",
     // "6.9600" from the database reads better as "6.96".

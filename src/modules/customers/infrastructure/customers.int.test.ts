@@ -101,6 +101,18 @@ describe("customers", () => {
     expect(options.technicians).toEqual([{ id: favio.id, name: "Favio Añez" }]);
   });
 
+  it("keeps the technician's locality and finds customers by it", async () => {
+    const { id } = await register({ name: "Eduardo Cuaquira", locality: "  Yapacaní " });
+    await register({ name: "Agro Sur SRL" });
+
+    expect(await inTransaction((deps) => getCustomerForEdit(deps, admin, id))).toMatchObject({
+      locality: "Yapacaní",
+    });
+    expect((await search({ text: "yapacani" })).items).toMatchObject([
+      { id, name: "Eduardo Cuaquira", locality: "Yapacaní" },
+    ]);
+  });
+
   it("updates a customer and clears fields emptied in the form", async () => {
     const { id } = await register({ name: "Agro Sur", phone: "70000000", notes: "Paga en Montero" });
     await inTransaction((deps) =>
