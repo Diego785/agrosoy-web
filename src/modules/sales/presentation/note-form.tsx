@@ -297,14 +297,15 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
                 <span className="self-center text-xs text-muted-foreground">
                   {presentation ? quantityUnitLabel(presentation) : ""}
                 </span>
+                {/* On a free line the price is its commercial value: shown, never charged (D41). */}
                 <Input
                   className="w-28 text-right"
                   inputMode="decimal"
                   selectOnFocus
-                  placeholder="Precio US$"
-                  aria-label="Precio"
+                  placeholder={line?.freeOfCharge ? "Valor US$" : "Precio US$"}
+                  aria-label={line?.freeOfCharge ? "Valor comercial" : "Precio"}
+                  title={line?.freeOfCharge ? "Valor comercial: no se cobra" : undefined}
                   aria-invalid={!!lineErrors?.unitPrice}
-                  disabled={!!line?.freeOfCharge}
                   {...form.register(`lines.${index}.unitPrice`)}
                 />
                 <NativeSelect aria-label="Sin costo" {...form.register(`lines.${index}.freeOfCharge`)}>
@@ -314,6 +315,9 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
                 </NativeSelect>
                 <span className="ml-auto min-w-20 self-center text-right font-medium tabular-nums">
                   {formatMoney(totalOf(line))}
+                  {line?.freeOfCharge && (
+                    <span className="block text-xs font-normal text-muted-foreground">sin costo</span>
+                  )}
                 </span>
                 {lines.fields.length > 1 && (
                   <Button

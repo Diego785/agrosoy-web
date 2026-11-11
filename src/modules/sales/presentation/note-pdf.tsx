@@ -13,6 +13,7 @@ import { formatDocumentNumber, formatMoney, formatQuantity, formatRate } from "@
 import { notFoundAsNull } from "@/shared/presentation/not-found";
 import { PDF_COLORS, PdfBlank, PdfCheck, PdfFormPage, PdfLogo, pdfResponse } from "@/shared/presentation/pdf";
 import type { NoteLineView, NoteView } from "../application/note-ports";
+import { commercialValue } from "../domain/delivery-note";
 import { getNote } from "../application/note-use-cases";
 import { noteDeps } from "./note-deps";
 
@@ -44,6 +45,17 @@ function lineMeasure(line: NoteLineView): string {
     Quantity.parse(line.quantity),
   );
   return formatQuantity(measure.toDecimalString());
+}
+
+/** "muestra" or "bonificación, valor comercial US$ 125,00": shown, never charged (D41). */
+function freeText(line: NoteLineView): string {
+  const label = line.freeOfCharge ? FREE_LABELS[line.freeOfCharge] : "";
+  const value = commercialValue({
+    quantity: Quantity.parse(line.quantity),
+    unitPrice: Money.parse(line.unitPrice),
+    freeOfCharge: line.freeOfCharge,
+  });
+  return value ? `${label}, valor comercial US$ ${formatMoney(value.toDecimalString())}` : label;
 }
 
 function noteNumber(note: NoteView): string {
@@ -249,7 +261,7 @@ export function NotePdf({ note }: { note: NoteView }) {
             key={line.id}
             cells={[
               formatQuantity(line.quantity),
-              `${line.productName}${line.freeOfCharge ? ` (${FREE_LABELS[line.freeOfCharge]})` : ""}`,
+              `${line.productName}${line.freeOfCharge ? ` (${freeText(line)})` : ""}`,
               contentLabel(line),
               lineMeasure(line),
               line.freeOfCharge ? "—" : formatMoney(line.unitPrice),

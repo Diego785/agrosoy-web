@@ -53,6 +53,8 @@ import type { NoteStatus } from "../application/note-ports";
 import { listFollowUps } from "../application/note-follow-ups";
 import { invoiceCandidates } from "../application/note-invoices";
 import type { NoteType } from "../domain/follow-up";
+import { commercialValue, type FreeReason } from "../domain/delivery-note";
+import { Quantity } from "@/shared/domain/quantity";
 import { nextNoteNumber } from "../application/note-lifecycle";
 import { getNote, listNotes } from "../application/note-use-cases";
 import { DiscardDraftButton } from "./discard-draft-button";
@@ -443,7 +445,7 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                   <TableCell className="text-right tabular-nums">{formatQuantity(line.quantity)}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {line.freeOfCharge ? (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">{freeLineValue(line) ?? "—"}</span>
                     ) : (
                       <>
                         {formatMoney(line.unitPrice)}{" "}
@@ -473,7 +475,9 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               </span>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {formatQuantity(line.quantity)}
-                {line.freeOfCharge ? "" : ` × ${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
+                {line.freeOfCharge
+                  ? freeLineValue(line) && ` · ${freeLineValue(line)}`
+                  : ` × ${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
               </span>
               <CardField label="Total US$">
                 <span className="font-medium">{formatMoney(line.total)}</span>
@@ -667,7 +671,8 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
           lines: note.lines.map((line) => ({
             presentationId: line.presentationId,
             quantity: trimDecimalZeros(line.quantity),
-            unitPrice: line.freeOfCharge ? "" : line.unitPrice,
+            // A free line's price is its commercial value (D41); an empty one stays empty.
+            unitPrice: line.freeOfCharge && Number(line.unitPrice) === 0 ? "" : line.unitPrice,
             freeOfCharge: line.freeOfCharge ?? "",
           })),
         },
@@ -764,6 +769,16 @@ function ItemSkeleton({ className }: { className?: string }) {
       <Skeleton className="my-0.5 h-4 w-32" />
     </div>
   );
+}
+
+/** "Valor comercial US$ 125,00" for a free line that carries one (D41). */
+function freeLineValue(line: { quantity: string; unitPrice: string; freeOfCharge: FreeReason | null }) {
+  const value = commercialValue({
+    quantity: Quantity.parse(line.quantity),
+    unitPrice: Money.parse(line.unitPrice),
+    freeOfCharge: line.freeOfCharge,
+  });
+  return value ? `Valor comercial US$ ${formatMoney(value.toDecimalString())}` : null;
 }
 
 function Item({ label, className, children }: { label: string; className?: string; children: ReactNode }) {

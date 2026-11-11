@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
-import { lineTotal, noteLine, noteTotal } from "./delivery-note";
+import { commercialValue, lineTotal, noteLine, noteTotal } from "./delivery-note";
 
 const line = (quantity: string, price: string, freeOfCharge: "bonus" | "sample" | null = null) =>
   noteLine({
@@ -18,10 +18,13 @@ describe("delivery note lines", () => {
     expect(lineTotal(line("2.5", "3.33")).toDecimalString()).toBe("8.33");
   });
 
-  it("makes free-of-charge lines worth nothing whatever price was typed", () => {
+  it("charges nothing for a free line but keeps its commercial value (D41)", () => {
     const sample = line("2", "36", "sample");
-    expect(sample.unitPrice.isZero()).toBe(true);
+    expect(sample.unitPrice.toDecimalString()).toBe("36.00");
     expect(lineTotal(sample).toDecimalString()).toBe("0.00");
+    expect(commercialValue(sample)?.toDecimalString()).toBe("72.00");
+    expect(commercialValue(line("2", "0", "bonus"))).toBeNull();
+    expect(commercialValue(line("2", "36"))).toBeNull();
   });
 
   it("requires a positive quantity, and a price unless the line is free", () => {

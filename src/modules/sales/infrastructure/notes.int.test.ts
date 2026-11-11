@@ -157,6 +157,26 @@ describe("draft delivery notes", () => {
     });
   });
 
+  it("keeps a free line's commercial value without charging it (D41)", async () => {
+    const ids = await seedNoteFixtures();
+    const { id } = await createDraftNote(
+      deps(),
+      admin,
+      draftInput(ids, {
+        lines: [
+          { presentationId: ids.fulvin, quantity: "200", unitPrice: "11", freeOfCharge: "" },
+          { presentationId: ids.energy, quantity: "2", unitPrice: "62.5", freeOfCharge: "bonus" },
+        ],
+      }),
+    );
+    const note = await getNote(deps(), admin, id);
+    expect(note.lines.map((line) => [line.freeOfCharge, line.unitPrice, line.total])).toEqual([
+      [null, "11.00", "2200.00"],
+      ["bonus", "62.50", "0.00"],
+    ]);
+    expect((await listNotes(deps(), admin, {})).items[0]?.total).toBe("2200.00");
+  });
+
   it("finds notes by number, customer, technician, product and dates, without voided ones", async () => {
     const ids = await seedNoteFixtures();
     const { id: technicianId } = await drizzleUserDirectory(testDb).create(
