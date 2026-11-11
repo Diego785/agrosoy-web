@@ -3,6 +3,42 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-10
+
+- **Meeting of 7 November with Agrosoil, recorded in the docs.** Transcribed from the recording;
+  the transcript and its summary live outside the repo (`agrosoy/reunion-7-nov/`). New decisions
+  D37–D44; D22, D24, D29 and D36 amended; glossary, domain model and roadmap updated. The scope
+  changes go to Agrosoil next to the proposal (`agrosoy/propuesta/`) for written approval.
+- **What Agrosoil said:**
+  - winter contracts are due on 30 November and summer ones on 31 May, sometimes 30 April, with
+    extensions for some customers (D37);
+  - interest is 3 % for everyone, after a term administration chooses (D38). The developer set it
+    once per campaign closing, not monthly;
+  - customers want their payments in bolivianos in the statement (D39), and companies the invoice
+    number (D40);
+  - gifts carry a commercial value (D41), and legal fees are charged to customers in arrears (D24);
+  - administration fills and imports its full sheets itself (D43);
+  - the zones are Norte and Este;
+  - only administration records payments, which was already the default;
+  - the keeper must keep control of what other technicians take from the warehouse (D44).
+- **Said wrong in the demo, to clear up with Agrosoil:**
+  - a printed receipt number goes in its own field (D28), not in "Referencia";
+  - a payment in bolivianos can already be recorded in Bs, and then the statement shows it;
+  - technicians can't record payments;
+  - stock arrives in week 4, and notes from before the cut-off never move it;
+  - the official rate isn't followed by itself until D42;
+  - the system's note numbers must start above the pads, for example 100001 (D28), not at 1000.
+- **Before loading real data on staging:**
+  - set the number ranges (D28), the zones and the campaigns' due dates;
+  - decide whether to start from an empty database: the 31 notes voided by undoing on 7 November
+    still show in the list.
+- **Waiting on Agrosoil:**
+  - the technicians' customer lists, due Monday 9 November at noon;
+  - the manager's answer on who may take product from a warehouse (D44);
+  - any missing role.
+
+  Agrosoil's sales sheets don't come to us: administration imports them itself (D43).
+
 ## 2026-11-07
 
 - **Change log and permissions speak Spanish everywhere:** passing and undoing a sheet's sales,

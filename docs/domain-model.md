@@ -50,8 +50,9 @@ inventory (M8) and receivables (M7) inside one transaction.
 ## Customers (M2)
 
 - **Customer:** automatic `code` (a number shown as 0042; searching "42" also finds it), name,
-  NIT or CI, phone, zone, properties, assigned technician, exchange-rate agreement (`fixed` with
-  its rate, or `daily`; a database check keeps the two consistent), active flag.
+  NIT or CI, phone, zone (Agrosoil works with two, Norte and Este), locality (the technician's own
+  area within the zone, optional), properties, assigned technician, exchange-rate agreement
+  (`fixed` with its rate, or `daily`; a database check keeps the two consistent), active flag.
 - Administration and management edit customers; every role can look them up, and technicians see
   their own portfolio first.
 - Names are unique after normalization (case, accents and spacing ignored; ñ kept), so the
@@ -82,9 +83,17 @@ inventory (M8) and receivables (M7) inside one transaction.
 
 ## Campaigns (M4)
 
-- `summer` or `winter` plus year, with start and end dates; one is the current campaign.
-- Every note, payment and ledger entry belongs to a campaign, which gives the per-campaign
-  breakdown of debt.
+- `summer` or `winter` plus year, with start and end dates (its sales period; campaigns never
+  overlap); one is the current campaign.
+- Every note, payment and ledger entry belongs to the campaign its date falls in, which gives the
+  per-campaign breakdown of debt.
+- **Due date (D37):** when the campaign's debt has to be paid, 30 November for winter and 31 May of
+  the next year for summer by default; administration can move it, and can give one customer a
+  later date for one campaign (an extension, with a reason). Past it, what is still owed in that
+  campaign is **overdue**.
+- **Late-payment interest (D38):** each time a due date plus the days administration sets passes,
+  the system proposes 3 % of each customer's unpaid balance in that campaign and earlier ones
+  (earlier interest left out); administration confirms the charges.
 - **Closing** a campaign produces its summary (sales, collected, pending debt, consigned product)
   and blocks new documents dated in it, except campaign transfers out of it.
 
@@ -96,13 +105,15 @@ A note has a header and lines.
   terms (`cash` / `credit`), agreed exchange rate (optional on credit, D35), receiver (name, CI,
   position or kinship),
   person who hands over (name, position, CI), carrier (company, vehicle, CI), observations,
-  optional SIN invoice number, photo of the signed paper copy.
+  optional SIN invoice number (administration can add it after confirming, also one number to
+  several notes, D40), photo of the signed paper copy.
 - **PDF (D26):** printed like the paper form, one layout for the three types with the type's box
   checked.
 - **Historical notes (D29):** paper notes dated before the cut-off date, typed with their printed
   number; they post their debt but never move stock.
 - **Line:** presentation, lot, quantity, unit price in USD, line total, and a free-of-charge flag
-  with its reason (`bonus` or `sample`, price 0).
+  with its reason (`bonus` or `sample`). A free line keeps its unit price as its commercial value
+  and totals 0 (D41).
 - **States:** `draft` → `confirmed` → `voided` (with reason). Only drafts can be edited.
 - **Numbering (D19, D28):** one gapless counter, shared by the three types, given on confirmation.
   Paper notes typed in later keep their printed number; the counter skips numbers already taken and
@@ -149,10 +160,14 @@ Rules:
 - **Cash note:** confirming it records its payment at once, in the currency paid, for exactly the
   note's total (in bolivianos: total × the note's rate). Voiding the note voids that payment.
 - **Exchange rate (D36):** suggested from the customer's fixed rate or, without one, the rate in
-  force: the last one administration recorded, typed or taken from the official rate.
+  force: the last one administration recorded, typed or taken from the official rate. With
+  "Seguir el oficial" on, the official rate becomes the rate in force each day (D42).
 - **Charge (D24):** entered by administration with a concept (interest, price adjustment,
-  notarized contract, other) and a reason, in an open campaign. A price adjustment can also lower
-  the debt. Payments and charges are voided with a reason, never deleted.
+  notarized contract, legal fees, other) and a reason, in an open campaign. A price adjustment can
+  also lower the debt. Interest also comes from the proposals of D38. Payments and charges are
+  voided with a reason, never deleted.
+- **Who records payments:** administration only. It checks that a transfer arrived and that cash
+  reached the office before recording them (meeting of 7 November 2026).
 - A payment in bolivianos stores both amounts: `usd = bob ÷ rate`, rounded half up to the cent.
 
 ## Receivables ledger and statement (M7)
@@ -174,14 +189,22 @@ The **ledger** is an append-only table of entries:
   dated detail (each note line, receipt and charge) and the consigned product. Charges, opening
   balances and campaign transfers add an "others" column only when there are any. Voided
   documents stay in the detail with their cancelling line and net out of their own column.
+- In the detail, each payment shows its amount in bolivianos with its rate (D39) and each note its
+  invoice number, when it has one (D40). Next to the total, the statement shows what is overdue
+  (D37).
 - **Aging** pairs credits with the oldest debits (first in, first out) and reports the age of
   what is still unpaid in buckets of 30, 60, 90 and more than 90 days; voided documents and their
   reversals are left out of the pairing. The portfolio shows each customer's debt older than 90
-  days. Technicians open the portfolio on their own customers and can switch to everyone's.
+  days and what is overdue (D37). Technicians open the portfolio on their own customers and can
+  switch to everyone's.
 - Every technician can see any statement; only administration writes payments and charges.
 
 ## Inventory (M8)
 
+- **Warehouses:** the large ones are Cuatro Cañadas (zona este) and San Pedro (zona norte); San
+  Pablo and Chiquitos are small, with a keeper who is the only one taking product; Yapacaní will get
+  its own. Product moves between them often (meeting of 7 November 2026); the list is confirmed when
+  week 4 starts.
 - **Stock movements** (the kardex) are append-only: warehouse, lot, signed quantity, kind
   (`purchase_receipt`, `delivery`, `return`, `transfer_out`, `transfer_in`, `count_adjustment`,
   `opening`), source document, user and time.
@@ -193,7 +216,13 @@ The **ledger** is an append-only table of entries:
 - **Stock count:** administration opens a count; the keeper enters what is physically there
   without seeing the system quantity; differences are approved with a reason and become a
   `count_adjustment`.
-- Every stock change comes from a document: note, purchase, transfer or approved adjustment.
+- **Withdrawal (D44, settled in week 4):** whoever takes product out of a warehouse records it; the
+  product is held by the technician until delivery notes cover it or it comes back, and the keeper
+  confirms each withdrawal from their warehouse.
+- Every stock change comes from a document: note, purchase, transfer, withdrawal or approved
+  adjustment.
+- Agrosoil uses one paper "traspaso" form for both moves; in the system a **warehouse transfer**
+  and a **campaign transfer** (M5) are different documents with different names.
 
 ## Purchasing (M9)
 
@@ -223,7 +252,7 @@ Modeled on Agrosoil's weekly expense spreadsheet (D30). Amounts in bolivianos.
 ## Notifications (M11)
 
 In-app and by email to the people responsible: lots expiring in 30, 60 and 90 days, stock below
-minimum, transfers unconfirmed for 3 days, customers with debt older than 90 days.
+minimum, transfers unconfirmed for 3 days, customers with overdue debt (D37).
 
 ## Storage conventions
 
@@ -241,11 +270,11 @@ Column names are `snake_case` in the database and `camelCase` in TypeScript (Dri
 
 ## Migration (M12)
 
-**Going live (D29).** Agrosoil doesn't share its full sales spreadsheets, so administration enters
-its own starting data from a cut-off date: customers and products through imports with a preview,
-an opening balance per customer and campaign, historical notes only for product still on
-consignment, and historical payments with their printed receipt numbers. The spreadsheet import
-and conversion below remain an optional tool Agrosoil can run on its own sheets.
+**Going live (D29, D43).** Agrosoil's administration fills its full sales spreadsheets in the
+current format and imports and converts them itself; that is the main way in. Customers and
+products come through imports with a preview. For debt without a sheet, administration enters an
+opening balance per customer and campaign, historical notes only for product still on consignment,
+and historical payments with their printed receipt numbers.
 
 **Import (built in week 1).** An administrator uploads a technician's workbook on the import page.
 Each sheet with a sales table becomes an _import batch_ (D17):
@@ -272,9 +301,10 @@ Each sheet with a sales table becomes an _import batch_ (D17):
    delivery note marked imported, keeping the sheet's number apart from the system's numbering;
    the returns table (or the summary's "Dev.") and the summary's payments become ledger entries
    of the import batch, dated on a cut-off date chosen by administration because the sheet
-   doesn't date them. A sale with a blank rate stays without one (D35). Everything goes to the
-   campaign chosen for the sheet. Rows whose customer
-   or product isn't in the system are skipped and listed, never guessed. Imported notes post
+   doesn't date them: the day the sheet was last updated (D43). A sale with a blank rate stays
+   without one (D35). Everything goes to the campaign chosen for the sheet, and each note takes its
+   customer's technician. While a customer or product of the sheet is missing, the sales can't be
+   passed (D43; until then such rows were skipped and listed, never guessed). Imported notes post
    ledger entries but **no** stock movements, and can later take returns and transfers.
 
 - Converting sales is undone by voiding the imported notes and reversing the batch's entries;

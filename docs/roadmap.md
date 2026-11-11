@@ -44,6 +44,18 @@ waits for Agrosoil's list.
 | S5   | Travel allowances as weekly reports with approval, monthly limit and vehicles (D30)                                                                                                                                                                                                                         |
 | S6   | Agrosoil loads its own data (customers, products, opening balances, consigned notes) with a guide, instead of the spreadsheet migration (D29)                                                                                                                                                               |
 
+## Added after the meeting of 7 November 2026
+
+Recorded on 10 November. The changes that the proposal doesn't cover (due dates, automatic
+interest, commercial value of free lines, withdrawals) go to Agrosoil for written approval in a
+document next to the proposal, as its section 14 asks.
+
+| Week | Added                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S3   | Due dates, extensions and overdue debt (D37); late-payment interest proposals (D38, to week 5 if week 3 runs short); bolivianos of every payment in the statement (D39); invoice number on confirmed notes and in the statement (D40); commercial value of free lines (D41); legal fees as a charge concept (D24); "Seguir el oficial" (D42); the spreadsheet import as the main way in (D43); zones Norte and Este and the customer's locality; voided notes out of the notes list unless filtered |
+| S4   | Withdrawals held by the technician (D44), once Agrosoil's manager answers; the real warehouses (Cuatro Cañadas, San Pedro, San Pablo, Chiquitos; Yapacaní later); separate names for warehouse and campaign transfers                                                                                                                                                                                                                                                                               |
+| S6   | Agrosoil imports its own full sheets (D43); opening balances only where there is no sheet                                                                                                                                                                                                                                                                                                                                                                                                           |
+
 ## Foundation steps (week 1)
 
 | Step | Content                                                                           | Status                            |
