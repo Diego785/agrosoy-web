@@ -555,9 +555,13 @@ charging interest on interest.
   does. The page suggests the next due date. Spreadsheet debt has its payments dated on the sheet's
   cut-off (D22, D43), so an older due date would see the sales without the payments and propose
   interest on debt already paid; Agrosoil's sheets already carry the interest they charged.
-- A proposal is **charged** or **waived**. Either way that day is decided and never proposed again,
-  even if the charge is voided later (voiding it is how a charged interest is forgiven). A waived one
-  can still be charged by hand.
+- A proposal is **charged** or **waived**. Either way it is decided and never proposed again, even
+  if the charge is voided later (voiding it is how a charged interest is forgiven). A waived one can
+  still be charged by hand.
+- Each interest is known by the due date that set it off (the debt's own campaign, then each later
+  one), not by its day. Giving an extension, moving a campaign's due date or changing the grace days
+  after deciding moves the day but never charges the same due date twice. Two campaigns due the same
+  day are one occasion.
 - The charge is dated the day administration confirms it, so earlier receipts and statements don't
   change; its reason keeps the rate, the base and the day it applies ("3 % por mora sobre US$
   1.200,00 adeudados al 30/11/2026").

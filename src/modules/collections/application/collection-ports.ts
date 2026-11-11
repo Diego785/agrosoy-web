@@ -97,6 +97,8 @@ export interface OpeningBalanceRepository {
 export type InterestDecision = {
   customerId: string;
   campaignId: string;
+  /** The campaign whose due date set the interest off; with the first two, what is never proposed again. */
+  dueCampaignId: string;
   interestDate: string;
   base: Money;
   ratePercent: string;
@@ -110,10 +112,10 @@ export interface LateInterestRepository {
   entries(): Promise<InterestEntry[]>;
   campaigns(): Promise<(CampaignRef & { dueOn: string })[]>;
   extensions(): Promise<{ customerId: string; campaignId: string; dueOn: string }[]>;
-  /** The days already charged or waived, by `proposalKey`. */
+  /** The interest already charged or waived, by `proposalKey`. */
   decidedKeys(): Promise<Set<string>>;
   customers(ids: readonly string[]): Promise<CustomerRef[]>;
-  /** DUPLICATE when one of the days was decided meanwhile. */
+  /** DUPLICATE when one of them was decided meanwhile. */
   record(decisions: readonly InterestDecision[], actorId: string): Promise<void>;
 }
 

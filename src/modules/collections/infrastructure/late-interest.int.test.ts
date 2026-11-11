@@ -59,6 +59,19 @@ async function seed() {
   return { ids, winterId };
 }
 
+/** Gives the customer until `dueOn` to pay the campaign's debt (D37). */
+const extendDueDate = (customerId: string, campaignId: string, dueOn: string) =>
+  setDueDateExtension(
+    {
+      campaigns: drizzleCampaignRepository(testDb),
+      extensions: drizzleDueDateExtensionRepository(testDb),
+      customers: customerExistence(testDb),
+      audit: drizzleAuditTrail(testDb),
+    },
+    admin,
+    { customerId, campaignId, dueOn, reason: "Cosecha tardía" },
+  );
+
 const startInterest = (overrides: object = {}) =>
   updateInterestSettings(interestDeps("2026-11-11"), admin, {
     ratePercent: "3",
@@ -100,16 +113,7 @@ describe("late-payment interest (D38)", () => {
       target: "campaign",
       campaignId: winterId,
     });
-    await setDueDateExtension(
-      {
-        campaigns: drizzleCampaignRepository(testDb),
-        extensions: drizzleDueDateExtensionRepository(testDb),
-        customers: customerExistence(testDb),
-        audit: drizzleAuditTrail(testDb),
-      },
-      admin,
-      { customerId: ids.customerId, campaignId: winterId, dueOn: "2026-12-20", reason: "Cosecha tardía" },
-    );
+    await extendDueDate(ids.customerId, winterId, "2026-12-20");
     expect(await proposed("2026-12-01")).toEqual([["Tito Cruz", "2026-11-30", "600.00", "18.00"]]);
     expect(await proposed("2026-12-21")).toEqual([
       ["Roberto Mamani", "2026-12-20", "2200.00", "66.00"],
@@ -118,7 +122,7 @@ describe("late-payment interest (D38)", () => {
   });
 
   it("charges the chosen ones into the statement, dated the day they are confirmed, and doesn't propose them again", async () => {
-    const { ids } = await seed();
+    const { ids, winterId } = await seed();
     await startInterest();
     const { charged } = await chargeInterest(interestDeps("2026-12-03"), admin, {
       proposals: await chosen("2026-12-03", "Roberto Mamani"),
@@ -143,6 +147,10 @@ describe("late-payment interest (D38)", () => {
     const { items } = await listCharges(collectionDeps(), admin, {});
     await voidCharge(collectionDeps("2026-12-04"), admin, items[0]!.id, { reason: "Se le perdonó" });
     expect(await proposed("2026-12-04")).toEqual([["Tito Cruz", "2026-11-30", "1000.00", "30.00"]]);
+
+    // Nor does more time given afterwards: the same due date doesn't charge twice.
+    await extendDueDate(ids.customerId, winterId, "2026-12-20");
+    expect(await proposed("2026-12-21")).toEqual([["Tito Cruz", "2026-11-30", "1000.00", "30.00"]]);
   });
 
   it("charges again when the next campaign falls due, leaving earlier interest out of the base", async () => {

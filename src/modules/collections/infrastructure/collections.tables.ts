@@ -17,7 +17,7 @@ import { deliveryNotes } from "@/modules/sales/infrastructure/notes.tables";
 import { createdAt, id, timestamps } from "@/shared/infrastructure/db/columns";
 import { CHARGE_CONCEPTS, CHARGE_DIRECTIONS, CURRENCIES, PAYMENT_METHODS } from "../domain/payment";
 
-export const LATE_INTEREST_DAY_KEY = "late_interest_decisions_day_key";
+export const LATE_INTEREST_KEY = "late_interest_decisions_due_key";
 
 const voidColumns = {
   status: text({ enum: ["recorded", "voided"] })
@@ -149,7 +149,8 @@ export const openingBalances = pgTable(
 
 /**
  * Each late-payment interest proposal administration decided (D38): charged, with the charge it
- * became, or waived. A decided day is never proposed again, even if its charge is voided later.
+ * became, or waived. It is never proposed again, even if its charge is voided later or its day
+ * moves: it is known by the due date that set it off, not by the day.
  */
 export const lateInterestDecisions = pgTable(
   "late_interest_decisions",
@@ -161,7 +162,11 @@ export const lateInterestDecisions = pgTable(
     campaignId: uuid()
       .notNull()
       .references(() => campaigns.id),
-    /** The due date plus the grace days the interest applies on. */
+    /** The campaign whose due date set it off: the debt's own, or a later one. */
+    dueCampaignId: uuid()
+      .notNull()
+      .references(() => campaigns.id),
+    /** The due date plus the grace days (or the customer's extension) it applied on. */
     interestDate: date({ mode: "string" }).notNull(),
     baseUsd: numeric({ precision: 14, scale: 2 }).notNull(),
     ratePercent: numeric({ precision: 5, scale: 2 }).notNull(),
@@ -171,7 +176,7 @@ export const lateInterestDecisions = pgTable(
     decidedAt: createdAt(),
   },
   (table) => [
-    uniqueIndex(LATE_INTEREST_DAY_KEY).on(table.customerId, table.campaignId, table.interestDate),
+    uniqueIndex(LATE_INTEREST_KEY).on(table.customerId, table.campaignId, table.dueCampaignId),
     check(
       "late_interest_decisions_charged_have_charge",
       sql`${table.outcome} <> 'charged' or ${table.chargeId} is not null`,

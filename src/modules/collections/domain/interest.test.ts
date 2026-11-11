@@ -66,12 +66,30 @@ describe("late-payment interest (D38)", () => {
       entry("s26", "2026-10-26", "400"),
     ];
     const decided = new Set([
-      proposalKey({ customerId: "roberto", campaignId: "w26", interestDate: "2026-11-30" }),
+      proposalKey({ customerId: "roberto", campaignId: "w26", dueCampaignId: "w26" }),
     ]);
     expect(propose(entries, "2027-06-01", { decided })).toEqual([
       ["s26", "2027-05-31", "400.00", "12.00"],
       ["w26", "2027-05-31", "2200.00", "66.00"],
     ]);
+  });
+
+  it("never proposes a decided interest again when its day moves afterwards", () => {
+    const entries = [entry("w26", "2026-05-10", "2200")];
+    const decided = new Set([
+      proposalKey({ customerId: "roberto", campaignId: "w26", dueCampaignId: "w26" }),
+    ]);
+    // Charged on 30/11, then an extension, a later due date or more grace days.
+    expect(propose(entries, "2026-12-21", { decided, extensionOf: () => "2026-12-20" })).toEqual([]);
+    expect(
+      propose(entries, "2026-12-21", { decided, campaigns: [{ ...winter, dueOn: "2026-12-15" }, summer] }),
+    ).toEqual([]);
+    expect(propose(entries, "2026-12-21", { decided, settings: { ...settings, graceDays: 15 } })).toEqual([]);
+    // The next campaign's due date is a new occasion, once even if two campaigns share it.
+    const twin = { id: "s26b", dueOn: "2027-05-31" };
+    expect(
+      propose(entries, "2027-06-01", { decided, campaigns: [winter, summer, twin] }).map(([, day]) => day),
+    ).toEqual(["2027-05-31"]);
   });
 
   it("waits for the grace days and for a customer's extension", () => {
@@ -121,6 +139,7 @@ describe("late-payment interest (D38)", () => {
     const proposal = {
       customerId: "roberto",
       campaignId: "w26",
+      dueCampaignId: "w26",
       interestDate: "2026-11-30",
       base: Money.parse("1234567.5"),
       amount: Money.parse("37037.03"),

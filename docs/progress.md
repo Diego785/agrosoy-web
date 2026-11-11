@@ -20,7 +20,13 @@ up without re-reading the whole history.
   - late-payment interest proposed, charged or waived at `/payments/interest` (D38);
   - returns and transfers that gather lines from several deliveries, started from the customer and
     campaign (D25).
-- **Migrations 0019–0024** are new this week. They ran only on the test database; staging gets them
+- **Interest fix found while reviewing zones:** a decided interest was remembered by its day, so an
+  extension or a moved due date given after charging proposed it again. It is now remembered by the
+  due date that set it off (migration 0025).
+- **Vencimiento por zona, not built:** the contracts' dates are the same for every zone, and a
+  zone-wide due date would follow the customer's current zone backwards. If administration needs to
+  give a whole zone more time, the fit is a bulk action that creates each customer's extension.
+- **Migrations 0019–0025** are new this week. They ran only on the test database; staging gets them
   when `main` is deployed after approval. 0019 fills the due dates of existing campaigns (checked
   on a copy); 0024 drops `delivery_notes.original_note_id`, whose information stays in each line.
 - **Checked in the browser** on a throwaway local database: the interest page (settings, charging,

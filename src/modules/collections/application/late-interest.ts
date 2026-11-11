@@ -244,6 +244,7 @@ export async function chargeInterest(
     decisions.push({
       customerId: proposal.customerId,
       campaignId: proposal.campaignId,
+      dueCampaignId: proposal.dueCampaignId,
       interestDate: proposal.interestDate,
       base: proposal.base,
       ratePercent: settings.ratePercent,
@@ -281,6 +282,7 @@ export async function waiveInterest(
     chosen.map((proposal) => ({
       customerId: proposal.customerId,
       campaignId: proposal.campaignId,
+      dueCampaignId: proposal.dueCampaignId,
       interestDate: proposal.interestDate,
       base: proposal.base,
       ratePercent: settings.ratePercent,

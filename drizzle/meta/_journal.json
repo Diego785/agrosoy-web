@@ -176,6 +176,13 @@
       "when": 1794414647005,
       "tag": "0024_follow_ups_from_several_deliveries",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794420504026,
+      "tag": "0025_interest_by_due_date",
+      "breakpoints": true
     }
   ]
 }

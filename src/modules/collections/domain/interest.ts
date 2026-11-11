@@ -50,6 +50,11 @@ export type InterestEntry = {
 export type InterestProposal = {
   customerId: string;
   campaignId: string;
+  /**
+   * The campaign whose due date set it off: the debt's own campaign the first time, a later one each
+   * time after. Interest is remembered by this, not by its day, which moves with extensions.
+   */
+  dueCampaignId: string;
   /** The day the interest applies: a due date plus the grace days. */
   interestDate: string;
   /** What was still owed in the campaign that day, without earlier interest. */
@@ -57,22 +62,24 @@ export type InterestProposal = {
   amount: Money;
 };
 
-export const proposalKey = (proposal: Pick<InterestProposal, "customerId" | "campaignId" | "interestDate">) =>
-  `${proposal.customerId}|${proposal.campaignId}|${proposal.interestDate}`;
+export const proposalKey = (
+  proposal: Pick<InterestProposal, "customerId" | "campaignId" | "dueCampaignId">,
+) => `${proposal.customerId}|${proposal.campaignId}|${proposal.dueCampaignId}`;
 
 /**
  * The interest charges to propose today (D38). A customer's debt in a campaign earns interest once
  * on that campaign's due date (or their extension) plus the grace days, and again each time a later
  * campaign falls due while it is still owed. The base is the campaign's balance that day without
  * earlier interest and without voided documents, which never were debt. Nothing is proposed for a
- * day already decided, before the day has passed, or before the day interest starts.
+ * due date already decided, even if its day moved since (an extension, a changed due date or grace
+ * days), before the day has passed, or before the day interest starts.
  */
 export function interestProposals(input: {
   campaigns: readonly { id: string; dueOn: string }[];
   entries: readonly InterestEntry[];
   /** The customer's later due date in a campaign, if they were given one (D37). */
   extensionOf: (customerId: string, campaignId: string) => string | undefined;
-  /** Days already charged or waived, by `proposalKey`. */
+  /** Interest already charged or waived, by `proposalKey`. */
   decided: ReadonlySet<string>;
   settings: InterestSettings;
   today: string;
@@ -84,7 +91,9 @@ export function interestProposals(input: {
   const standing = input.entries.filter((entry) => entry.reversesEntryId === null && !reversed.has(entry.id));
   const owedIn = Map.groupBy(standing, (entry) => `${entry.customerId}|${entry.campaignId}`);
   const dueOn = new Map(input.campaigns.map((campaign) => [campaign.id, campaign.dueOn]));
-  const dueDates = [...new Set(dueOn.values())].toSorted();
+  const byDueDate = input.campaigns.toSorted(
+    (a, b) => a.dueOn.localeCompare(b.dueOn) || a.id.localeCompare(b.id),
+  );
   const proposals: InterestProposal[] = [];
 
   for (const entries of owedIn.values()) {
@@ -93,14 +102,18 @@ export function interestProposals(input: {
     if (!campaignDue) continue;
     const extension = input.extensionOf(customerId, campaignId);
     const first = addDays(extension && extension > campaignDue ? extension : campaignDue, settings.graceDays);
-    const later = dueDates
-      .filter((date) => date > campaignDue)
-      .map((date) => addDays(date, settings.graceDays))
-      .filter((date) => date > first);
+    const events = [{ dueCampaignId: campaignId, interestDate: first }];
+    for (const later of byDueDate) {
+      const interestDate = addDays(later.dueOn, settings.graceDays);
+      // Two campaigns due the same day are one occasion, not two charges.
+      if (later.dueOn <= campaignDue || interestDate <= first) continue;
+      if (events.some((event) => event.interestDate === interestDate)) continue;
+      events.push({ dueCampaignId: later.id, interestDate });
+    }
 
-    for (const interestDate of [first, ...later]) {
+    for (const { dueCampaignId, interestDate } of events) {
       if (interestDate < startsOn || interestDate >= today) continue;
-      if (input.decided.has(proposalKey({ customerId, campaignId, interestDate }))) continue;
+      if (input.decided.has(proposalKey({ customerId, campaignId, dueCampaignId }))) continue;
       const base = Money.sum(
         entries
           .filter((entry) => !entry.isInterest && entry.date <= interestDate)
@@ -110,6 +123,7 @@ export function interestProposals(input: {
       proposals.push({
         customerId,
         campaignId,
+        dueCampaignId,
         interestDate,
         base,
         amount: interestAmount(base, settings.ratePercent),

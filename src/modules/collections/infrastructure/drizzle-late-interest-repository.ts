@@ -8,7 +8,7 @@ import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
 import type { LateInterestRepository } from "../application/collection-ports";
 import { proposalKey } from "../domain/interest";
-import { charges, LATE_INTEREST_DAY_KEY, lateInterestDecisions } from "./collections.tables";
+import { charges, LATE_INTEREST_KEY, lateInterestDecisions } from "./collections.tables";
 
 /** Reads the ledger, campaigns and extensions late-payment interest works from (D38). */
 export function drizzleLateInterestRepository(executor: DbExecutor): LateInterestRepository {
@@ -53,7 +53,7 @@ export function drizzleLateInterestRepository(executor: DbExecutor): LateInteres
         .select({
           customerId: lateInterestDecisions.customerId,
           campaignId: lateInterestDecisions.campaignId,
-          interestDate: lateInterestDecisions.interestDate,
+          dueCampaignId: lateInterestDecisions.dueCampaignId,
         })
         .from(lateInterestDecisions);
       return new Set(rows.map(proposalKey));
@@ -75,6 +75,7 @@ export function drizzleLateInterestRepository(executor: DbExecutor): LateInteres
           decisions.map((decision) => ({
             customerId: decision.customerId,
             campaignId: decision.campaignId,
+            dueCampaignId: decision.dueCampaignId,
             interestDate: decision.interestDate,
             baseUsd: decision.base.toDecimalString(),
             ratePercent: decision.ratePercent,
@@ -84,7 +85,7 @@ export function drizzleLateInterestRepository(executor: DbExecutor): LateInteres
           })),
         )
         .catch((error: unknown) => {
-          if (violatedUniqueConstraint(error) === LATE_INTEREST_DAY_KEY) {
+          if (violatedUniqueConstraint(error) === LATE_INTEREST_KEY) {
             throw new DomainError("DUPLICATE", { field: "proposals" });
           }
           throw error;
