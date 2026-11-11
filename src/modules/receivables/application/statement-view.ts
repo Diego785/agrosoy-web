@@ -55,7 +55,14 @@ export type StatementLineView = {
   amount: string;
   exchangeRate: string | null;
   observation: string | null;
-  receipt: { number: number; method: PaymentMethod; currency: Currency; amount: string } | null;
+  /** The payment behind a line: what was received, in its currency, and the whole of it in dollars. */
+  receipt: {
+    number: number;
+    method: PaymentMethod;
+    currency: Currency;
+    amount: string;
+    usdAmount: string;
+  } | null;
   /** The entry a void wrote to cancel a document. */
   isReversal: boolean;
   /** Campaign transfers: the credit in the old campaign ("out") or the charge in the new one ("in"). */

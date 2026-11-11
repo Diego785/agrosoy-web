@@ -101,6 +101,7 @@ describe("customer statement", () => {
       method: "transfer",
       currency: "BOB",
       amount: "20880.00",
+      usdAmount: "3000.00",
     });
     expect(statement.byCampaign?.map((row) => [row.season, row.totals.balance])).toEqual([
       ["winter", "0.00"],

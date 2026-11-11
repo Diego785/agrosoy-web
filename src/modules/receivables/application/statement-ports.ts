@@ -41,6 +41,8 @@ export type PaymentDetail = {
   method: PaymentMethod;
   currency: Currency;
   amount: string;
+  /** The whole payment in dollars; its ledger entries split it per campaign (D20). */
+  usdAmount: string;
   exchangeRate: string;
   reference: string | null;
 };

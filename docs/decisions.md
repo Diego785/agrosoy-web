@@ -522,10 +522,13 @@ charging interest on interest.
 ## D39 · Every payment shows its amount in bolivianos
 
 **Decision:** the statement, on screen and in its PDF, shows each payment in bolivianos with its
-exchange rate: the amount received when it was paid in Bs, and its equivalent (US$ × rate, rounded
-to the cent) when it was paid in dollars, for example "Pago · Transferencia · Bs 4.800,00 (T/C
-12,00)". Balances stay in dollars. A payment received in bolivianos is recorded in Bs, as it can be
-today, so the customer sees exactly what they deposited.
+exchange rate: the amount received when it was paid in Bs ("Pago · Transferencia · Bs 10.000,00"),
+and its equivalent (US$ × rate, rounded to the cent) when it was paid in dollars ("Pago · Efectivo ·
+equivale a Bs 4.800,00"). A payment split over two campaigns (D20) shows each campaign's part and
+the whole received ("Bs 6.000,00 de Bs 10.000,00"), so two lines never claim the same bolivianos.
+The PDF and the phone's cards add "· T/C 12,00", which the wide table shows in its own column.
+Balances stay in dollars. A payment received in bolivianos is recorded in Bs, as it can be today, so
+the customer sees exactly what they deposited.
 
 **Why:** Agrosoil (7 November 2026): customers who deposit Bs 10,000 want to see those 10,000 in
 their statement, even though the debt goes down in dollars. The proposal already promises the

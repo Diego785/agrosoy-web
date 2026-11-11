@@ -4,7 +4,9 @@ import {
   METHOD_LABELS,
   formatAmount,
 } from "@/modules/collections/presentation/collection-labels";
+import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
+import { formatRate } from "@/shared/presentation/format";
 import type { StatementLineView } from "../application/statement-view";
 
 const FREE_LABELS = { bonus: "bonificación", sample: "muestra" } as const;
@@ -19,14 +21,20 @@ const VOIDED: Record<StatementLineView["kind"], string> = {
 /** Debit kinds raise the balance; these lower it. */
 export const CREDIT_KINDS: ReadonlySet<StatementLineView["kind"]> = new Set(["payment", "return"]);
 
-/** What a statement line says, on screen and in the PDF: the main text and an optional note under it. */
-export function describeLine(line: StatementLineView): { text: string; note: string | null } {
+/**
+ * What a statement line says, on screen and in the PDF: the main text and an optional note under it.
+ * `withRate` adds a payment's exchange rate to its text, where no "T/C" column shows it.
+ */
+export function describeLine(
+  line: StatementLineView,
+  { withRate = false }: { withRate?: boolean } = {},
+): { text: string; note: string | null } {
   if (line.isReversal) return { text: VOIDED[line.kind], note: null };
   if (line.receipt) {
-    const inBolivianos =
-      line.receipt.currency === "BOB" ? ` · ${formatAmount("BOB", line.receipt.amount)}` : "";
+    const bolivianos = paymentInBolivianos(line);
+    const rate = withRate && line.exchangeRate ? ` · T/C ${formatRate(line.exchangeRate)}` : "";
     return {
-      text: `Pago · ${METHOD_LABELS[line.receipt.method]}${inBolivianos}`,
+      text: `Pago · ${METHOD_LABELS[line.receipt.method]}${bolivianos ? ` · ${bolivianos}` : ""}${rate}`,
       note: line.observation ? `Ref.: ${line.observation}` : null,
     };
   }
@@ -52,6 +60,25 @@ export function describeLine(line: StatementLineView): { text: string; note: str
     text: `${line.description}${packaging}${free}${returned}`,
     note: line.observation ? `Obs.: ${line.observation}` : null,
   };
+}
+
+/**
+ * A payment's line in bolivianos (D39): what was received when it was paid in Bs, its equivalent when it
+ * was paid in dollars. A payment split over several campaigns (D20) shows each campaign's part, and
+ * the whole Bs received, so two lines never claim the same bolivianos.
+ */
+function paymentInBolivianos(line: StatementLineView): string | null {
+  const receipt = line.receipt;
+  if (!receipt || !line.exchangeRate) return null;
+  const part = Money.parse(line.amount);
+  const isWhole = part.equals(Money.parse(receipt.usdAmount));
+  if (receipt.currency === "BOB" && isWhole) return formatAmount("BOB", receipt.amount);
+  const partInBolivianos = formatAmount(
+    "BOB",
+    ExchangeRate.parse(line.exchangeRate).toBob(part).toDecimalString(),
+  );
+  if (receipt.currency === "BOB") return `${partInBolivianos} de ${formatAmount("BOB", receipt.amount)}`;
+  return `equivale a ${partInBolivianos}`;
 }
 
 /** "Boleta 12", "Recibo 3", the sheet's note number, or nothing. */

@@ -174,6 +174,7 @@ export async function customerStatement(
                 method: payment.method,
                 currency: payment.currency,
                 amount: payment.amount,
+                usdAmount: payment.usdAmount,
               }
             : null,
           document: { type: "payment", id: entry.source.id },

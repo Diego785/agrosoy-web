@@ -89,7 +89,8 @@ export function StatementPdf({
             { header: "Saldo", width: "10%", align: "right" },
           ]}
           rows={withRunningBalance(statement.lines).map(({ line, balance }) => {
-            const { text, note } = describeLine(line);
+            // The PDF has no "T/C" column, so a payment carries its rate in its text (D39).
+            const { text, note } = describeLine(line, { withRate: true });
             const isCredit = CREDIT_KINDS.has(line.kind);
             return [
               line.date ? formatDate(line.date) : "—",

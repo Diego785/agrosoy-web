@@ -137,7 +137,7 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
                   )}
                 </span>
                 <span>
-                  <Detail line={line} />
+                  <Detail line={line} withRate />
                 </span>
                 {line.quantity && line.unitPrice && (
                   <span className="text-xs text-muted-foreground tabular-nums">
@@ -220,8 +220,9 @@ function DocumentCell({ line }: { line: StatementLineView }) {
   return <>{label}</>;
 }
 
-function Detail({ line }: { line: StatementLineView }) {
-  const { text, note } = describeLine(line);
+/** The wide table has a "T/C" column; cards show a payment's rate in its text. */
+function Detail({ line, withRate = false }: { line: StatementLineView; withRate?: boolean }) {
+  const { text, note } = describeLine(line, { withRate });
   return (
     <>
       {text}

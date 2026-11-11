@@ -114,6 +114,7 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
           method: payments.method,
           currency: payments.currency,
           amount: payments.amount,
+          usdAmount: payments.usdAmount,
           exchangeRate: payments.exchangeRate,
           reference: payments.reference,
         })
