@@ -6,7 +6,7 @@ import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
 import { convertCustomers, convertProducts } from "../application/conversion";
-import { convertSales, undoSalesConversion, type SkippedRow } from "../application/sales-conversion";
+import { convertSales, undoSalesConversion } from "../application/sales-conversion";
 import { conversionDeps, salesConversionDeps } from "../infrastructure/conversion-adapters";
 
 export async function convertCustomersAction(
@@ -41,7 +41,7 @@ export async function convertSalesAction(input: {
   batchId: string;
   campaignId: string;
   cutoffDate: string;
-}): Promise<ActionResult<{ notes: number; entries: number; skipped: SkippedRow[] }>> {
+}): Promise<ActionResult<{ notes: number; entries: number }>> {
   return runAction(async () => {
     const actor = await requireActor();
     const result = await withTransaction((tx) => convertSales(salesConversionDeps(tx, actor), actor, input));

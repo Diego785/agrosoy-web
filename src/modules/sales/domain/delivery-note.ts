@@ -76,6 +76,8 @@ export type ImportedNote = {
   noteDate: string;
   customerId: string;
   campaignId: string;
+  /** The customer's technician when the sales are passed: the sheet is one technician's (D43). */
+  technicianId: string | null;
   /** Null where the sheet left it blank: it is agreed when the customer pays (D35). */
   exchangeRate: ExchangeRate | null;
   receiverName: string;

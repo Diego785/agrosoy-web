@@ -577,10 +577,11 @@ technician and campaign, and imports and converts them itself (D17, D22). Openin
 historical notes (D29) remain for debt that has no sheet. For that, the import:
 
 - refuses to pass sales while any of the sheet's customers or products is missing, instead of
-  leaving rows out, and stores the rows a conversion left out, so registering a product later
-  doesn't empty that list;
-- reads the usual variants of its headers ("T/C", "TC" or "Tipo de cambio"; "Cant." or "Cantidad")
-  and reports a column it expects but can't find;
+  leaving rows out: the page lists what is missing and the button waits. With no row left out, the
+  reconciliation no longer works out skipped rows again from today's catalog;
+- reads the usual variants of its headers ("Fecha de venta", "Productos", "Clientes", "Cantidad",
+  "P.U.", "T/C" or "TC", "Obs.", "Nº Boleta") and reports a column it expects but can't find once,
+  at the table's header, instead of on every row;
 - gives each imported note the technician its customer has when the sales are passed (the first
   step sets it from the sheet);
 - dates the summary's payments and returns on the day the sheet was last updated, which the

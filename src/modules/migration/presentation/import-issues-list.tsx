@@ -29,8 +29,17 @@ function listOfDates(dates = ""): string {
 }
 
 /** How each finding reads for administration. Amounts in details are US$ decimal strings. */
+const MISSING_COLUMNS: Record<string, string> = {
+  quantity: "CANT.: sus filas no se pueden leer",
+  price: "PRECIO: sus filas no se pueden leer",
+  rate: "TIPO DE CAMBIO (o T/C): sus ventas quedan con el tipo de cambio por definir",
+  note: "BOLETA: las ventas de un cliente en un mismo día van en una sola boleta",
+};
+
 const DESCRIPTIONS: Record<ImportIssueCode, Describe> = {
   HEADER_NOT_FOUND: () => "La hoja no tiene la tabla de ventas (FECHA, PRODUCTO, CLIENTE).",
+  MISSING_COLUMN: (d) =>
+    `La tabla no tiene la columna ${MISSING_COLUMNS[d.column ?? ""] ?? d.column ?? "esperada"}.`,
   INVALID_VALUE: (d) =>
     `Falta el ${FIELD_LABELS[d.field ?? ""] ?? "dato"} o no es un número; la fila no se importó.`,
   INVALID_DATE: (d) => (d.value ? `La fecha «${d.value}» no es válida.` : "La fila no tiene fecha."),

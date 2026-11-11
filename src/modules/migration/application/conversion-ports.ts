@@ -1,6 +1,12 @@
 /** Writes go through the customers and catalog use cases, so their rules and audit apply. */
 
-export type ExistingCustomer = { id: string; code: number; name: string };
+export type ExistingCustomer = {
+  id: string;
+  code: number;
+  name: string;
+  /** Imported notes take it (D43); the first step sets it from the sheet. */
+  technicianId: string | null;
+};
 
 export interface CustomerRegistry {
   /** Existing customers by comparison key (normalized name). */

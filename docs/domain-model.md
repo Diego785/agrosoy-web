@@ -310,8 +310,9 @@ Each sheet with a sales table becomes an _import batch_ (D17):
 - Converting sales is undone by voiding the imported notes and reversing the batch's entries;
   only then can the sheet be imported again.
 - The reconciliation compares, per customer, the debt the sheet computes (lines recomputed,
-  payments and returns from the summary) with what the conversion recorded, and lists the skipped
-  rows. With the real `ventas.xlsx` and all products converted, the 15 customers match exactly
+  payments and returns from the summary) with what the conversion recorded; since no row is left
+  out (D43), a difference comes from what changed afterwards. With the real `ventas.xlsx`, the 15
+  customers match exactly
   (US$ 31.932,00). The sheet's own "Total" formula leaves out its last two rows (US$ 1.920), which
   the review page reports as a finding.
 - When a campaign's detail can't be reconstructed, the customer gets one `opening_balance` entry

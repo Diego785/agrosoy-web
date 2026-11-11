@@ -19,14 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/presentation/ui/table";
-import { salesReconciliation, type SkippedRow } from "../application/sales-conversion";
+import { salesReconciliation } from "../application/sales-conversion";
 import { salesConversionDeps } from "../infrastructure/conversion-adapters";
 import { importConversionPath, importReviewPath } from "./migration-routes";
-
-const SKIP_REASONS: Record<SkippedRow["reason"], string> = {
-  customer_missing: "El cliente no está en el sistema",
-  product_missing: "El producto no está en el sistema",
-};
 
 /** Each customer's debt per the sheet next to what was converted; differences need an explanation. */
 export async function ReconciliationPage({ params }: { params: Promise<{ batchId: string }> }) {
@@ -38,7 +33,7 @@ export async function ReconciliationPage({ params }: { params: Promise<{ batchId
       isDomainError(error) && error.code === "INVALID_STATE" ? null : notFoundAsNull(error),
   );
   if (!result) notFound();
-  const { batch, rows, skipped } = result;
+  const { batch, rows } = result;
   const total = (pick: (row: (typeof rows)[number]) => Money) => Money.sum(rows.map(pick)).toDecimalString();
   const differing = rows.filter((row) => !row.difference.isZero()).length;
 
@@ -123,25 +118,12 @@ export async function ReconciliationPage({ params }: { params: Promise<{ batchId
         </TableFooter>
       </Table>
 
-      {skipped.length > 0 && (
-        <section
-          aria-labelledby="skipped-rows"
-          className="overflow-hidden rounded-xl border bg-card shadow-xs"
-        >
-          <h3 id="skipped-rows" className="border-b px-5 py-3 text-sm font-semibold">
-            Filas que no se pasaron
-          </h3>
-          <ul className="divide-y text-sm">
-            {skipped.map((row) => (
-              <li key={`${row.row}-${row.reason}`} className="px-5 py-3">
-                <span className="font-medium">Fila {row.row}:</span> {SKIP_REASONS[row.reason]} ({row.label})
-              </li>
-            ))}
-          </ul>
-          <p className="border-t bg-muted/30 px-5 py-3 text-sm text-muted-foreground">
-            Pasa los clientes o productos que faltan, deshaz la conversión y vuelve a pasarla.
-          </p>
-        </section>
+      {differing > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Las ventas solo se pasan con todos los clientes y productos de la planilla, así que una diferencia
+          viene de algo que cambió después, como un cliente renombrado o un pago corregido en la planilla.
+          Para volver a pasarla, deshaz el paso de ventas y pagos.
+        </p>
       )}
       <div className="flex flex-wrap gap-2">
         <Link href={importReviewPath(batch.id)} className={buttonVariants({ variant: "outline" })}>

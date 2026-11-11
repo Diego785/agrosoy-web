@@ -11,6 +11,7 @@ export type SheetGrid = { name: string; rows: readonly (readonly CellValue[])[] 
 
 export const IMPORT_ISSUE_CODES = [
   "HEADER_NOT_FOUND",
+  "MISSING_COLUMN",
   "INVALID_VALUE",
   "INVALID_DATE",
   "ROUNDED_VALUE",
@@ -83,6 +84,7 @@ export function parseSalesSheet(grid: SheetGrid): ParsedSalesSheet {
   const lines: SalesLine[] = [];
   let declaredTotal: Money | undefined;
   for (const header of headers) {
+    reportMissingColumns(header, issues);
     const section = readSection(grid, header, issues);
     lines.push(...section.lines);
     if (header.kind === "delivery") declaredTotal ??= section.declaredTotal;
@@ -110,7 +112,7 @@ function findLineHeaders(grid: SheetGrid): LineHeader[] {
   const headers: LineHeader[] = [];
   grid.rows.forEach((cells, index) => {
     const columns = lineColumns(cells);
-    if (columns.date === undefined || columns.product === undefined || columns.customer === undefined) return;
+    if (!isLineHeader(columns)) return;
     const recent = grid.rows.slice(Math.max(0, index - 2), index).flat();
     const kind = recent.some((cell) => keyOf(cell).startsWith("devolucion")) ? "return" : "delivery";
     headers.push({ row: index, kind, columns });
@@ -118,33 +120,58 @@ function findLineHeaders(grid: SheetGrid): LineHeader[] {
   return headers;
 }
 
+/** A table starts where a row names the date, product and customer columns. */
+function isLineHeader(columns: ColumnMap): boolean {
+  return columns.date !== undefined && columns.product !== undefined && columns.customer !== undefined;
+}
+
+/**
+ * Header texts as technicians write them ("FECHA DE VENTA", "Productos", "CANT.", "T/C", "Nº BOLETA"),
+ * compared after `keyOf` drops accents and punctuation (D43).
+ */
+function columnOf(key: string): Column | undefined {
+  if (key.startsWith("fecha")) return "date";
+  if (key.startsWith("producto")) return "product";
+  if (key.startsWith("cliente")) return "customer";
+  if (key.startsWith("cant")) return "quantity";
+  if (key.startsWith("prec") || key === "pu" || key === "p u") return "price";
+  if (key.startsWith("total")) return "total";
+  if (
+    key === "tc" ||
+    key === "t c" ||
+    key.startsWith("tc ") ||
+    key.startsWith("tipo de cambio") ||
+    key.startsWith("tipo cambio")
+  ) {
+    return "rate";
+  }
+  if (key.startsWith("observ") || key === "obs") return "observation";
+  if (key.includes("boleta")) return "note";
+  return undefined;
+}
+
 function lineColumns(cells: readonly CellValue[]): ColumnMap {
   const columns: ColumnMap = {};
   cells.forEach((cell, index) => {
-    const key = keyOf(cell);
-    const column: Column | undefined =
-      key === "fecha"
-        ? "date"
-        : key === "producto"
-          ? "product"
-          : key === "cliente"
-            ? "customer"
-            : key.startsWith("cant")
-              ? "quantity"
-              : key.startsWith("prec")
-                ? "price"
-                : key.startsWith("total")
-                  ? "total"
-                  : key.startsWith("tipo de cambio")
-                    ? "rate"
-                    : key.startsWith("observ")
-                      ? "observation"
-                      : key.includes("boleta")
-                        ? "note"
-                        : undefined;
+    const column = columnOf(keyOf(cell));
     if (column && columns[column] === undefined) columns[column] = index;
   });
   return columns;
+}
+
+/**
+ * Without quantity or price no row can be read; without a rate or note column the sales still come
+ * in, with the rate left for the payment (D35) and one note per customer and date. Each missing column
+ * is reported once, at the table's header row.
+ */
+function reportMissingColumns(header: LineHeader, issues: ImportIssue[]) {
+  const expected: Column[] =
+    header.kind === "delivery" ? ["quantity", "price", "rate", "note"] : ["quantity", "price"];
+  for (const column of expected) {
+    if (header.columns[column] === undefined) {
+      issues.push({ row: header.row + 1, code: "MISSING_COLUMN", details: { column } });
+    }
+  }
 }
 
 function readSection(grid: SheetGrid, header: LineHeader, issues: ImportIssue[]) {
@@ -165,7 +192,11 @@ function readSection(grid: SheetGrid, header: LineHeader, issues: ImportIssue[])
       declaredTotal = moneyFrom(at("total"));
       break;
     }
-    if (firstKey.startsWith("devolucion") || lineColumns(cells).customer !== undefined) break;
+    // Another table starts (returns, or the summary's "Cliente" header); a customer whose name merely
+    // starts with "Cliente" doesn't end this one.
+    const isOtherHeader =
+      isLineHeader(lineColumns(cells)) || cells.some((cell) => ["cliente", "clientes"].includes(keyOf(cell)));
+    if (firstKey.startsWith("devolucion") || isOtherHeader) break;
 
     const product = textOf(at("product"));
     const customerName = textOf(at("customer"));
@@ -200,7 +231,13 @@ function readSection(grid: SheetGrid, header: LineHeader, issues: ImportIssue[])
       quantity: Quantity.parse(quantity),
       unitPrice: Money.parse(price),
       total: Quantity.parse(quantity).times(Money.parse(price)),
-      exchangeRate: rateFrom(at("rate"), row, header.kind, issues),
+      // A table without a rate column is reported once, not on every row.
+      exchangeRate: rateFrom(
+        at("rate"),
+        row,
+        header.kind === "delivery" && columns.rate !== undefined,
+        issues,
+      ),
       observation: textOf(at("observation")),
       noteNumber: noteFrom(at("note")),
     };
@@ -388,12 +425,12 @@ function moneyFrom(cell: CellValue): Money | undefined {
 function rateFrom(
   cell: CellValue,
   row: number,
-  kind: SalesLine["kind"],
+  reportBlank: boolean,
   issues: ImportIssue[],
 ): ExchangeRate | null {
   const converted = typeof cell === "number" && cell > 0 ? spreadsheetNumberToDecimal(cell, 4) : undefined;
   if (converted) return ExchangeRate.parse(converted.value);
-  if (kind === "delivery") issues.push({ row, code: "MISSING_EXCHANGE_RATE", details: {} });
+  if (reportBlank) issues.push({ row, code: "MISSING_EXCHANGE_RATE", details: {} });
   return null;
 }
 

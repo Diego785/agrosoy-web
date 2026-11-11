@@ -54,6 +54,7 @@ export function conversionDeps(executor: DbExecutor, actor: Actor): ConversionDe
           id: customers.id,
           code: customers.code,
           name: customers.name,
+          technicianId: customers.technicianId,
           key: customers.comparisonName,
         })
         .from(customers)

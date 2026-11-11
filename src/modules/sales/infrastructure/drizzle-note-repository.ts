@@ -301,6 +301,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           noteDate: note.noteDate,
           customerId: note.customerId,
           campaignId: note.campaignId,
+          technicianId: note.technicianId,
           paymentTerms: "credit",
           exchangeRate: note.exchangeRate?.toDecimalString() ?? null,
           receiverName: note.receiverName,
