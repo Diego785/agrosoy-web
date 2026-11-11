@@ -93,7 +93,9 @@ inventory (M8) and receivables (M7) inside one transaction.
   campaign is **overdue**.
 - **Late-payment interest (D38):** each time a due date plus the days administration sets passes,
   the system proposes 3 % of each customer's unpaid balance in that campaign and earlier ones
-  (earlier interest left out); administration confirms the charges.
+  (earlier interest left out, voided documents too), from the day administration says interest
+  starts. Administration charges or waives each proposal; a decided day is never proposed again.
+  The charge is dated the day it is confirmed.
 - **Closing** a campaign produces its summary (sales, collected, pending debt, consigned product)
   and blocks new documents dated in it, except campaign transfers out of it.
 

@@ -162,3 +162,35 @@ export type ChargeInput = z.input<typeof chargeSchema>;
 export type VoidReasonInput = z.input<typeof voidReasonSchema>;
 export type DailyRateInput = z.input<typeof dailyRateSchema>;
 export type NextReceiptNumberInput = z.input<typeof nextReceiptNumberSchema>;
+
+/** Late-payment interest as administration sets it (D38). */
+export const interestSettingsSchema = z.object({
+  ratePercent: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(",", "."))
+    .pipe(
+      z
+        .string()
+        .regex(/^\d{1,2}(\.\d{1,2})?$/, { error: "Escribe la tasa en %, por ejemplo 3 o 2,5." })
+        .refine((value) => Number(value) > 0, { error: "La tasa tiene que ser mayor que 0." }),
+    ),
+  graceDays: z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}$/, { error: "Escribe los días, por ejemplo 0, 15 o 30." })
+    .transform(Number)
+    .pipe(z.number().max(365, { error: "Admite hasta 365 días." })),
+  startsOn: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
+});
+
+/** The proposals administration charges or waives, each with the amount it saw (D38). */
+export const interestDecisionSchema = z.object({
+  proposals: z
+    .array(z.object({ key: z.string().max(120), usdAmount: z.string().max(20) }))
+    .min(1, { error: "Elige al menos un interés." })
+    .max(1000),
+});
+
+export type InterestSettingsInput = z.input<typeof interestSettingsSchema>;
+export type InterestDecisionInput = z.input<typeof interestDecisionSchema>;

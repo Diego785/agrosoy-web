@@ -83,6 +83,9 @@ const ACTION_LABELS: Record<string, string> = {
   "collections.follow_official_rate": "Activó «Seguir el oficial» en el tipo de cambio",
   "collections.stop_official_rate": "Desactivó «Seguir el oficial» en el tipo de cambio",
   "collections.adopt_official_rate": "Tomó el tipo de cambio oficial del",
+  "collections.set_interest": "Configuró el interés por mora:",
+  "collections.charge_interest": "Cargó interés por mora a",
+  "collections.waive_interest": "Descartó el interés por mora de",
 };
 
 export async function AuditLogTable({

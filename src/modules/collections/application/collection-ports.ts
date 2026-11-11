@@ -2,6 +2,7 @@ import type { Season } from "@/modules/campaigns/domain/campaign";
 import type { ExchangeRate } from "@/shared/domain/exchange-rate";
 import type { Money } from "@/shared/domain/money";
 import type { Allocation, CampaignBalance } from "../domain/allocation";
+import type { InterestEntry } from "../domain/interest";
 import type {
   ChargeConcept,
   ChargeDirection,
@@ -91,6 +92,40 @@ export interface OpeningBalanceRepository {
   hasRecorded(customerId: string, campaignId: string): Promise<boolean>;
   markVoided(id: string, reason: string, actorId: string): Promise<void>;
 }
+
+/** An interest proposal administration decided (D38): charged, with its charge, or waived. */
+export type InterestDecision = {
+  customerId: string;
+  campaignId: string;
+  interestDate: string;
+  base: Money;
+  ratePercent: string;
+  outcome: "charged" | "waived";
+  chargeId: string | null;
+};
+
+/** What late-payment interest reads to work out its proposals, and where decisions are kept. */
+export interface LateInterestRepository {
+  /** Every customer's ledger, interest charges flagged. */
+  entries(): Promise<InterestEntry[]>;
+  campaigns(): Promise<(CampaignRef & { dueOn: string })[]>;
+  extensions(): Promise<{ customerId: string; campaignId: string; dueOn: string }[]>;
+  /** The days already charged or waived, by `proposalKey`. */
+  decidedKeys(): Promise<Set<string>>;
+  customers(ids: readonly string[]): Promise<CustomerRef[]>;
+  /** DUPLICATE when one of the days was decided meanwhile. */
+  record(decisions: readonly InterestDecision[], actorId: string): Promise<void>;
+}
+
+/** A charge the system proposes, as administration reviews it. */
+export type InterestProposalView = {
+  key: string;
+  customer: CustomerRef;
+  campaign: CampaignRef;
+  interestDate: string;
+  baseUsd: string;
+  usdAmount: string;
+};
 
 /** `text` is already normalized for comparison; it matches the customer's name or the document's number. */
 export type DocumentQuery = {

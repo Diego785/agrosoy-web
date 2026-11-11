@@ -162,6 +162,13 @@
       "when": 1794409638843,
       "tag": "0022_opening_balances",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794412028087,
+      "tag": "0023_late_interest",
+      "breakpoints": true
     }
   ]
 }

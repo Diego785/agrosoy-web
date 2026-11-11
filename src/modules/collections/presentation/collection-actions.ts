@@ -8,6 +8,8 @@ import { runAction } from "@/shared/presentation/run-action";
 import type {
   ChargeInput,
   DailyRateInput,
+  InterestDecisionInput,
+  InterestSettingsInput,
   NextReceiptNumberInput,
   OpeningBalanceInput,
   PaymentInput,
@@ -21,10 +23,11 @@ import {
   voidCharge,
   voidPayment,
 } from "../application/collection-use-cases";
+import { chargeInterest, updateInterestSettings, waiveInterest } from "../application/late-interest";
 import { setFollowOfficialRate } from "../application/official-rate";
 import { recordOpeningBalance, voidOpeningBalance } from "../application/opening-balances";
-import { collectionDeps } from "./collection-deps";
-import { PAYMENTS_PATH } from "./collection-routes";
+import { collectionDeps, lateInterestDeps } from "./collection-deps";
+import { INTEREST_PATH, PAYMENTS_PATH } from "./collection-routes";
 
 // Payments and charges change balances shown on notes, customers and statements.
 const refresh = () => revalidatePath("/", "layout");
@@ -122,5 +125,39 @@ export async function setFollowOfficialRateAction(input: { enabled: boolean }): 
     await withTransaction((tx) => setFollowOfficialRate(collectionDeps(tx), actor, input));
     revalidatePath(PAYMENTS_PATH);
     return null;
+  });
+}
+
+export async function updateInterestSettingsAction(
+  input: InterestSettingsInput,
+): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => updateInterestSettings(lateInterestDeps(tx), actor, input));
+    revalidatePath(INTEREST_PATH);
+    return null;
+  });
+}
+
+export async function chargeInterestAction(
+  input: InterestDecisionInput,
+): Promise<ActionResult<{ charged: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => chargeInterest(lateInterestDeps(tx), actor, input));
+    refresh();
+    return result;
+  });
+}
+
+export async function waiveInterestAction(
+  input: InterestDecisionInput,
+): Promise<ActionResult<{ waived: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => waiveInterest(lateInterestDeps(tx), actor, input));
+    revalidatePath(INTEREST_PATH);
+    revalidatePath("/");
+    return result;
   });
 }

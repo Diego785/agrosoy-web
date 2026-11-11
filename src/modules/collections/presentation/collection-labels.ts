@@ -2,6 +2,7 @@ import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels"
 import type { Currency } from "@/shared/domain/money";
 import { formatDocumentNumber, formatMoney } from "@/shared/presentation/format";
 import type { PaymentView } from "../application/collection-ports";
+import type { InterestSettings } from "../domain/interest";
 import type { ChargeConcept, PaymentMethod } from "../domain/payment";
 
 export const METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -35,4 +36,12 @@ export function paymentConcept(payment: Pick<PaymentView, "concept" | "allocatio
       : `campaña ${campaignLabel(allocation.campaign)}`,
   );
   return `Pago a cuenta de ${targets.join(", ")}`;
+}
+
+/** "3 % a los 15 días de cada vencimiento" */
+export function interestRule(settings: Pick<InterestSettings, "ratePercent" | "graceDays">): string {
+  const rate = `${settings.ratePercent.replace(".", ",")} %`;
+  if (settings.graceDays === 0) return `${rate} al pasar cada vencimiento`;
+  const days = settings.graceDays === 1 ? "1 día" : `${settings.graceDays} días`;
+  return `${rate} a los ${days} de cada vencimiento`;
 }

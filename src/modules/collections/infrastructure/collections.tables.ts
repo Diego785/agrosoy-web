@@ -1,10 +1,23 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  date,
+  index,
+  integer,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
 import { deliveryNotes } from "@/modules/sales/infrastructure/notes.tables";
 import { createdAt, id, timestamps } from "@/shared/infrastructure/db/columns";
 import { CHARGE_CONCEPTS, CHARGE_DIRECTIONS, CURRENCIES, PAYMENT_METHODS } from "../domain/payment";
+
+export const LATE_INTEREST_DAY_KEY = "late_interest_decisions_day_key";
 
 const voidColumns = {
   status: text({ enum: ["recorded", "voided"] })
@@ -130,6 +143,38 @@ export const openingBalances = pgTable(
     check(
       "opening_balances_voided_have_reason",
       sql`${table.status} <> 'voided' or ${table.voidReason} is not null`,
+    ),
+  ],
+);
+
+/**
+ * Each late-payment interest proposal administration decided (D38): charged, with the charge it
+ * became, or waived. A decided day is never proposed again, even if its charge is voided later.
+ */
+export const lateInterestDecisions = pgTable(
+  "late_interest_decisions",
+  {
+    id: id(),
+    customerId: uuid()
+      .notNull()
+      .references(() => customers.id),
+    campaignId: uuid()
+      .notNull()
+      .references(() => campaigns.id),
+    /** The due date plus the grace days the interest applies on. */
+    interestDate: date({ mode: "string" }).notNull(),
+    baseUsd: numeric({ precision: 14, scale: 2 }).notNull(),
+    ratePercent: numeric({ precision: 5, scale: 2 }).notNull(),
+    outcome: text({ enum: ["charged", "waived"] }).notNull(),
+    chargeId: uuid().references(() => charges.id),
+    decidedBy: text().notNull(),
+    decidedAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex(LATE_INTEREST_DAY_KEY).on(table.customerId, table.campaignId, table.interestDate),
+    check(
+      "late_interest_decisions_charged_have_charge",
+      sql`${table.outcome} <> 'charged' or ${table.chargeId} is not null`,
     ),
   ],
 );
