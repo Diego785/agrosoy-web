@@ -3,6 +3,40 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-11 (week 3, branch `feature/week-3`)
+
+- **Week 3's remaining items are built**, one commit each, every one with `corepack pnpm check`
+  green (320 tests at the end):
+  - every payment in bolivianos in the statement (D39) and legal fees as a charge concept (D24);
+  - the SIN invoice on confirmed notes, several at once, and in the statement (D40);
+  - the spreadsheet import as the main way in: header variants, missing columns, no skipped rows,
+    the customer's technician on imported notes (D43);
+  - printed receipt numbers and the system's own receipt range (D28);
+  - note search, with voided notes out of the list unless asked for;
+  - due dates, extensions and overdue debt; the home page shows "Deuda vencida" (D37);
+  - the commercial value of free lines (D41) and "Seguir el oficial" (D42);
+  - the customer's locality; opening balances per customer and campaign (D29);
+  - the company's details from a settings page, printed on every PDF (D26);
+  - late-payment interest proposed, charged or waived at `/payments/interest` (D38);
+  - returns and transfers that gather lines from several deliveries, started from the customer and
+    campaign (D25).
+- **Migrations 0019–0024** are new this week. They ran only on the test database; staging gets them
+  when `main` is deployed after approval. 0019 fills the due dates of existing campaigns (checked
+  on a copy); 0024 drops `delivery_notes.original_note_id`, whose information stays in each line.
+- **Checked in the browser** on a throwaway local database: the interest page (settings, charging,
+  waiving, the home notice, the change log). The return and transfer screen was not: `next dev`
+  failed locally (Turbopack couldn't create a link under `.next/dev`, access denied), so only its
+  integration tests cover it. Look at it before the demo.
+- **Before the demo or real data:** set when interest starts at Cobros → Intereses; the campaigns'
+  due dates; the note and receipt ranges (D28).
+- **Still open:**
+  - a payment received with a cash note can't take a printed receipt number yet;
+  - returns don't ask yet who receives for Agrosoil or the carrier;
+  - the GitHub repository moved to another owner (pushes are redirected), but CI and
+    `deploy/compose.yaml` still name `ghcr.io/soluti0n-tech/agrosoy-web`, so publishing the image
+    may fail on the next push to `main`.
+- Nothing pushed yet.
+
 ## 2026-11-10
 
 - **Meeting of 7 November with Agrosoil, recorded in the docs.** Transcribed from the recording;
