@@ -26,6 +26,13 @@ const optionalText = (max: number) =>
 
 const optionalId = z.union([z.literal(""), z.uuid()]).optional();
 
+/** A document number as typed; kept as text so the form and the use case validate the same value. */
+const documentNumber = (message: string) =>
+  z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d{0,8}$/, { error: message });
+
 export const exchangeRateField = decimal(4, "Escribe el tipo de cambio, por ejemplo 12.00.");
 
 /** How the customer paid; also what a cash note asks for when it is confirmed. */
@@ -48,6 +55,10 @@ export const paymentSchema = z
     noteId: optionalId,
     observations: optionalText(500),
     concept: optionalText(200),
+    /** Empty: the system gives the next number. Filled: a paper receipt keeps its printed number (D28). */
+    paperReceiptNumber: z
+      .union([z.literal(""), documentNumber("Escribe el número impreso, por ejemplo 2451.")])
+      .optional(),
   })
   .superRefine((payment, context) => {
     if (payment.target === "campaign" && !payment.campaignId) {
@@ -97,6 +108,11 @@ export const voidReasonSchema = z.object({
     .max(500, { error: "Admite hasta 500 caracteres." }),
 });
 
+/** Where the system's receipt numbers continue (D28). */
+export const nextReceiptNumberSchema = z.object({
+  nextNumber: documentNumber("Escribe un número entero mayor que 0."),
+});
+
 export const dailyRateSchema = z.object({
   rateDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
   rate: exchangeRateField,
@@ -122,3 +138,4 @@ export type PaymentInput = z.input<typeof paymentSchema>;
 export type ChargeInput = z.input<typeof chargeSchema>;
 export type VoidReasonInput = z.input<typeof voidReasonSchema>;
 export type DailyRateInput = z.input<typeof dailyRateSchema>;
+export type NextReceiptNumberInput = z.input<typeof nextReceiptNumberSchema>;

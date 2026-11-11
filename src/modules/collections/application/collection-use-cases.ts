@@ -29,6 +29,7 @@ import type {
 import {
   chargeSchema,
   dailyRateSchema,
+  nextReceiptNumberSchema,
   paymentSchema,
   chargeSearchSchema,
   paymentSearchSchema,
@@ -93,7 +94,8 @@ export async function recordPayment(
   });
   const balances = target.kind === "oldest_debt" ? await deps.lookups.balances(data.customerId) : [];
   const allocations = allocate(payment.usdAmount, target, balances, dateCampaign.id);
-  const saved = await savePayment(deps, payment, allocations, actor.id);
+  const printedNumber = data.paperReceiptNumber ? Number(data.paperReceiptNumber) : undefined;
+  const saved = await savePayment(deps, payment, allocations, actor.id, printedNumber);
   await deps.audit.record({
     actorId: actor.id,
     action: "collections.record_payment",
@@ -101,11 +103,47 @@ export async function recordPayment(
     entityId: saved.id,
     payload: {
       number: saved.receiptNumber,
+      paperNumber: printedNumber !== undefined,
       customerId: data.customerId,
       usdAmount: payment.usdAmount.toDecimalString(),
     },
   });
   return saved;
+}
+
+/** The number the next receipt the system issues will get. */
+export async function nextReceiptNumber(
+  deps: Pick<CollectionDeps, "payments" | "receipts">,
+  actor: Actor,
+): Promise<number> {
+  assertCan(actor, "payments.manage");
+  return deps.receipts.peek((candidate) => deps.payments.receiptNumberInUse(candidate));
+}
+
+/**
+ * Where the system's receipt numbers continue: a range the paper pads won't reach, so a paper receipt
+ * typed in later never collides with one the system issued (D28).
+ */
+export async function setNextReceiptNumber(
+  deps: Pick<CollectionDeps, "payments" | "receipts" | "audit">,
+  actor: Actor,
+  input: unknown,
+): Promise<void> {
+  assertCan(actor, "payments.manage");
+  const nextNumber = Number(validateInput(nextReceiptNumberSchema, input).nextNumber);
+  if (await deps.payments.receiptNumberInUse(nextNumber)) {
+    throw new DomainError("VALIDATION_FAILED", {
+      fieldErrors: { nextNumber: ["Ese número ya lo tiene otro recibo."] },
+    });
+  }
+  await deps.receipts.set(nextNumber);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "collections.set_next_receipt_number",
+    entityType: "document_counter",
+    entityId: "receipt",
+    payload: { number: nextNumber },
+  });
 }
 
 export async function voidPayment(

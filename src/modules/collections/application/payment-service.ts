@@ -2,6 +2,7 @@ import type { LedgerRepository } from "@/modules/receivables/application/ledger-
 import { postToLedger, reverseInLedger } from "@/modules/receivables/application/ledger-service";
 import { posting } from "@/modules/receivables/domain/ledger";
 import type { DocumentCounter } from "@/shared/application/document-counter";
+import { DomainError } from "@/shared/domain/domain-error";
 import type { Allocation } from "../domain/allocation";
 import type { PaymentRecord } from "../domain/payment";
 import type { PaymentRepository } from "./collection-ports";
@@ -15,14 +16,22 @@ export type PaymentWriteDeps = {
   ledger: LedgerRepository;
 };
 
-/** Saves the payment with the next receipt number and credits each allocation in its campaign. */
+/**
+ * Saves the payment and credits each allocation in its campaign. It takes the next receipt number,
+ * or keeps the printed one of a paper receipt typed in later, which must be unused (D28).
+ */
 export async function savePayment(
   deps: PaymentWriteDeps,
   payment: PaymentRecord,
   allocations: readonly Allocation[],
   actorId: string,
+  printedNumber?: number,
 ): Promise<{ id: string; receiptNumber: number }> {
-  const receiptNumber = await deps.receipts.take((candidate) => deps.payments.receiptNumberInUse(candidate));
+  if (printedNumber && (await deps.payments.receiptNumberInUse(printedNumber))) {
+    throw new DomainError("DUPLICATE", { field: "paperReceiptNumber" });
+  }
+  const receiptNumber =
+    printedNumber || (await deps.receipts.take((candidate) => deps.payments.receiptNumberInUse(candidate)));
   // A cash note posts its debt first, so its receipt shows the note in the total (D27).
   const before = await deps.ledger.customerBalance(payment.customerId);
   const balance = { before, after: before.subtract(payment.usdAmount) };

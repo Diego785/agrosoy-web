@@ -26,8 +26,8 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/shared/presen
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
-import type { ConfirmNoteInput, NextNoteNumberInput, VoidNoteInput } from "../application/note-schemas";
-import { confirmNoteAction, setNextNoteNumberAction, voidNoteAction } from "./note-actions";
+import type { ConfirmNoteInput, VoidNoteInput } from "../application/note-schemas";
+import { confirmNoteAction, voidNoteAction } from "./note-actions";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 // The server validates everything; these forms only show its answers next to the fields.
@@ -249,65 +249,5 @@ export const VoidNoteButton = resetOnLeave(function VoidNoteButton({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  );
-});
-
-export const NextNumberForm = resetOnLeave(function NextNumberForm({ nextNumber }: { nextNumber: number }) {
-  const router = useRouter();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, startSaving] = useTransition();
-  const form = useForm<NextNoteNumberInput>({ defaultValues: { nextNumber: String(nextNumber) } });
-  const { errors } = form.formState;
-
-  const submit = form.handleSubmit((values) =>
-    startSaving(async () => {
-      const result = await setNextNoteNumberAction(values);
-      if (!result.ok) return applyActionError(form, result.error);
-      setIsEditing(false);
-      router.refresh();
-    }),
-  );
-
-  if (!isEditing) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        La próxima boleta será la <span className="font-medium text-foreground">N.º {nextNumber}</span>.{" "}
-        <button
-          type="button"
-          className="font-medium text-primary hover:underline"
-          onClick={() => {
-            form.reset({ nextNumber: String(nextNumber) });
-            setIsEditing(true);
-          }}
-        >
-          Cambiar
-        </button>
-      </p>
-    );
-  }
-  return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-1">
-      <Field data-invalid={!!errors.nextNumber}>
-        <FieldLabel htmlFor="nextNumber">Continuar la numeración desde</FieldLabel>
-        <div className="flex gap-2">
-          <Input
-            id="nextNumber"
-            inputMode="numeric"
-            selectOnFocus
-            className="max-w-32"
-            aria-invalid={!!errors.nextNumber}
-            {...form.register("nextNumber")}
-          />
-          <Button type="submit" variant="outline" disabled={isSaving}>
-            Guardar
-          </Button>
-          <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>
-            Cancelar
-          </Button>
-        </div>
-        <FieldDescription>Por ejemplo, el primer número del talonario que se usa ahora.</FieldDescription>
-        <FieldError errors={[errors.nextNumber ?? errors.root]} />
-      </Field>
-    </form>
   );
 });

@@ -8,6 +8,7 @@ import { runAction } from "@/shared/presentation/run-action";
 import type {
   ChargeInput,
   DailyRateInput,
+  NextReceiptNumberInput,
   PaymentInput,
   VoidReasonInput,
 } from "../application/collection-schemas";
@@ -15,6 +16,7 @@ import {
   recordCharge,
   recordPayment,
   setDailyRate,
+  setNextReceiptNumber,
   voidCharge,
   voidPayment,
 } from "../application/collection-use-cases";
@@ -64,6 +66,15 @@ export async function voidChargeAction(
     const actor = await requireActor();
     await withTransaction((tx) => voidCharge(collectionDeps(tx), actor, chargeId, input));
     refresh();
+    return null;
+  });
+}
+
+export async function setNextReceiptNumberAction(input: NextReceiptNumberInput): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setNextReceiptNumber(collectionDeps(tx), actor, input));
+    revalidatePath(PAYMENTS_PATH, "layout");
     return null;
   });
 }

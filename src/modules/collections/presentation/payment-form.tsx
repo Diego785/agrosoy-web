@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
@@ -38,6 +38,8 @@ export type PaymentFormProps = {
   today: string;
   /** The last rate administration recorded, if any (D36). */
   currentRate: string | null;
+  /** The number the receipt gets unless it is a paper one (D28). */
+  nextReceiptNumber: number;
 };
 
 export const PaymentForm = resetOnLeave(function PaymentForm({
@@ -46,9 +48,11 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
   campaigns,
   today,
   currentRate,
+  nextReceiptNumber,
 }: PaymentFormProps) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
+  const [isPaper, setIsPaper] = useState(false);
   const suggestedRate = customer?.fixedExchangeRate ?? currentRate;
   const form = useForm({
     resolver: zodResolver(paymentSchema),
@@ -66,6 +70,7 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
       noteId: "",
       observations: "",
       concept: "",
+      paperReceiptNumber: "",
     } satisfies PaymentInput,
   });
   const { errors } = form.formState;
@@ -76,8 +81,15 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
 
   const submit = form.handleSubmit((values) =>
     startSaving(async () => {
-      const result = await recordPaymentAction(values);
-      if (!result.ok) return applyActionError(form, result.error);
+      const result = await recordPaymentAction({
+        ...values,
+        paperReceiptNumber: isPaper ? values.paperReceiptNumber : "",
+      });
+      if (!result.ok) {
+        return applyActionError(form, result.error, {
+          paperReceiptNumber: "Ya hay un recibo con ese número.",
+        });
+      }
       toast.success(`Recibo N.º ${result.data.receiptNumber} registrado`);
       router.push(paymentPath(result.data.id));
     }),
@@ -280,6 +292,37 @@ export const PaymentForm = resetOnLeave(function PaymentForm({
               <Textarea id="observations" {...form.register("observations")} />
               <FieldError errors={[errors.observations]} />
             </Field>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={isPaper}
+                onChange={(event) => {
+                  setIsPaper(event.target.checked);
+                  // A hidden number must not hold the form back.
+                  if (!event.target.checked) form.setValue("paperReceiptNumber", "");
+                }}
+                className="size-4 accent-primary"
+              />
+              Es un recibo de papel con número impreso
+            </label>
+            {isPaper ? (
+              <Field data-invalid={!!errors.paperReceiptNumber}>
+                <FieldLabel htmlFor="paperReceiptNumber">Número impreso</FieldLabel>
+                <Input
+                  id="paperReceiptNumber"
+                  inputMode="numeric"
+                  selectOnFocus
+                  className="max-w-40"
+                  aria-invalid={!!errors.paperReceiptNumber}
+                  {...form.register("paperReceiptNumber")}
+                />
+                <FieldError errors={[errors.paperReceiptNumber]} />
+              </Field>
+            ) : (
+              <p className="text-sm">
+                Recibirá el <strong>N.º {nextReceiptNumber}</strong>.
+              </p>
+            )}
           </FormSection>
 
           <FieldError errors={[errors.root]} />

@@ -74,6 +74,7 @@ const ACTION_LABELS: Record<string, string> = {
   "collections.record_charge": "Registró un cargo a",
   "collections.void_charge": "Anuló un cargo de",
   "collections.set_daily_rate": "Registró el tipo de cambio del día",
+  "collections.set_next_receipt_number": "Fijó la numeración de recibos desde el N.º",
 };
 
 export async function AuditLogTable({

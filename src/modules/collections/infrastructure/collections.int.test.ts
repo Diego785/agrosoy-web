@@ -18,10 +18,12 @@ import {
   getPayment,
   listCharges,
   listPayments,
+  nextReceiptNumber,
   officialRate,
   recordCharge,
   recordPayment,
   setDailyRate,
+  setNextReceiptNumber,
   voidCharge,
   voidPayment,
 } from "../application/collection-use-cases";
@@ -89,6 +91,33 @@ describe("payments", () => {
 
     const second = await recordPayment(collectionDeps(), admin, payment(ids, { amount: "100" }));
     expect(second.receiptNumber).toBe(2);
+  });
+
+  it("keeps the printed number of a paper receipt and rejects a repeated one (D28)", async () => {
+    const ids = await seedNoteFixtures();
+    await confirmedNote(ids);
+
+    const paper = await recordPayment(
+      collectionDeps(),
+      admin,
+      payment(ids, { amount: "100", paperReceiptNumber: "2451" }),
+    );
+    expect(paper.receiptNumber).toBe(2451);
+    await expect(
+      recordPayment(collectionDeps(), admin, payment(ids, { amount: "100", paperReceiptNumber: "2451" })),
+    ).rejects.toMatchObject({ code: "DUPLICATE", details: { field: "paperReceiptNumber" } });
+
+    // The system's own numbers carry on where administration set them, above the pads.
+    await setNextReceiptNumber(collectionDeps(), admin, { nextNumber: "100001" });
+    expect(await nextReceiptNumber(collectionDeps(), admin)).toBe(100001);
+    const issued = await recordPayment(collectionDeps(), admin, payment(ids, { amount: "100" }));
+    expect(issued.receiptNumber).toBe(100001);
+    await expect(setNextReceiptNumber(collectionDeps(), admin, { nextNumber: "2451" })).rejects.toMatchObject(
+      { code: "VALIDATION_FAILED", details: { fieldErrors: { nextNumber: expect.any(Array) } } },
+    );
+    await expect(
+      setNextReceiptNumber(collectionDeps(), technician, { nextNumber: "200001" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("converts bolivianos at the payment's rate and can apply it to one note", async () => {

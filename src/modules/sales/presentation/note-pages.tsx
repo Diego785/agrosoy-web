@@ -54,7 +54,9 @@ import type { NoteType } from "../domain/follow-up";
 import { nextNoteNumber } from "../application/note-lifecycle";
 import { getNote, listNotes } from "../application/note-use-cases";
 import { DiscardDraftButton } from "./discard-draft-button";
-import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecycle-forms";
+import { NextNumberForm } from "@/shared/presentation/next-number-form";
+import { setNextNoteNumberAction } from "./note-actions";
+import { ConfirmNoteButton, VoidNoteButton } from "./note-lifecycle-forms";
 import { NoteForm } from "./note-form";
 import { NoteInvoiceButton } from "./note-invoice-button";
 import { noteDeps } from "./note-deps";
@@ -100,7 +102,7 @@ export async function NotesTable({
   return (
     <div className="flex flex-col gap-4">
       {can(actor, "notes.void") ? (
-        <NextNumberForm nextNumber={nextNumber} />
+        <NextNumberForm nextNumber={nextNumber} noun="boleta" save={setNextNoteNumberAction} />
       ) : (
         <p className="text-sm text-muted-foreground">La próxima boleta será la N.º {nextNumber}.</p>
       )}

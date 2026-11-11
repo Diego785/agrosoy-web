@@ -52,8 +52,11 @@ import {
   getPayment,
   listCharges,
   listPayments,
+  nextReceiptNumber,
   officialRate,
 } from "../application/collection-use-cases";
+import { NextNumberForm } from "@/shared/presentation/next-number-form";
+import { setNextReceiptNumberAction } from "./collection-actions";
 import type { DocumentStatus } from "../application/collection-ports";
 import { dolarApiOfficialRate } from "../infrastructure/dolarapi-official-rate";
 import { ChargeForm } from "./charge-form";
@@ -141,16 +144,20 @@ export async function PaymentsTable({ searchParams }: { searchParams: SearchPara
   const actor = await requireActor();
   const text = first(params.q) ?? "";
   const status = first(params.status) ?? "";
-  const list = await listPayments(deps(), actor, {
-    text,
-    status: status || undefined,
-    page: first(params.page),
-    pages: first(params.pages),
-  });
+  const [list, nextNumber] = await Promise.all([
+    listPayments(deps(), actor, {
+      text,
+      status: status || undefined,
+      page: first(params.page),
+      pages: first(params.pages),
+    }),
+    nextReceiptNumber(deps(), actor),
+  ]);
   const { items } = list;
 
   return (
     <div className="flex flex-col gap-4">
+      <NextNumberForm nextNumber={nextNumber} noun="recibo" save={setNextReceiptNumberAction} />
       <DocumentFilters
         action={PAYMENTS_PATH}
         text={text}
@@ -284,10 +291,11 @@ export async function NewPayment({ searchParams }: { searchParams: SearchParams 
   const params = await searchParams;
   const actor = await requireActor();
   const today = todayInBolivia();
-  const [customers, campaigns, current] = await Promise.all([
+  const [customers, campaigns, current, nextNumber] = await Promise.all([
     customerOptions(customerDeps(getDb()), actor),
     campaignOptions(actor),
     currentRate(deps(), actor, today),
+    nextReceiptNumber(deps(), actor),
   ]);
   const chosen = customers.find((customer) => customer.id === first(params.customer));
 
@@ -325,6 +333,7 @@ export async function NewPayment({ searchParams }: { searchParams: SearchParams 
       campaigns={campaigns.map(({ id, label }) => ({ id, label }))}
       today={today}
       currentRate={current?.rate ?? null}
+      nextReceiptNumber={nextNumber}
     />
   );
 }

@@ -6,6 +6,7 @@ import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { deliveryNotes } from "@/modules/sales/infrastructure/notes.tables";
 import { DomainError } from "@/shared/domain/domain-error";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
+import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
 import type {
   ChargeRepository,
   DailyRateRepository,
@@ -13,6 +14,7 @@ import type {
 } from "../application/collection-ports";
 import { charges, dailyExchangeRates, paymentAllocations, payments } from "./collections.tables";
 
+const RECEIPT_NUMBER_KEY = "payments_receiptNumber_unique";
 const recorder = alias(users, "recorder");
 const voider = alias(users, "voider");
 const settledNote = alias(deliveryNotes, "settled_note");
@@ -27,6 +29,7 @@ function voidInfo(row: { voidedAt: Date | null; voidReason: string | null }, byN
 export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepository {
   return {
     async insert(payment, allocations, receiptNumber, createdBy, balance) {
+      // Two people typing the same printed number at once: the unique constraint decides.
       const [row] = await executor
         .insert(payments)
         .values({
@@ -47,7 +50,13 @@ export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepositor
           settlesNoteId: payment.settlesNoteId,
           createdBy,
         })
-        .returning({ id: payments.id });
+        .returning({ id: payments.id })
+        .catch((error: unknown) => {
+          if (violatedUniqueConstraint(error) === RECEIPT_NUMBER_KEY) {
+            throw new DomainError("DUPLICATE", { field: "paperReceiptNumber" });
+          }
+          throw error;
+        });
       if (!row) throw new Error("Insert returned no payment");
       await executor.insert(paymentAllocations).values(
         allocations.map((allocation) => ({
