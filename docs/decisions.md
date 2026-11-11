@@ -571,6 +571,11 @@ records it as the rate in force, with the official rate's date and the system as
 service fails or still shows an earlier date, the last rate stays in force and Cobros says so.
 Typing a rate turns the option off; "Usar oficial" still works with it on or off.
 
+The check runs when Cobros, a new payment or a note form opens, once a day at most (the day of the
+last check is stored), and a failure never stops the screen. The option lives in `app_settings`, one
+JSON value per key, which the company profile (D26) and the interest settings (D38) also use. The
+change log shows the adopted rate as done by "Sistema".
+
 **Why:** in the meeting of 7 November 2026 Agrosoil was told the official rate could be kept up to
 date without anyone typing it, and was fine with it. DolarApi republishes the central bank's rate
 and can be a day late (D36), so its date stays on screen and an old value is never shown as today's.

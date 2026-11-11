@@ -77,6 +77,9 @@ const ACTION_LABELS: Record<string, string> = {
   "collections.void_charge": "Anuló un cargo de",
   "collections.set_daily_rate": "Registró el tipo de cambio del día",
   "collections.set_next_receipt_number": "Fijó la numeración de recibos desde el N.º",
+  "collections.follow_official_rate": "Activó «Seguir el oficial» en el tipo de cambio",
+  "collections.stop_official_rate": "Desactivó «Seguir el oficial» en el tipo de cambio",
+  "collections.adopt_official_rate": "Tomó el tipo de cambio oficial del",
 };
 
 export async function AuditLogTable({
@@ -201,11 +204,15 @@ function AreaBadge({ action }: { action: string }) {
   return <Badge variant="neutral">{AREA_LABELS[area] ?? area}</Badge>;
 }
 
+/** What the system does by itself, with no user behind it (D42). */
+const SYSTEM_ACTIONS = new Set(["collections.adopt_official_rate"]);
+
 function ActorName({ entry }: { entry: AuditLogEntry }) {
-  return entry.actorName ? (
-    <span className="font-medium">{entry.actorName}</span>
-  ) : (
-    <span className="text-muted-foreground">Instalación</span>
+  if (entry.actorName) return <span className="font-medium">{entry.actorName}</span>;
+  return (
+    <span className="text-muted-foreground">
+      {SYSTEM_ACTIONS.has(entry.action) ? "Sistema" : "Instalación"}
+    </span>
   );
 }
 

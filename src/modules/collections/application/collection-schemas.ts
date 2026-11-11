@@ -116,7 +116,11 @@ export const nextReceiptNumberSchema = z.object({
 export const dailyRateSchema = z.object({
   rateDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
   rate: exchangeRateField,
+  /** "Usar oficial" adopts the official rate; typing one stops following it (D42). */
+  source: z.enum(["typed", "official"]).default("typed"),
 });
+
+export const followOfficialRateSchema = z.object({ enabled: z.boolean() });
 
 export const paymentSearchSchema = z.object({
   text: z.string().trim().max(100).catch(""),

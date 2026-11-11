@@ -20,12 +20,17 @@ import {
   AlertDialogTitle,
 } from "@/shared/presentation/ui/alert-dialog";
 import { Button } from "@/shared/presentation/ui/button";
-import { Field, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { Textarea } from "@/shared/presentation/ui/textarea";
 import type { CurrentRate, OfficialRate } from "../application/collection-ports";
 import type { DailyRateInput, VoidReasonInput } from "../application/collection-schemas";
-import { setDailyRateAction, voidChargeAction, voidPaymentAction } from "./collection-actions";
+import {
+  setDailyRateAction,
+  setFollowOfficialRateAction,
+  voidChargeAction,
+  voidPaymentAction,
+} from "./collection-actions";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 export const VoidPaymentButton = resetOnLeave(function VoidPaymentButton({
@@ -126,10 +131,13 @@ function VoidButton({
 export const DailyRateForm = resetOnLeave(function DailyRateForm({
   today,
   current,
+  following,
   children,
 }: {
   today: string;
   current: CurrentRate | null;
+  /** Set when the rate in force follows the official one (D42): the official rate's date last seen. */
+  following: { officialDate: string | null } | null;
   children?: ReactNode;
 }) {
   const router = useRouter();
@@ -140,17 +148,48 @@ export const DailyRateForm = resetOnLeave(function DailyRateForm({
 
   const submit = form.handleSubmit((values) =>
     startSaving(async () => {
-      const result = await setDailyRateAction(values);
+      const result = await setDailyRateAction({ ...values, source: "typed" });
       if (!result.ok) return applyActionError(form, result.error);
+      if (result.data.stoppedFollowing) toast.info("Ya no sigue el oficial: queda el que escribiste.");
       setIsEditing(false);
       router.refresh();
     }),
   );
 
+  function toggleFollowing(enabled: boolean) {
+    startSaving(async () => {
+      const result = await setFollowOfficialRateAction({ enabled });
+      if (!result.ok) return void toast.error(errorMessage(result.error));
+      toast.success(enabled ? "El tipo de cambio vigente sigue al oficial" : "Ya no sigue el oficial");
+      router.refresh();
+    });
+  }
+
   function startEditing(rate: string) {
     form.reset({ rateDate: today, rate: trimDecimalZeros(rate) });
     setIsEditing(true);
   }
+
+  const followToggle = (
+    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+      <input
+        type="checkbox"
+        className="size-4 accent-primary"
+        checked={following !== null}
+        disabled={isSaving}
+        onChange={(event) => toggleFollowing(event.target.checked)}
+      />
+      Seguir el oficial cada día
+    </label>
+  );
+  // The service can be a day behind the central bank, or down: say which day the rate is from.
+  const lagNote = following && (following.officialDate ?? "") < today && (
+    <p className="w-full text-xs text-warning">
+      {following.officialDate
+        ? `El oficial todavía es el del ${formatDate(following.officialDate)}; sigue vigente el último.`
+        : "No se pudo consultar el oficial; sigue vigente el último."}
+    </p>
+  );
 
   if (!isEditing && current) {
     return (
@@ -162,11 +201,13 @@ export const DailyRateForm = resetOnLeave(function DailyRateForm({
           desde el {formatDate(current.since)}
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {followToggle}
           {children}
           <Button type="button" variant="ghost" size="sm" onClick={() => startEditing(current.rate)}>
             Cambiar
           </Button>
         </div>
+        {lagNote}
       </div>
     );
   }
@@ -193,7 +234,9 @@ export const DailyRateForm = resetOnLeave(function DailyRateForm({
             </Button>
           )}
           {children}
+          {!current && followToggle}
         </div>
+        {following && <FieldDescription>Al guardar uno escrito, deja de seguir el oficial.</FieldDescription>}
         <FieldError errors={[errors.rate ?? errors.rateDate ?? errors.root]} />
       </Field>
     </form>
@@ -215,7 +258,7 @@ export function OfficialRateHint({
 
   function adoptOfficial() {
     startSaving(async () => {
-      const result = await setDailyRateAction({ rateDate: today, rate: official.rate });
+      const result = await setDailyRateAction({ rateDate: today, rate: official.rate, source: "official" });
       if (!result.ok) return void toast.error(errorMessage(result.error));
       toast.success(`Tipo de cambio vigente: ${formatRate(official.rate)}`);
       router.refresh();

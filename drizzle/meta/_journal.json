@@ -141,6 +141,13 @@
       "when": 1794406107210,
       "tag": "0019_campaign_due_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794408238945,
+      "tag": "0020_app_settings",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,7 @@ import {
   voidCharge,
   voidPayment,
 } from "../application/collection-use-cases";
+import { setFollowOfficialRate } from "../application/official-rate";
 import { collectionDeps } from "./collection-deps";
 import { PAYMENTS_PATH } from "./collection-routes";
 
@@ -79,10 +80,21 @@ export async function setNextReceiptNumberAction(input: NextReceiptNumberInput):
   });
 }
 
-export async function setDailyRateAction(input: DailyRateInput): Promise<ActionResult<null>> {
+export async function setDailyRateAction(
+  input: DailyRateInput,
+): Promise<ActionResult<{ stoppedFollowing: boolean }>> {
   return runAction(async () => {
     const actor = await requireActor();
-    await withTransaction((tx) => setDailyRate(collectionDeps(tx), actor, input));
+    const result = await withTransaction((tx) => setDailyRate(collectionDeps(tx), actor, input));
+    revalidatePath(PAYMENTS_PATH);
+    return result;
+  });
+}
+
+export async function setFollowOfficialRateAction(input: { enabled: boolean }): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setFollowOfficialRate(collectionDeps(tx), actor, input));
     revalidatePath(PAYMENTS_PATH);
     return null;
   });

@@ -2,6 +2,7 @@ import "server-only";
 import { drizzleLedgerRepository } from "@/modules/receivables/infrastructure/drizzle-ledger-repository";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
+import { drizzleSettingsStore } from "@/shared/infrastructure/db/app-settings";
 import { drizzleDocumentCounter } from "@/shared/infrastructure/db/document-counters";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import type { CollectionDeps } from "../application/collection-use-cases";
@@ -18,6 +19,7 @@ export function collectionDeps(executor: DbExecutor): CollectionDeps {
     payments: drizzlePaymentRepository(executor),
     charges: drizzleChargeRepository(executor),
     rates: drizzleDailyRateRepository(executor),
+    settings: drizzleSettingsStore(executor),
     receipts: drizzleDocumentCounter(executor, "receipt"),
     ledger: drizzleLedgerRepository(executor),
     lookups: collectionLookups(executor),

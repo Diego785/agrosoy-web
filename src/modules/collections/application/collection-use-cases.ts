@@ -35,12 +35,16 @@ import {
   paymentSearchSchema,
   voidReasonSchema,
 } from "./collection-schemas";
+import { stopFollowingOfficialRate } from "./official-rate";
 import { cancelPayment, savePayment } from "./payment-service";
+import type { SettingsStore } from "@/shared/application/settings-store";
 
 export type CollectionDeps = {
   payments: PaymentRepository;
   charges: ChargeRepository;
   rates: DailyRateRepository;
+  /** Whether the rate in force follows the official one (D42). */
+  settings: SettingsStore;
   receipts: DocumentCounter;
   ledger: LedgerRepository;
   lookups: CollectionLookups;
@@ -301,21 +305,25 @@ export async function listCharges(
 
 /** Records a day's rate; it stays in force for customers without their own until another replaces it (D36). */
 export async function setDailyRate(
-  deps: Pick<CollectionDeps, "rates" | "audit">,
+  deps: Pick<CollectionDeps, "rates" | "audit" | "settings">,
   actor: Actor,
   input: unknown,
-): Promise<void> {
+): Promise<{ stoppedFollowing: boolean }> {
   assertCan(actor, "payments.manage");
   const data = validateInput(dailyRateSchema, input);
   const rate = ExchangeRate.parse(data.rate);
   await deps.rates.save(data.rateDate, rate, actor.id);
+  // A typed rate is administration's own: following the official one stops; "Usar oficial" doesn't (D42).
+  const stoppedFollowing =
+    data.source === "typed" && (await stopFollowingOfficialRate(deps.settings, actor.id));
   await deps.audit.record({
     actorId: actor.id,
     action: "collections.set_daily_rate",
     entityType: "daily_exchange_rate",
     entityId: data.rateDate,
-    payload: { name: `${data.rateDate}: ${rate.toDecimalString()}` },
+    payload: { name: `${data.rateDate}: ${rate.toDecimalString()}`, source: data.source, stoppedFollowing },
   });
+  return { stoppedFollowing };
 }
 
 /** The last rate administration recorded; whoever writes notes or payments may read it (D36). */

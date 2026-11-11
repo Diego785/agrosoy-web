@@ -27,6 +27,11 @@ import {
   voidCharge,
   voidPayment,
 } from "../application/collection-use-cases";
+import {
+  followOfficialRate,
+  officialRateSettings,
+  setFollowOfficialRate,
+} from "../application/official-rate";
 import { collectionLookups } from "./collection-lookups";
 
 const admin = actorWithRole("admin");
@@ -324,6 +329,67 @@ describe("lists", () => {
     expect((await listCharges(collectionDeps(), admin, {})).total).toBe(1);
     expect((await listCharges(collectionDeps(), admin, { status: "voided" })).total).toBe(0);
     expect((await listCharges(collectionDeps(), admin, { text: "nadie se llama asi" })).total).toBe(0);
+  });
+});
+
+describe("following the official rate (D42)", () => {
+  /** A stand-in for DolarApi that answers what the test says and counts the calls. */
+  function officialSource(answer: { rate: string; date: string } | null) {
+    const source = { calls: 0, latest: async () => (source.calls++, answer) };
+    return source;
+  }
+  const follow = (official: ReturnType<typeof officialSource>, today: string) =>
+    followOfficialRate({ ...collectionDeps(), official }, today);
+
+  it("adopts the official rate once a day when it is on, and stops when a rate is typed", async () => {
+    await setDailyRate(collectionDeps(), admin, { rateDate: "2026-11-02", rate: "12" });
+    const official = officialSource({ rate: "11.8100", date: "2026-11-07" });
+
+    expect(await follow(official, "2026-11-07")).toEqual({ following: false });
+    expect(official.calls).toBe(0);
+
+    await setFollowOfficialRate(collectionDeps(), admin, { enabled: true });
+    expect(await follow(official, "2026-11-07")).toEqual({ following: true, officialDate: "2026-11-07" });
+    expect(await currentRate(collectionDeps(), admin, "2026-11-07")).toEqual({
+      rate: "11.8100",
+      since: "2026-11-07",
+    });
+    // The same day asks the service once.
+    await follow(official, "2026-11-07");
+    expect(official.calls).toBe(1);
+
+    // "Usar oficial" keeps following; a typed rate stops it.
+    await setDailyRate(collectionDeps(), admin, {
+      rateDate: "2026-11-08",
+      rate: "11.81",
+      source: "official",
+    });
+    expect((await officialRateSettings(collectionDeps(), admin)).followOfficial).toBe(true);
+    expect(await setDailyRate(collectionDeps(), admin, { rateDate: "2026-11-08", rate: "12.10" })).toEqual({
+      stoppedFollowing: true,
+    });
+    expect((await officialRateSettings(collectionDeps(), admin)).followOfficial).toBe(false);
+  });
+
+  it("keeps the last rate when the service is down or a day behind", async () => {
+    await setDailyRate(collectionDeps(), admin, { rateDate: "2026-11-02", rate: "12" });
+    await setFollowOfficialRate(collectionDeps(), admin, { enabled: true });
+
+    expect(await follow(officialSource(null), "2026-11-07")).toEqual({ following: true, officialDate: null });
+    expect(await currentRate(collectionDeps(), admin, "2026-11-07")).toMatchObject({ rate: "12.0000" });
+
+    // Next day: the service still shows the 7th; it is adopted with its own date, never as today's.
+    const behind = officialSource({ rate: "11.8100", date: "2026-11-07" });
+    expect(await follow(behind, "2026-11-08")).toEqual({ following: true, officialDate: "2026-11-07" });
+    expect(await currentRate(collectionDeps(), admin, "2026-11-08")).toEqual({
+      rate: "11.8100",
+      since: "2026-11-07",
+    });
+    await expect(
+      setFollowOfficialRate(collectionDeps(), technician, { enabled: false }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 });
 

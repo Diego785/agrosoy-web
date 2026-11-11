@@ -105,6 +105,16 @@ export interface DailyRateRepository {
 
 export type OfficialRate = { rate: string; date: string };
 
+/**
+ * Whether the rate in force follows the official one each day (D42), and the last check: the day it
+ * was made and the official rate's date then, so the service is asked once a day at most.
+ */
+export type OfficialRateSettings = {
+  followOfficial: boolean;
+  checkedOn: string | null;
+  officialDate: string | null;
+};
+
 /** The central bank's rate, from an outside service. Null when it can't be reached. */
 export interface OfficialRateSource {
   latest(): Promise<OfficialRate | null>;

@@ -18,6 +18,7 @@ import { drizzleLedgerRepository } from "@/modules/receivables/infrastructure/dr
 import { drizzleNoteRepository } from "@/modules/sales/infrastructure/drizzle-note-repository";
 import { noteLookups } from "@/modules/sales/infrastructure/note-lookups";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
+import { drizzleSettingsStore } from "@/shared/infrastructure/db/app-settings";
 import { drizzleDocumentCounter } from "@/shared/infrastructure/db/document-counters";
 
 const admin = actorWithRole("admin");
@@ -43,6 +44,7 @@ export function collectionDeps(today = "2026-11-02") {
     payments: drizzlePaymentRepository(testDb),
     charges: drizzleChargeRepository(testDb),
     rates: drizzleDailyRateRepository(testDb),
+    settings: drizzleSettingsStore(testDb),
     receipts: drizzleDocumentCounter(testDb, "receipt"),
     ledger: drizzleLedgerRepository(testDb),
     lookups: collectionLookups(testDb),

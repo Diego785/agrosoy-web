@@ -57,6 +57,7 @@ import {
 } from "../application/collection-use-cases";
 import { NextNumberForm } from "@/shared/presentation/next-number-form";
 import { setNextReceiptNumberAction } from "./collection-actions";
+import { followOfficialRateToday } from "./follow-official-rate";
 import type { DocumentStatus } from "../application/collection-ports";
 import { dolarApiOfficialRate } from "../infrastructure/dolarapi-official-rate";
 import { ChargeForm } from "./charge-form";
@@ -87,9 +88,14 @@ async function campaignOptions(actor: Actor) {
 export async function DailyRateCard() {
   const actor = await requireActor();
   const today = todayInBolivia();
+  const following = await followOfficialRateToday(today);
   const current = await currentRate(deps(), actor, today);
   return (
-    <DailyRateForm today={today} current={current}>
+    <DailyRateForm
+      today={today}
+      current={current}
+      following={following.following ? { officialDate: following.officialDate } : null}
+    >
       {/* It comes from outside: the page doesn't wait for it and works without it (D36). */}
       <Suspense fallback={null}>
         <OfficialRateReference actor={actor} today={today} current={current?.rate ?? null} />
@@ -291,6 +297,7 @@ export async function NewPayment({ searchParams }: { searchParams: SearchParams 
   const params = await searchParams;
   const actor = await requireActor();
   const today = todayInBolivia();
+  await followOfficialRateToday(today);
   const [customers, campaigns, current, nextNumber] = await Promise.all([
     customerOptions(customerDeps(getDb()), actor),
     campaignOptions(actor),
