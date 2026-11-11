@@ -4,7 +4,8 @@ import { requireActor } from "@/modules/identity/presentation/current-user";
 import { amountInWords } from "@/shared/domain/amount-in-words";
 import { Money } from "@/shared/domain/money";
 import { getDb } from "@/shared/infrastructure/db/client";
-import { COMPANY } from "@/shared/presentation/company-profile";
+import type { CompanyProfile } from "@/shared/domain/company-profile";
+import { loadCompanyProfile } from "@/shared/presentation/company-profile";
 import { formatDocumentNumber, formatLongDate, formatMoney, formatRate } from "@/shared/presentation/format";
 import { notFoundAsNull } from "@/shared/presentation/not-found";
 import { PDF_COLORS, PdfBlank, PdfFormPage, PdfLogo, pdfResponse } from "@/shared/presentation/pdf";
@@ -16,7 +17,7 @@ import { METHOD_LABELS, paymentConcept } from "./collection-labels";
 const { green: GREEN, red: RED, muted: MUTED } = PDF_COLORS;
 
 /** The receipt as Agrosoil prints it, with the balances of the moment it was issued (D26, D27). */
-export function ReceiptPdf({ payment }: { payment: PaymentView }) {
+export function ReceiptPdf({ payment, company }: { payment: PaymentView; company: CompanyProfile }) {
   const amount = Money.parse(payment.amount, payment.currency);
   const number = formatDocumentNumber(payment.receiptNumber);
   const paidHow = [
@@ -30,7 +31,11 @@ export function ReceiptPdf({ payment }: { payment: PaymentView }) {
     .join(" · ");
 
   return (
-    <PdfFormPage title={`Recibo N.º ${number}`} watermark={payment.status === "voided" ? "ANULADO" : null}>
+    <PdfFormPage
+      title={`Recibo N.º ${number}`}
+      watermark={payment.status === "voided" ? "ANULADO" : null}
+      company={company}
+    >
       <View style={{ borderWidth: 1.4, borderColor: RED, borderRadius: 10, padding: 2.5 }}>
         <View style={{ borderWidth: 0.7, borderColor: RED, borderRadius: 8, padding: 14, gap: 11 }}>
           {/* Letterhead */}
@@ -58,10 +63,10 @@ export function ReceiptPdf({ payment }: { payment: PaymentView }) {
           </View>
           <View style={{ alignItems: "flex-end", fontSize: 7.5, color: MUTED }}>
             <Text>
-              Facebook: {COMPANY.facebook} · {COMPANY.website}
+              Facebook: {company.facebook} · {company.website}
             </Text>
             <Text>
-              Of. {COMPANY.phone} · Cel. {COMPANY.mobile} · {COMPANY.email}
+              Of. {company.phone} · Cel. {company.mobile} · {company.email}
             </Text>
           </View>
 
@@ -85,7 +90,7 @@ export function ReceiptPdf({ payment }: { payment: PaymentView }) {
           </View>
 
           <Text style={{ textAlign: "center", marginTop: 4, fontSize: 10 }}>
-            {COMPANY.city}, {formatLongDate(payment.paymentDate)}
+            {company.city}, {formatLongDate(payment.paymentDate)}
           </Text>
 
           {payment.observations && <PdfBlank label="Observaciones:" value={payment.observations} />}
@@ -180,7 +185,7 @@ export async function receiptPdfResponse(paymentId: string): Promise<Response> {
   const payment = await getPayment(collectionDeps(getDb()), actor, paymentId).catch(notFoundAsNull);
   if (!payment) return new Response("No encontrado", { status: 404 });
   return pdfResponse(
-    <ReceiptPdf payment={payment} />,
+    <ReceiptPdf payment={payment} company={await loadCompanyProfile()} />,
     `recibo-${formatDocumentNumber(payment.receiptNumber)}.pdf`,
   );
 }

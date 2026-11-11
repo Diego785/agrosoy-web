@@ -8,7 +8,8 @@ import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import { getDb } from "@/shared/infrastructure/db/client";
-import { COMPANY } from "@/shared/presentation/company-profile";
+import type { CompanyProfile } from "@/shared/domain/company-profile";
+import { loadCompanyProfile } from "@/shared/presentation/company-profile";
 import { formatDocumentNumber, formatMoney, formatQuantity, formatRate } from "@/shared/presentation/format";
 import { notFoundAsNull } from "@/shared/presentation/not-found";
 import { PDF_COLORS, PdfBlank, PdfCheck, PdfFormPage, PdfLogo, pdfResponse } from "@/shared/presentation/pdf";
@@ -93,7 +94,7 @@ function PersonBox({
 }
 
 /** The note as Agrosoil prints it: one form for delivery, return and transfer (D26). */
-export function NotePdf({ note }: { note: NoteView }) {
+export function NotePdf({ note, company }: { note: NoteView; company: CompanyProfile }) {
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
   const bob = note.exchangeRate ? ExchangeRate.parse(note.exchangeRate).toBob(total) : null;
   const [year, month, day] = note.noteDate.split("-");
@@ -126,6 +127,7 @@ export function NotePdf({ note }: { note: NoteView }) {
     <PdfFormPage
       title={`${PDF_TITLES[note.type]} ${noteNumber(note)}`}
       watermark={note.status === "voided" ? "ANULADA" : note.status === "draft" ? "BORRADOR" : null}
+      company={company}
     >
       <View style={{ borderWidth: 1.2, borderColor: GREEN, borderRadius: 8 }}>
         {/* Letterhead */}
@@ -161,15 +163,15 @@ export function NotePdf({ note }: { note: NoteView }) {
             </Text>
             <View style={{ flexDirection: "row", gap: 10, fontSize: 7, color: MUTED }}>
               <View style={{ flex: 1 }}>
-                <Text>Telf. Of.: {COMPANY.phone}</Text>
-                <Text>Cel.: {COMPANY.mobile}</Text>
-                <Text>{COMPANY.email}</Text>
+                <Text>Telf. Of.: {company.phone}</Text>
+                <Text>Cel.: {company.mobile}</Text>
+                <Text>{company.email}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text>Facebook: {COMPANY.facebook}</Text>
-                <Text>{COMPANY.website}</Text>
+                <Text>Facebook: {company.facebook}</Text>
+                <Text>{company.website}</Text>
                 <Text>
-                  {COMPANY.city} - {COMPANY.country}
+                  {company.city} - {company.country}
                 </Text>
               </View>
             </View>
@@ -373,7 +375,7 @@ export async function notePdfResponse(noteId: string): Promise<Response> {
   const note = await getNote(noteDeps(getDb()), actor, noteId).catch(notFoundAsNull);
   if (!note) return new Response("No encontrado", { status: 404 });
   return pdfResponse(
-    <NotePdf note={note} />,
+    <NotePdf note={note} company={await loadCompanyProfile()} />,
     note.number ? `boleta-${formatDocumentNumber(note.number)}.pdf` : "boleta-borrador.pdf",
   );
 }

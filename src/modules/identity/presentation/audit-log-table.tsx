@@ -48,6 +48,7 @@ const ACTION_LABELS: Record<string, string> = {
   "migration.convert_products": "Pasó al sistema los productos de la hoja",
   "migration.convert_sales": "Pasó al sistema las ventas y pagos de la hoja",
   "migration.undo_sales": "Deshizo el paso de ventas y pagos de la hoja",
+  "settings.update_company": "Actualizó los datos de la empresa",
   "campaigns.create": "Creó la campaña",
   "campaigns.update": "Editó la campaña",
   "campaigns.extend_due_date": "Dio más plazo de pago a",
@@ -199,6 +200,7 @@ const AREA_LABELS: Record<string, string> = {
   sales: "Boletas",
   collections: "Cobros",
   migration: "Importación",
+  settings: "Empresa",
 };
 
 function AreaBadge({ action }: { action: string }) {

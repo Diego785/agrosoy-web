@@ -1,16 +1,10 @@
-/**
- * What the printed documents say about the company (D26): the details it gave us and the
- * website and Facebook page printed on its forms. Moves to a settings page after the demo.
- */
-export const COMPANY = {
-  brand: "Agrosoil Bolivia",
-  legalName: "AGROSOILBOLIVIA S.R.L.",
-  taxId: "410408021",
-  city: "Santa Cruz",
-  country: "Bolivia",
-  phone: "3427958",
-  mobile: "68767600 - 72142142",
-  email: "agrosoilbolivia@gmail.com",
-  website: "www.agrosoilbolivia.com",
-  facebook: "Agrosoil Bolivia",
-} as const;
+import "server-only";
+import { readCompanyProfile } from "@/shared/application/company-profile";
+import type { CompanyProfile } from "@/shared/domain/company-profile";
+import { drizzleSettingsStore } from "@/shared/infrastructure/db/app-settings";
+import { getDb } from "@/shared/infrastructure/db/client";
+
+/** The company's details as administration last saved them (D26), for the documents being printed. */
+export function loadCompanyProfile(): Promise<CompanyProfile> {
+  return readCompanyProfile(drizzleSettingsStore(getDb()));
+}

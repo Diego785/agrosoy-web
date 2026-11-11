@@ -1,7 +1,9 @@
 import "server-only";
 import { Text, View } from "@react-pdf/renderer";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
+import type { CompanyProfile } from "@/shared/domain/company-profile";
 import { Money } from "@/shared/domain/money";
+import { loadCompanyProfile } from "@/shared/presentation/company-profile";
 import { formatDate, formatMoney, formatQuantity } from "@/shared/presentation/format";
 import { PdfFields, PdfPage, PdfTable, pdfResponse, pdfStyles } from "@/shared/presentation/pdf";
 import { requireActor } from "@/modules/identity/presentation/current-user";
@@ -25,11 +27,13 @@ export function StatementPdf({
   statement,
   scope,
   asOf,
+  company,
 }: {
   statement: CustomerStatementView;
   /** "Todas las campañas" or "Campaña Verano 2026". */
   scope: string;
   asOf: string;
+  company: CompanyProfile;
 }) {
   const { totals } = statement;
   const hasOther = !Money.parse(totals.other).isZero();
@@ -38,6 +42,7 @@ export function StatementPdf({
     <PdfPage
       title="ESTADO DE CUENTA"
       subtitle={`${statement.customerName} · ${scope} · al ${formatDate(asOf)}`}
+      company={company}
     >
       <PdfFields
         items={[
@@ -144,7 +149,7 @@ export async function statementPdfResponse(customerId: string, campaignId: strin
   const scope = campaign ? `Campaña ${campaignLabel(campaign)}` : "Todas las campañas";
   const today = todayInBolivia();
   return pdfResponse(
-    <StatementPdf statement={statement} scope={scope} asOf={today} />,
+    <StatementPdf statement={statement} scope={scope} asOf={today} company={await loadCompanyProfile()} />,
     `estado-de-cuenta-${fileSlug(statement.customerName)}-${today}.pdf`,
   );
 }

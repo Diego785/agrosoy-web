@@ -308,8 +308,13 @@ Notes get optional carrier fields and a "handed over by" person: the technician 
 warehouse keeper once inventory exists); on a return the customer's person hands over and
 Agrosoil's receives. Users get an optional position ("Ejecutivo de ventas") and CI to print them.
 The company's name, logo and contact details come from a settings page; the documents carry the
-brand printed on the forms, **Agrosoil Bolivia**. Until that page exists they live in
-`shared/presentation/company-profile.ts`.
+brand printed on the forms, **Agrosoil Bolivia**.
+
+**Built on 11 November 2026:** Administración → Datos de la empresa (permission `company.manage`,
+administration and management by default) edits the brand, legal name, NIT, city, country, phones,
+email, website and Facebook, stored in `app_settings`; every PDF reads them when it is printed, and
+an unreadable field falls back to the details Agrosoil gave us. The logo stays the one bundled with
+the application.
 
 **Why:** customers and staff already know and sign these forms; the printed copy stays the
 physical record, so it must look like the one they trust.

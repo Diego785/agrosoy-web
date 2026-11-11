@@ -140,6 +140,7 @@ export const PermissionMatrixForm = resetOnLeave(function PermissionMatrixForm({
 const AREA_LABELS: Record<string, string> = {
   users: "Administración",
   audit: "Administración",
+  company: "Administración",
   customers: "Clientes y cobranzas",
   statements: "Clientes y cobranzas",
   payments: "Clientes y cobranzas",

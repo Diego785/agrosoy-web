@@ -6,6 +6,7 @@ import type { Actor } from "./actor";
 export const PERMISSIONS = [
   "users.manage",
   "audit.view",
+  "company.manage",
   "customers.view",
   "customers.manage",
   "statements.view",
