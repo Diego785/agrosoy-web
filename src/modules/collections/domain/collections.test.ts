@@ -103,5 +103,10 @@ describe("charges", () => {
     expect(() => chargeRecord({ ...charge, concept: "interest", direction: "credit" })).toThrow(
       "VALIDATION_FAILED",
     );
+    expect(() => chargeRecord({ ...charge, concept: "legal_fees", direction: "credit" })).toThrow(
+      "VALIDATION_FAILED",
+    );
+    const legalFees = chargeRecord({ ...charge, concept: "legal_fees", direction: "debit" });
+    expect(chargeLedgerAmount(legalFees).toDecimalString()).toBe("50.00");
   });
 });

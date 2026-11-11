@@ -17,6 +17,7 @@ export const CHARGE_CONCEPT_LABELS: Record<ChargeConcept, string> = {
   interest: "Interés",
   price_adjustment: "Ajuste de precio",
   notarized_contract: "Contrato notariado",
+  legal_fees: "Gastos legales",
   other: "Otro cargo",
 };
 

@@ -62,8 +62,17 @@ export function cashNotePayment(
   return { ...record, usdAmount: total };
 }
 
-/** The "OTROS" codes of Agrosoil's product list: charges, not products (D24). */
-export const CHARGE_CONCEPTS = ["interest", "price_adjustment", "notarized_contract", "other"] as const;
+/**
+ * The "OTROS" codes of Agrosoil's product list: charges, not products (D24); legal fees are charged to
+ * customers in arrears (meeting of 7 November 2026).
+ */
+export const CHARGE_CONCEPTS = [
+  "interest",
+  "price_adjustment",
+  "notarized_contract",
+  "legal_fees",
+  "other",
+] as const;
 export type ChargeConcept = (typeof CHARGE_CONCEPTS)[number];
 
 export const CHARGE_DIRECTIONS = ["debit", "credit"] as const;
