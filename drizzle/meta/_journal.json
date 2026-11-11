@@ -169,6 +169,13 @@
       "when": 1794412028087,
       "tag": "0023_late_interest",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794414647005,
+      "tag": "0024_follow_ups_from_several_deliveries",
+      "breakpoints": true
     }
   ]
 }

@@ -34,8 +34,6 @@ export const deliveryNotes = pgTable(
       .default("delivery"),
     /** Assigned on confirmation, continuing the paper pad; unique once set. */
     number: integer().unique(),
-    /** Returns and campaign transfers: the delivery note they act on. */
-    originalNoteId: uuid().references((): AnyPgColumn => deliveryNotes.id),
     /** Notes brought in from a spreadsheet (M12): confirmed without a system number. */
     imported: boolean().notNull().default(false),
     importBatchId: uuid(),
@@ -75,11 +73,6 @@ export const deliveryNotes = pgTable(
   (table) => [
     index().on(table.customerId),
     index().on(table.status, table.noteDate),
-    index().on(table.originalNoteId),
-    check(
-      "delivery_notes_follow_ups_have_original",
-      sql`(${table.type} = 'delivery') = (${table.originalNoteId} is null)`,
-    ),
     check(
       "delivery_notes_confirmed_have_number",
       sql`${table.status} = 'draft' or ${table.number} is not null or ${table.imported}`,
@@ -111,7 +104,10 @@ export const deliveryNoteLines = pgTable(
     unitPrice: numeric({ precision: 14, scale: 2 }).notNull(),
     freeOfCharge: text({ enum: ["bonus", "sample"] }),
     total: numeric({ precision: 14, scale: 2 }).notNull(),
-    /** Returns and campaign transfers: the delivered line they give back or move. */
+    /**
+     * Returns and campaign transfers: the line they give back or move, from any delivery or transfer
+     * of the customer in the campaign (D25); its note is where the product came from.
+     */
     originalLineId: uuid().references((): AnyPgColumn => deliveryNoteLines.id),
   },
   (table) => [index().on(table.noteId), index().on(table.originalLineId)],

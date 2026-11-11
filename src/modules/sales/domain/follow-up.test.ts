@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
-import { returnLines, transferLines, type OriginalLine } from "./follow-up";
+import { returnLines, shared, transferLines, type OriginalLine } from "./follow-up";
 
 const original: OriginalLine[] = [
   {
@@ -61,5 +61,14 @@ describe("campaign transfers", () => {
     expect(() => transferLines(original, [{ ...ask("sample", "1"), unitPrice: Money.parse("1") }])).toThrow(
       "VALIDATION_FAILED",
     );
+  });
+});
+
+describe("what the sources of a follow-up share (D25)", () => {
+  it("is the value they all have, or null when they differ or there are none", () => {
+    expect(shared(["p1", "p1"])).toBe("p1");
+    expect(shared(["p1", "p2"])).toBeNull();
+    expect(shared([null, null])).toBeNull();
+    expect(shared([])).toBeNull();
   });
 });

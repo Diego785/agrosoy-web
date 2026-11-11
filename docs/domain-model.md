@@ -124,28 +124,28 @@ A note has a header and lines.
 
 ### What confirming a note does
 
-| Note type                         | Stock (M8)                                    | Customer ledger (M7)                                                                            |
-| --------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Delivery, credit                  | − quantity from warehouse + lot               | **debit** total, in the note's campaign                                                         |
-| Delivery, cash                    | − quantity from warehouse + lot               | **debit** total and **credit** the payment recorded in the same step                            |
-| Delivery, free-of-charge line     | − quantity                                    | nothing for that line                                                                           |
-| Return (against an original note) | + quantity to the warehouse                   | **credit** quantity × the original line's price                                                 |
-| Campaign transfer                 | nothing (the product stays with the customer) | **credit** in the old campaign at the old price, **debit** in the new campaign at the new price |
-| Void of any of the above          | the exact reverse movements                   | the exact reverse entries                                                                       |
+| Note type                      | Stock (M8)                                    | Customer ledger (M7)                                                                            |
+| ------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Delivery, credit               | − quantity from warehouse + lot               | **debit** total, in the note's campaign                                                         |
+| Delivery, cash                 | − quantity from warehouse + lot               | **debit** total and **credit** the payment recorded in the same step                            |
+| Delivery, free-of-charge line  | − quantity                                    | nothing for that line                                                                           |
+| Return (against earlier lines) | + quantity to the warehouse                   | **credit** quantity × the price of the line it gives back                                       |
+| Campaign transfer              | nothing (the product stays with the customer) | **credit** in the old campaign at the old price, **debit** in the new campaign at the new price |
+| Void of any of the above       | the exact reverse movements                   | the exact reverse entries                                                                       |
 
 Rules:
 
 - A delivery cannot take more than the warehouse + lot has, and warns when the lot is expired.
-- Returns and campaign transfers take lines from confirmed delivery notes of the same customer and
-  campaign (D25; the week 3 build still takes them from a single note) and are saved already
-  confirmed (with their number, or the printed one). Each line can be returned or transferred only
-  up to what is left of it: delivered minus what confirmed returns and transfers already took.
-  This is the customer's consigned quantity of that delivery.
-- A return is credited in the original note's campaign, dated the day of the return.
+- Returns and campaign transfers take lines from the confirmed deliveries of the same customer and
+  campaign, and from the campaign transfers into it (D25), and are saved already confirmed (with
+  their number, or the printed one). Each line can be returned or transferred only up to what is
+  left of it: received minus what confirmed returns and transfers already took. This is the
+  customer's consigned quantity of that line.
+- A return is credited in the campaign its lines come from, dated the day of the return.
 - A transfer is dated in the new campaign (a different, open one); it credits the old campaign at
   the delivered price and charges the new one at the new price (suggested from the new
   campaign's reference prices). Free lines owe nothing, so they are not transferred.
-- A delivery note with confirmed returns or transfers is voided only after them.
+- A note with confirmed returns or transfers taken from it is voided only after them.
 
 ## Collections (M6)
 

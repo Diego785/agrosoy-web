@@ -287,8 +287,21 @@ points to a single original note; its PDF lists the deliveries it draws from.
 **Why:** the paper form has no "original note" field, and one return slip can bring back product
 from several deliveries. With one printed number it has to be one note.
 
-Until this is built, a confirmed note offers no return or transfer: the single-note version remains
-at its address only, so nobody learns a flow that is about to change.
+**Built on 11 November 2026:**
+
+- The form starts from the customer and the campaign the product is from, not from a note: "Boletas"
+  offers "Devolución" and "Traspaso", and a confirmed note offers both already set to its customer
+  and campaign. It lists every line still held, grouped by the note it came on.
+- Product reaches a campaign by delivery or by a campaign transfer into it, and both can come back
+  or move on: a transfer's lines are sources too, at the new price, in the new campaign.
+- The note's header takes what its sources share: the property, the technician (otherwise the
+  customer's current one), and for a return the exchange rate and cash terms when every source
+  has them. A transfer is on credit, at the rate typed.
+- Its page and PDF name the notes it draws from ("De las boletas N.º 001250 y N.º 001263"), and
+  each line says which one it came on when there are several. A note with returns or transfers
+  taken from it is still voided only after them.
+- The single `original_note_id` column is gone (migration 0024); each line's link to its source
+  line is the record of where it came from, also for the follow-ups saved before.
 
 ## D26 · Notes and receipts print like Agrosoil's paper forms
 

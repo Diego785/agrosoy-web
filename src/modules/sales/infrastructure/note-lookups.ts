@@ -13,7 +13,7 @@ export function noteLookups(executor: DbExecutor): NoteLookups {
   return {
     async customer(id) {
       const [customer] = await executor
-        .select({ isActive: customers.isActive })
+        .select({ name: customers.name, isActive: customers.isActive, technicianId: customers.technicianId })
         .from(customers)
         .where(eq(customers.id, id));
       if (!customer) return undefined;
@@ -21,7 +21,12 @@ export function noteLookups(executor: DbExecutor): NoteLookups {
         .select({ id: customerProperties.id })
         .from(customerProperties)
         .where(and(eq(customerProperties.customerId, id), eq(customerProperties.isActive, true)));
-      return { isActive: customer.isActive, propertyIds: properties.map((property) => property.id) };
+      return {
+        name: customer.name,
+        isActive: customer.isActive,
+        propertyIds: properties.map((property) => property.id),
+        technicianId: customer.technicianId,
+      };
     },
 
     async campaignOn(isoDate) {

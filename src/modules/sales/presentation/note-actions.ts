@@ -95,24 +95,22 @@ export async function setNextNoteNumberAction(input: NextNoteNumberInput): Promi
 }
 
 export async function registerReturnAction(
-  noteId: string,
   input: ReturnInput,
 ): Promise<ActionResult<{ id: string; number: number }>> {
   return runAction(async () => {
     const actor = await requireActor();
-    const registered = await withTransaction((tx) => registerReturn(deps(tx), actor, noteId, input));
+    const registered = await withTransaction((tx) => registerReturn(deps(tx), actor, input));
     revalidatePath("/", "layout");
     return registered;
   });
 }
 
 export async function registerTransferAction(
-  noteId: string,
   input: TransferInput,
 ): Promise<ActionResult<{ id: string; number: number }>> {
   return runAction(async () => {
     const actor = await requireActor();
-    const registered = await withTransaction((tx) => registerTransfer(deps(tx), actor, noteId, input));
+    const registered = await withTransaction((tx) => registerTransfer(deps(tx), actor, input));
     revalidatePath("/", "layout");
     return registered;
   });

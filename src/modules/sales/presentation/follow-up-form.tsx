@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Money } from "@/shared/domain/money";
@@ -23,12 +23,14 @@ import {
 import { Textarea } from "@/shared/presentation/ui/textarea";
 import type { ReturnInput, TransferInput } from "../application/note-schemas";
 import { registerReturnAction, registerTransferAction } from "./note-actions";
-import { notePath } from "./note-routes";
+import { NOTES_PATH, notePath } from "./note-routes";
 import { DateInput } from "@/shared/presentation/date-input";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
 export type FollowUpFormLine = {
   id: string;
+  /** The note the line came on: "N.º 1250 · 26/10/2026". */
+  source: string;
   label: string;
   /** What the note delivered and what is left after confirmed returns and transfers. */
   delivered: string;
@@ -49,18 +51,20 @@ type Values = {
 };
 
 /**
- * Returns and campaign transfers share this form: one row per delivered line with what is left,
- * and the quantity to give back or move (prices too, for a transfer).
+ * Returns and campaign transfers share this form: one row per line the customer received in the
+ * campaign, grouped by the note it came on (D25), with what is left and the quantity to give back or
+ * move (prices too, for a transfer).
  */
 export const FollowUpForm = resetOnLeave(function FollowUpForm({
   mode,
-  noteId,
+  target,
   lines,
   today,
   defaults,
 }: {
   mode: "return" | "transfer";
-  noteId: string;
+  /** Whose product, from which campaign. */
+  target: { customerId: string; campaignId: string };
   lines: FollowUpFormLine[];
   today: string;
   defaults: { receiverName: string; exchangeRate: string };
@@ -96,14 +100,16 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
     startSaving(async () => {
       const paperNumber = isPaper ? values.paperNumber : "";
       const result = isTransfer
-        ? await registerTransferAction(noteId, {
+        ? await registerTransferAction({
+            ...target,
             noteDate: values.noteDate,
             exchangeRate: values.exchangeRate,
             observations: values.observations,
             paperNumber,
             lines: values.lines,
           } satisfies TransferInput)
-        : await registerReturnAction(noteId, {
+        : await registerReturnAction({
+            ...target,
             noteDate: values.noteDate,
             receiverName: values.receiverName,
             observations: values.observations,
@@ -135,41 +141,54 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
           {lines.map((line, index) => {
             const blocked = Quantity.parse(line.remaining).isZero() || (isTransfer && line.isFree);
             const lineErrors = errors.lines?.[index];
+            const startsNote = line.source !== lines[index - 1]?.source;
             return (
-              <TableRow key={line.id}>
-                <TableCell className="whitespace-normal">{line.label}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatQuantity(line.delivered)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatQuantity(line.remaining)}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {line.isFree ? "—" : formatMoney(line.unitPrice)}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    inputMode="decimal"
-                    selectOnFocus
-                    aria-label={`Cantidad de ${line.label}`}
-                    readOnly={blocked}
-                    className={blocked ? "bg-muted/50" : undefined}
-                    aria-invalid={!!lineErrors?.quantity}
-                    {...form.register(`lines.${index}.quantity`)}
-                  />
-                  <FieldError errors={[lineErrors?.quantity]} />
-                </TableCell>
-                {isTransfer && (
+              <Fragment key={line.id}>
+                {startsNote && (
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableCell
+                      colSpan={isTransfer ? 6 : 5}
+                      className="py-1.5 text-xs font-medium text-muted-foreground"
+                    >
+                      Boleta {line.source}
+                    </TableCell>
+                  </TableRow>
+                )}
+                <TableRow>
+                  <TableCell className="whitespace-normal">{line.label}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatQuantity(line.delivered)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatQuantity(line.remaining)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {line.isFree ? "—" : formatMoney(line.unitPrice)}
+                  </TableCell>
                   <TableCell>
                     <Input
                       inputMode="decimal"
                       selectOnFocus
-                      aria-label={`Precio nuevo de ${line.label}`}
+                      aria-label={`Cantidad de ${line.label}`}
                       readOnly={blocked}
                       className={blocked ? "bg-muted/50" : undefined}
-                      aria-invalid={!!lineErrors?.unitPrice}
-                      {...form.register(`lines.${index}.unitPrice`)}
+                      aria-invalid={!!lineErrors?.quantity}
+                      {...form.register(`lines.${index}.quantity`)}
                     />
-                    <FieldError errors={[lineErrors?.unitPrice]} />
+                    <FieldError errors={[lineErrors?.quantity]} />
                   </TableCell>
-                )}
-              </TableRow>
+                  {isTransfer && (
+                    <TableCell>
+                      <Input
+                        inputMode="decimal"
+                        selectOnFocus
+                        aria-label={`Precio nuevo de ${line.label}`}
+                        readOnly={blocked}
+                        className={blocked ? "bg-muted/50" : undefined}
+                        aria-invalid={!!lineErrors?.unitPrice}
+                        {...form.register(`lines.${index}.unitPrice`)}
+                      />
+                      <FieldError errors={[lineErrors?.unitPrice]} />
+                    </TableCell>
+                  )}
+                </TableRow>
+              </Fragment>
             );
           })}
         </TableBody>
@@ -178,9 +197,9 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
       <p className="text-sm">
         {isTransfer ? (
           <>
-            Se descuenta <strong>US$ {formatMoney(credit.toDecimalString())}</strong> de la campaña de la
-            boleta y se carga <strong>US$ {formatMoney(charge.toDecimalString())}</strong> en la campaña de la
-            fecha.
+            Se descuenta <strong>US$ {formatMoney(credit.toDecimalString())}</strong> de la campaña del
+            producto y se carga <strong>US$ {formatMoney(charge.toDecimalString())}</strong> en la campaña de
+            la fecha.
           </>
         ) : (
           <>
@@ -252,7 +271,7 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
         <Button type="submit" disabled={isSaving}>
           {isTransfer ? "Registrar traspaso" : "Registrar devolución"}
         </Button>
-        <Link href={notePath(noteId)} className={buttonVariants({ variant: "ghost" })}>
+        <Link href={NOTES_PATH} className={buttonVariants({ variant: "ghost" })}>
           Cancelar
         </Link>
       </div>

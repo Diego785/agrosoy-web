@@ -114,8 +114,7 @@ export function NotePdf({ note, company }: { note: NoteView; company: CompanyPro
   const emptyRows = Math.max(0, MIN_ROWS - note.lines.length);
   // The paper form has no invoice box, so the invoice goes with the observations (D40).
   const observations = [
-    note.original &&
-      `Sobre la boleta N.º ${note.original.number ? formatDocumentNumber(note.original.number) : "—"}.`,
+    sourcesText(note.sources),
     note.taxInvoiceNumber && `Factura N.º ${note.taxInvoiceNumber}.`,
     note.observations,
     note.voided && `Anulada: ${note.voided.reason}`,
@@ -378,4 +377,16 @@ export async function notePdfResponse(noteId: string): Promise<Response> {
     <NotePdf note={note} company={await loadCompanyProfile()} />,
     note.number ? `boleta-${formatDocumentNumber(note.number)}.pdf` : "boleta-borrador.pdf",
   );
+}
+
+/** "De las boletas N.º 001250 y N.º 45 (planilla)." for a return or transfer (D25). */
+function sourcesText(sources: NoteView["sources"]): string | null {
+  if (sources.length === 0) return null;
+  const labels = sources.map((source) =>
+    source.imported
+      ? `N.º ${source.sheetNumber ?? "—"} (planilla)`
+      : `N.º ${source.number ? formatDocumentNumber(source.number) : "—"}`,
+  );
+  const list = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} y ${labels.at(-1)}`;
+  return `De ${labels.length === 1 ? "la boleta" : "las boletas"} ${list}.`;
 }

@@ -16,6 +16,34 @@ export type NoteLineView = {
   unitPrice: string;
   freeOfCharge: FreeReason | null;
   total: string;
+  /** Returns and transfers: the note whose line this one gives back or moves (D25). */
+  sourceNoteId: string | null;
+};
+
+/** A note a return or transfer draws from, as its header and PDF name it (D25). */
+export type NoteSource = {
+  id: string;
+  type: NoteType;
+  number: number | null;
+  /** The number the spreadsheet gave it, for imported notes. */
+  sheetNumber: number | null;
+  imported: boolean;
+  noteDate: string;
+  campaign: { season: Season; year: number };
+};
+
+/** A line the customer received in a campaign, with what is left of it to return or move (D25). */
+export type ConsignedLine = OriginalLine & {
+  source: Omit<NoteSource, "campaign"> & {
+    propertyId: string | null;
+    technicianId: string | null;
+    paymentTerms: PaymentTerms;
+    exchangeRate: string | null;
+  };
+  productName: string;
+  content: string;
+  unit: ContentUnit;
+  saleUnit: SaleUnit;
 };
 
 export type NoteView = {
@@ -25,8 +53,8 @@ export type NoteView = {
   number: number | null;
   /** Brought in from a spreadsheet, with the number the sheet gave it. */
   imported: { sheetNumber: number | null } | null;
-  /** Returns and transfers: the delivery note they act on. */
-  original: { id: string; number: number | null; campaign: { season: Season; year: number } } | null;
+  /** Returns and transfers: the notes their lines come from, oldest first (D25). */
+  sources: NoteSource[];
   noteDate: string;
   customer: { id: string; code: number; name: string; taxId: string | null };
   property: { id: string; name: string } | null;
@@ -47,7 +75,7 @@ export type NoteView = {
   voided: { at: Date; byName: string | null; reason: string } | null;
 };
 
-/** A return or transfer made against a delivery note. */
+/** A return or transfer that took product from a note. */
 export type FollowUpItem = {
   id: string;
   type: NoteType;
@@ -93,8 +121,12 @@ export interface NoteRepository {
   /** Confirmed → voided. INVALID_STATE if it isn't confirmed. */
   markVoided(id: string, reason: string, actorId: string): Promise<void>;
   numberInUse(number: number): Promise<boolean>;
-  /** A delivery note's lines with what confirmed returns and transfers already took from each. */
-  originalLines(noteId: string): Promise<OriginalLine[]>;
+  /**
+   * The lines a customer received in a campaign, from confirmed deliveries and transfers into it,
+   * with what confirmed returns and transfers already took from each; oldest first (D25).
+   */
+  consignedLines(customerId: string, campaignId: string): Promise<ConsignedLine[]>;
+  /** The returns and transfers that took product from this note's lines. */
   followUps(noteId: string): Promise<FollowUpItem[]>;
   /** Saves a return or transfer as confirmed, with its number. DUPLICATE if the number is taken. */
   insertFollowUp(note: FollowUpNote, number: number, actorId: string): Promise<{ id: string }>;
@@ -120,7 +152,11 @@ export interface NoteRepository {
 
 /** Facts from other modules a note needs to be valid. */
 export interface NoteLookups {
-  customer(id: string): Promise<{ isActive: boolean; propertyIds: string[] } | undefined>;
+  customer(
+    id: string,
+  ): Promise<
+    { name: string; isActive: boolean; propertyIds: string[]; technicianId: string | null } | undefined
+  >;
   /** The open or closed campaign containing the date. */
   campaignOn(isoDate: string): Promise<{ id: string; status: "open" | "closed" } | undefined>;
   isActiveTechnician(id: string): Promise<boolean>;

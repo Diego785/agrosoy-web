@@ -174,7 +174,13 @@ const optionalDecimal = (decimals: number, message: string) =>
 
 const paperNumberField = z.union([z.literal(""), noteNumber("Escribe el número impreso, por ejemplo 1250.")]);
 
-export const returnSchema = z.object({
+/** Whose consigned product, and from which campaign, a return or transfer takes (D25). */
+export const followUpTargetSchema = z.object({
+  customerId: z.uuid({ error: "Elige el cliente." }),
+  campaignId: z.uuid({ error: "Elige la campaña." }),
+});
+
+export const returnSchema = followUpTargetSchema.extend({
   noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
   /** Who brought the product back. */
   receiverName: z
@@ -194,8 +200,8 @@ export const returnSchema = z.object({
     .min(1),
 });
 
-export const transferSchema = z
-  .object({
+export const transferSchema = followUpTargetSchema
+  .extend({
     noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
     exchangeRate: decimal(4, "Escribe el tipo de cambio, por ejemplo 12.00."),
     observations: optionalText(500),
@@ -222,5 +228,6 @@ export const transferSchema = z
     });
   });
 
+export type FollowUpTarget = z.input<typeof followUpTargetSchema>;
 export type ReturnInput = z.input<typeof returnSchema>;
 export type TransferInput = z.input<typeof transferSchema>;
