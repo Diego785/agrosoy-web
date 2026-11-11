@@ -8,7 +8,7 @@ import { DomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
-import { optionalText } from "@/shared/domain/text";
+import { normalizeForComparison, optionalText } from "@/shared/domain/text";
 import { draftNote, noteLine, type DraftNote } from "../domain/delivery-note";
 import type { NoteListItem, NoteLookups, NoteRepository, NoteView } from "./note-ports";
 import { draftNoteSchema, noteSearchSchema } from "./note-schemas";
@@ -83,8 +83,15 @@ export async function listNotes(
   input: unknown,
 ): Promise<Paged<NoteListItem>> {
   assertCan(actor, "notes.view");
-  const { status, customerId, page, pages } = validateInput(noteSearchSchema, input);
-  const result = await deps.notes.list({ status, customerId, ...pageWindow({ page, pages }) });
+  const { text, status, customerId, from, to, page, pages } = validateInput(noteSearchSchema, input);
+  const result = await deps.notes.list({
+    text: normalizeForComparison(text),
+    status,
+    customerId,
+    from,
+    to,
+    ...pageWindow({ page, pages }),
+  });
   return paged({ page, pages }, result);
 }
 

@@ -60,9 +60,12 @@ export type NoteListItem = {
   id: string;
   type: NoteType;
   status: NoteStatus;
+  /** The system's number, or the sheet's for imported notes. */
   number: number | null;
+  imported: boolean;
   noteDate: string;
   customerName: string;
+  technicianName: string | null;
   paymentTerms: PaymentTerms;
   total: string;
 };
@@ -103,8 +106,13 @@ export interface NoteRepository {
   /** Writes or clears the SIN invoice number of confirmed delivery notes. */
   setTaxInvoiceNumber(ids: readonly string[], value: string | null): Promise<void>;
   list(query: {
-    status?: NoteStatus;
+    /** Compared normalized (case and accents ignored); a number also matches note and customer numbers. */
+    text?: string;
+    /** Without one, every note except voided ones; "all" includes them. */
+    status?: NoteStatus | "all";
     customerId?: string;
+    from?: string;
+    to?: string;
     limit: number;
     offset: number;
   }): Promise<{ items: NoteListItem[]; total: number }>;

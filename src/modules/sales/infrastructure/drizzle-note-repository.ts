@@ -1,4 +1,19 @@
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
@@ -371,10 +386,52 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         );
     },
 
-    async list({ status, customerId, limit, offset }) {
+    async list({ text, status, customerId, from, to, limit, offset }) {
+      const matches: SQL[] = [];
+      if (text && /^\d{1,9}$/.test(text)) {
+        // A number is a note's (the system's or the sheet's), a customer's code or a product code;
+        // "2" shouldn't bring every note of "Fulvin 40-22".
+        const number = Number(text);
+        matches.push(
+          eq(deliveryNotes.number, number),
+          eq(deliveryNotes.sheetNumber, number),
+          eq(customers.code, number),
+          exists(
+            executor
+              .select({ one: sql`1` })
+              .from(deliveryNoteLines)
+              .innerJoin(presentations, eq(presentations.id, deliveryNoteLines.presentationId))
+              .where(and(eq(deliveryNoteLines.noteId, deliveryNotes.id), eq(presentations.code, text))),
+          ),
+        );
+      } else if (text) {
+        const pattern = `%${escapeLike(text)}%`;
+        matches.push(
+          ilike(customers.comparisonName, pattern),
+          ilike(users.name, pattern),
+          // A product of any of its lines.
+          exists(
+            executor
+              .select({ one: sql`1` })
+              .from(deliveryNoteLines)
+              .innerJoin(presentations, eq(presentations.id, deliveryNoteLines.presentationId))
+              .innerJoin(products, eq(products.id, presentations.productId))
+              .where(
+                and(eq(deliveryNoteLines.noteId, deliveryNotes.id), ilike(products.comparisonName, pattern)),
+              ),
+          ),
+        );
+      }
       const where = and(
-        status ? eq(deliveryNotes.status, status) : undefined,
+        matches.length > 0 ? or(...matches) : undefined,
+        status === "all"
+          ? undefined
+          : status
+            ? eq(deliveryNotes.status, status)
+            : ne(deliveryNotes.status, "voided"),
         customerId ? eq(deliveryNotes.customerId, customerId) : undefined,
+        from ? gte(deliveryNotes.noteDate, from) : undefined,
+        to ? lte(deliveryNotes.noteDate, to) : undefined,
       );
       const totals = executor
         .select({
@@ -391,23 +448,35 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
             type: deliveryNotes.type,
             status: deliveryNotes.status,
             number: sql<number | null>`coalesce(${deliveryNotes.number}, ${deliveryNotes.sheetNumber})`,
+            imported: deliveryNotes.imported,
             noteDate: deliveryNotes.noteDate,
             customerName: customers.name,
+            technicianName: users.name,
             paymentTerms: deliveryNotes.paymentTerms,
             total: sql<string>`coalesce(${totals.total}, 0)::numeric(14,2)::text`,
           })
           .from(deliveryNotes)
           .innerJoin(customers, eq(customers.id, deliveryNotes.customerId))
+          .leftJoin(users, eq(users.id, deliveryNotes.technicianId))
           .leftJoin(totals, eq(totals.noteId, deliveryNotes.id))
           .where(where)
           .orderBy(desc(deliveryNotes.noteDate), desc(deliveryNotes.createdAt))
           .limit(limit)
           .offset(offset),
-        executor.select({ total: count() }).from(deliveryNotes).where(where),
+        executor
+          .select({ total: count() })
+          .from(deliveryNotes)
+          .innerJoin(customers, eq(customers.id, deliveryNotes.customerId))
+          .leftJoin(users, eq(users.id, deliveryNotes.technicianId))
+          .where(where),
       ]);
       return { items, total: counted[0]?.total ?? 0 };
     },
   };
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`);
 }
 
 function headerRow(note: DraftNote) {

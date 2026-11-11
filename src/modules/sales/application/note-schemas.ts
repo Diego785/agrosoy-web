@@ -102,9 +102,16 @@ export const draftNoteSchema = z
 export type DraftNoteInput = z.input<typeof draftNoteSchema>;
 export type NoteLineInput = z.input<typeof noteLineSchema>;
 
+/**
+ * The notes list's filters (M5): a number (system or sheet), customer, technician or product, and a
+ * date range. Without a status, voided notes are left out; "all" brings them back.
+ */
 export const noteSearchSchema = z.object({
-  status: z.enum(["draft", "confirmed", "voided"]).optional().catch(undefined),
+  text: z.string().trim().max(100).catch(""),
+  status: z.enum(["draft", "confirmed", "voided", "all"]).optional().catch(undefined),
   customerId: z.uuid().optional().catch(undefined),
+  from: z.iso.date().optional().catch(undefined),
+  to: z.iso.date().optional().catch(undefined),
   ...pagingFields,
 });
 

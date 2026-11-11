@@ -4,6 +4,7 @@ import { draftInput, noteDeps, seedNoteFixtures } from "@test/note-fixtures";
 import { newUserAccount } from "@/modules/identity/domain/user-account";
 import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import { testDb } from "@test/test-database";
+import { confirmNote, voidNote } from "../application/note-lifecycle";
 import {
   createDraftNote,
   discardDraftNote,
@@ -154,6 +155,45 @@ describe("draft delivery notes", () => {
       code: "VALIDATION_FAILED",
       details: { fieldErrors: { handedOverById: [expect.any(String)] } },
     });
+  });
+
+  it("finds notes by number, customer, technician, product and dates, without voided ones", async () => {
+    const ids = await seedNoteFixtures();
+    const { id: technicianId } = await drizzleUserDirectory(testDb).create(
+      newUserAccount({ name: "Favio Añez", username: "fanez", role: "sales_technician" }),
+      "temporary-password",
+    );
+    const confirmed = async (overrides: object) => {
+      const { id } = await createDraftNote(deps(), admin, draftInput(ids, overrides));
+      await confirmNote(deps(), admin, id, { paperNumber: "" });
+      return id;
+    };
+    const roberto = await confirmed({ noteDate: "2026-10-26", technicianId });
+    const tito = await confirmed({
+      customerId: ids.otherId,
+      propertyId: "",
+      noteDate: "2026-11-01",
+      lines: [{ presentationId: ids.energy, quantity: "4", unitPrice: "62.5", freeOfCharge: "" }],
+    });
+    const voided = await confirmed({ noteDate: "2026-11-02" });
+    await voidNote(deps(), admin, voided, { reason: "Se cargó dos veces" });
+
+    const found = async (input: object) =>
+      (await listNotes(deps(), admin, input)).items.map((item) => item.id);
+    expect(await found({})).toEqual([tito, roberto]);
+    expect(await found({ status: "all" })).toEqual([voided, tito, roberto]);
+    expect(await found({ status: "voided" })).toEqual([voided]);
+    expect(await found({ text: "2" })).toEqual([tito]);
+    expect(await found({ text: "MAMANI" })).toEqual([roberto]);
+    expect(await found({ text: "añez" })).toEqual([roberto]);
+    // Roberto's note brings 4-energy as a sample; Tito's sells it.
+    expect(await found({ text: "energy" })).toEqual([tito, roberto]);
+    expect(await found({ text: "fulvin" })).toEqual([roberto]);
+    expect(await found({ from: "2026-10-30" })).toEqual([tito]);
+    expect(await found({ to: "2026-10-30" })).toEqual([roberto]);
+    expect((await listNotes(deps(), admin, { text: "fulvin" })).items).toMatchObject([
+      { id: roberto, technicianName: "Favio Añez", imported: false },
+    ]);
   });
 
   it("lets warehouse keepers read notes but not write them", async () => {

@@ -28,6 +28,8 @@ import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentati
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { FormSectionSkeleton } from "@/shared/presentation/form-section";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
+import { DateFilter } from "@/shared/presentation/date-filter";
+import { SearchInput } from "@/shared/presentation/search-input";
 import {
   CardListSkeleton,
   FiltersSkeleton,
@@ -91,13 +93,20 @@ export async function NotesTable({
   const params = await searchParams;
   const actor = await requireActor();
   const status = first(params.status) ?? "";
+  const text = first(params.q) ?? "";
+  const from = first(params.from) ?? "";
+  const to = first(params.to) ?? "";
   const list = await listNotes(notesDeps(), actor, {
+    text,
     status: status || undefined,
+    from: from || undefined,
+    to: to || undefined,
     page: first(params.page),
     pages: first(params.pages),
   });
   const { items } = list;
   const nextNumber = await nextNoteNumber(notesDeps(), actor);
+  const isFiltered = Boolean(text || status || from || to);
 
   return (
     <div className="flex flex-col gap-4">
@@ -107,16 +116,27 @@ export async function NotesTable({
         <p className="text-sm text-muted-foreground">La próxima boleta será la N.º {nextNumber}.</p>
       )}
       <LiveFilterForm action={NOTES_PATH} className="flex flex-wrap items-center gap-2">
+        <SearchInput
+          name="q"
+          defaultValue={text}
+          placeholder="N.º, cliente, técnico o producto"
+          aria-label="Buscar boleta"
+        />
         <NativeSelect name="status" defaultValue={status} aria-label="Estado">
-          <NativeSelectOption value="">Todas</NativeSelectOption>
+          <NativeSelectOption value="">Sin anuladas</NativeSelectOption>
           <NativeSelectOption value="draft">Borradores</NativeSelectOption>
           <NativeSelectOption value="confirmed">Confirmadas</NativeSelectOption>
           <NativeSelectOption value="voided">Anuladas</NativeSelectOption>
+          <NativeSelectOption value="all">Todas, también anuladas</NativeSelectOption>
         </NativeSelect>
+        <span className="text-sm text-muted-foreground">Del</span>
+        <DateFilter key={`from-${from}`} name="from" label="Desde la fecha" defaultValue={from} />
+        <span className="text-sm text-muted-foreground">al</span>
+        <DateFilter key={`to-${to}`} name="to" label="Hasta la fecha" defaultValue={to} />
       </LiveFilterForm>
       {items.length === 0 ? (
-        <EmptyState icon={<ClipboardListIcon />} title="No hay boletas">
-          {status ? "Prueba con otro estado." : undefined}
+        <EmptyState icon={<ClipboardListIcon />} title={isFiltered ? "Sin resultados" : "No hay boletas"}>
+          {isFiltered ? "Prueba con otro número, nombre, estado o fechas." : undefined}
         </EmptyState>
       ) : (
         <>
@@ -127,6 +147,7 @@ export async function NotesTable({
                   <TableHead className="w-28">N.º</TableHead>
                   <TableHead className="w-28">Fecha</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Técnico</TableHead>
                   <TableHead>Pago</TableHead>
                   <TableHead className="text-right">Total US$</TableHead>
                   <TableHead>Estado</TableHead>
@@ -149,11 +170,13 @@ export async function NotesTable({
                       {note.type !== "delivery" && (
                         <span className="ml-2 text-xs text-muted-foreground">{TYPE_TITLES[note.type]}</span>
                       )}
+                      {note.imported && <span className="ml-2 text-xs text-muted-foreground">planilla</span>}
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
                       {formatDate(note.noteDate)}
                     </TableCell>
                     <TableCell className="font-medium">{note.customerName}</TableCell>
+                    <TableCell className="text-muted-foreground">{note.technicianName ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{paymentLabel(note.paymentTerms)}</TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
                       {formatMoney(note.total)}
@@ -186,7 +209,9 @@ export async function NotesTable({
                 </div>
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {note.type !== "delivery" && `${TYPE_TITLES[note.type]} · `}
+                  {note.imported && "De planilla · "}
                   {formatDate(note.noteDate)} · {paymentLabel(note.paymentTerms)}
+                  {note.technicianName && ` · ${note.technicianName}`}
                 </span>
                 <CardField label="Total US$">
                   <span className="font-medium">{formatMoney(note.total)}</span>
@@ -198,7 +223,7 @@ export async function NotesTable({
       )}
       <ListPages
         list={list}
-        href={(paging) => listHref(NOTES_PATH, { status }, paging)}
+        href={(paging) => listHref(NOTES_PATH, { q: text, status, from, to }, paging)}
         noun={["boleta", "boletas"]}
       />
     </div>
@@ -210,11 +235,12 @@ export function NotesTableSkeleton() {
   return (
     <Loading label="Cargando boletas">
       <Skeleton className="my-0.5 h-4 w-64 max-w-full" />
-      <FiltersSkeleton search={false} selects={1} />
+      <FiltersSkeleton selects={3} />
       <TableSkeleton
         columns={[
           { shape: "short", className: "w-28" },
           { shape: "short", className: "w-28" },
+          { shape: "text" },
           { shape: "text" },
           { shape: "short" },
           { shape: "short", align: "right" },
