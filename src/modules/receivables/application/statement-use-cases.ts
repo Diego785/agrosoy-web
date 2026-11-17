@@ -9,7 +9,14 @@ import { splitDebt, standingEntries, type DebtSplit } from "@/modules/collection
 import { aging, withoutReversedPairs } from "../domain/aging";
 import { overdueByCampaign, totalOverdue } from "../domain/overdue";
 import { collectedPerMille, ledgerTotals } from "../domain/statement";
-import type { LedgerRow, StatementCampaign, StatementExtension, StatementReader } from "./statement-ports";
+import { shareByTechnician } from "../domain/technician-share";
+import type {
+  LedgerRow,
+  StatementCampaign,
+  StatementCustomer,
+  StatementExtension,
+  StatementReader,
+} from "./statement-ports";
 import {
   agingView,
   totalsView,
@@ -53,15 +60,19 @@ export async function portfolioStatement(
       ? null
       : (filter.technicianId ?? (actor.role === "sales_technician" ? actor.id : null));
 
-  const [entries, campaigns] = await Promise.all([
-    deps.statements.entries({ campaignId: filter.campaignId, technicianId: technicianId ?? undefined }),
+  const [allEntries, campaigns] = await Promise.all([
+    deps.statements.entries({ campaignId: filter.campaignId }),
     deps.statements.campaigns(),
   ]);
-  const byCustomer = Map.groupBy(entries, (entry) => entry.customerId);
-  const [customers, extensions] = await Promise.all([
-    deps.statements.customers([...byCustomer.keys()]),
-    deps.statements.extensions([...byCustomer.keys()]),
+  const allCustomers = await deps.statements.customers([
+    ...new Set(allEntries.map((entry) => entry.customerId)),
   ]);
+  const entries = technicianId
+    ? await technicianEntries(deps.statements, allEntries, allCustomers, technicianId)
+    : allEntries;
+  const byCustomer = Map.groupBy(entries, (entry) => entry.customerId);
+  const customers = allCustomers.filter((customer) => byCustomer.has(customer.id));
+  const extensions = await deps.statements.extensions([...byCustomer.keys()]);
   const today = deps.today();
   const dueOf = dueDates(campaigns, extensions);
 
@@ -276,6 +287,58 @@ export async function customerStatement(
     overdue: totalOverdue(overdue).toDecimalString(),
     campaigns,
   };
+}
+
+/**
+ * The part of the ledger that belongs to one technician's sales (D46): their notes, with the
+ * payments and returns that settled them, and the charges of the customers they look after today.
+ * Voided documents are left out, so each piece is a plain debit or credit.
+ */
+async function technicianEntries(
+  reader: StatementReader,
+  entries: readonly LedgerRow[],
+  customers: readonly StatementCustomer[],
+  technicianId: string,
+): Promise<LedgerRow[]> {
+  const standing = withoutReversedPairs(entries);
+  const idsOf = (type: LedgerRow["source"]["type"]) => [
+    ...new Set(standing.filter((entry) => entry.source.type === type).map((entry) => entry.source.id)),
+  ];
+  const details = await reader.shareDetails({
+    noteIds: idsOf("delivery_note"),
+    paymentIds: idsOf("payment"),
+    chargeIds: idsOf("charge"),
+  });
+  const currentTechnician = new Map(customers.map((customer) => [customer.id, customer.technicianId]));
+  const shared = shareByTechnician(
+    standing.map((entry) => {
+      const noteId = entry.source.type === "delivery_note" ? entry.source.id : null;
+      return {
+        ...entry,
+        amount: Money.parse(entry.amount),
+        isInterest: entry.source.type === "charge" && details.interestCharges.has(entry.source.id),
+        noteId,
+        noteTechnicianId: noteId ? (details.noteTechnicians.get(noteId) ?? null) : null,
+        paidNoteId:
+          entry.source.type === "payment"
+            ? (details.paidNotes.get(`${entry.source.id}|${entry.campaignId}`) ?? null)
+            : null,
+      };
+    }),
+    (customerId) => currentTechnician.get(customerId) ?? null,
+  );
+  return shared
+    .filter((piece) => piece.technicianId === technicianId)
+    .map((piece) => ({
+      id: piece.id,
+      customerId: piece.customerId,
+      campaignId: piece.campaignId,
+      date: piece.date,
+      kind: piece.kind,
+      amount: piece.amount.toDecimalString(),
+      source: piece.source,
+      reversesEntryId: null,
+    }));
 }
 
 /**

@@ -9,6 +9,8 @@ import {
 } from "@test/note-fixtures";
 import { testDb } from "@test/test-database";
 import { createCampaign } from "@/modules/campaigns/application/campaign-use-cases";
+import { newUserAccount } from "@/modules/identity/domain/user-account";
+import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import {
   removeDueDateExtension,
   setDueDateExtension,
@@ -232,5 +234,40 @@ describe("portfolio statement", () => {
 
     const owing = await portfolioStatement(deps, admin, { status: "owing" });
     expect(owing.customers).toMatchObject([{ name: "Roberto Mamani", over90: "2200.00" }]);
+  });
+
+  it("gives each technician the debt of their own notes, whoever looks after the customer (D46)", async () => {
+    const ids = await seedNoteFixtures();
+    const technicianNamed = async (name: string) => {
+      const { id } = await drizzleUserDirectory(testDb).create(
+        newUserAccount({ name, username: name.toLowerCase(), role: "sales_technician" }),
+        "temporary-password",
+      );
+      return actorWithRole("sales_technician", id, name);
+    };
+    const favio = await technicianNamed("Favio");
+    const saul = await technicianNamed("Saul");
+    // Roberto bought from Favio first (US$ 2.200), then from Saúl (US$ 2.200), and paid US$ 3.000.
+    await confirmed(ids, { noteDate: "2026-10-20", technicianId: favio.id });
+    await confirmed(ids, { noteDate: "2026-10-26", technicianId: saul.id });
+    await recordPayment(collectionDeps(), admin, {
+      customerId: ids.customerId,
+      paymentDate: "2026-11-01",
+      amount: "3000",
+      exchangeRate: "6.96",
+      currency: "USD",
+      method: "transfer",
+      target: "oldest_debt",
+    });
+
+    const ofFavio = await portfolioStatement(deps, favio, {});
+    expect(ofFavio.customers).toMatchObject([
+      { name: "Roberto Mamani", totals: { delivered: "2200.00", paid: "2200.00", balance: "0.00" } },
+    ]);
+    const ofSaul = await portfolioStatement(deps, admin, { technicianId: saul.id });
+    expect(ofSaul.customers).toMatchObject([
+      { name: "Roberto Mamani", totals: { delivered: "2200.00", paid: "800.00", balance: "1400.00" } },
+    ]);
+    expect(ofSaul.collectedPerMille).toBe(364);
   });
 });

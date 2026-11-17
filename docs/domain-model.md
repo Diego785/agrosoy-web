@@ -58,8 +58,9 @@ inventory (M8) and receivables (M7) inside one transaction.
 - Names are unique after normalization (case, accents and spacing ignored; ñ kept), so the
   spreadsheet's "Proan K Rapid" / "Proan k rapid" kind of duplicate can't happen. Namesakes are
   told apart in the name itself.
-- **Portfolio:** a customer has one technician at a time. Changing it keeps the history
-  (assignments have a start and end date); past documents keep the technician they had.
+- **Portfolio:** a customer has one technician at a time, who looks after them today. Changing it
+  keeps the history (assignments have a start and end date); past documents keep the technician
+  they had. A customer may have none. Debt and collections per technician follow the notes (D46).
 - **Authorized receivers:** name, CI and position or kinship. A delivery records who received.
 - **Import (D29):** Agrosoil's customer list is loaded into a preview, matched by normalized name,
   and saved once reviewed; nothing is created twice.
@@ -200,8 +201,9 @@ The **ledger** is an append-only table of entries:
 - **Aging** pairs credits with the oldest debits (first in, first out) and reports the age of
   what is still unpaid in buckets of 30, 60, 90 and more than 90 days; voided documents and their
   reversals are left out of the pairing. The portfolio shows each customer's debt older than 90
-  days and what is overdue (D37). Technicians open the portfolio on their own customers and can
-  switch to everyone's.
+  days and what is overdue (D37). Technicians open the portfolio on their own debt and can switch
+  to everyone's. One technician's portfolio holds the debt of **their own notes** (D46): payments
+  go to the note administration chose, then to interest, then to the oldest note, whoever sold it.
 - Every technician can see any statement; only administration writes payments and charges.
 
 ## Inventory (M8)

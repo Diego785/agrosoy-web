@@ -708,3 +708,19 @@ change: interest is part of its campaign's debt.
 **Why:** administration asked for it on 13 November 2026 ("esos 100 quisiera que 50 aplique primero
 el interés, y lo que queda a capital"). It is the usual order for partial payments and the one
 Agrosoil applies by hand.
+
+## D46 · Each technician's debt is the debt of their own notes
+
+**Decision:** a customer has one technician who looks after them today, changed whenever needed,
+with the history kept. One technician's portfolio, though, holds the debt of the notes they made,
+not of the customers they look after: a delivery, its returns and its campaign transfer belong to
+the note's technician; charges and opening balances to the customer's technician of today. A
+payment goes to the note administration chose, then to the interest owed (D45), then to the oldest
+note, whoever sold it; what is left over is money in favor under today's technician. The split is
+worked out when the portfolio is read, never stored. Everyone's portfolio is unchanged.
+
+**Why:** customers move between technicians from one campaign to the next, and some buy from two
+in the same campaign (the lists of 16 November 2026 have one customer in two technicians' lists).
+Agrosoil reads each technician's sheet as the debt and the collections of their own sales, and the
+share collected is the base of their commission (proposal, M11 report 1). Following today's
+technician would hand the old debt, and the credit for collecting it, to the new one.
