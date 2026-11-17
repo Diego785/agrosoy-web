@@ -91,12 +91,14 @@ inventory (M8) and receivables (M7) inside one transaction.
   the next year for summer by default; administration can move it, and can give one customer a
   later date for one campaign (an extension, with a reason). Past it, what is still owed in that
   campaign is **overdue**.
-- **Late-payment interest (D38):** each time a due date plus the days administration sets passes,
-  the system proposes 3 % of each customer's unpaid balance in that campaign and earlier ones
-  (earlier interest left out, voided documents too), from the day administration says interest
-  starts. Administration charges or waives each proposal; a decided one is never proposed again,
-  even if an extension or a new due date moves its day.
-  The charge is dated the day it is confirmed.
+- **Late-payment interest (D38):** month by month. A campaign's debt runs from the first whole
+  month after its due date (or extension) plus the grace days (30 by default: December free for
+  winter). When a month ends with capital owed, the system proposes 3 % of that capital (interest
+  and voided documents left out), from the day administration says interest starts.
+  Administration charges or waives each month; a decided month is never proposed again. The charge
+  is dated on the month's last day.
+- **Interest first (D45):** a payment covers the interest owed at the time before capital; the
+  statement shows the split on each payment and the interest still owed in each campaign.
 - **Closing** a campaign produces its summary (sales, collected, pending debt, consigned product)
   and blocks new documents dated in it, except campaign transfers out of it.
 

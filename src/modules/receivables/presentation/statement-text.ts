@@ -21,6 +21,16 @@ const VOIDED: Record<StatementLineView["kind"], string> = {
 /** Debit kinds raise the balance; these lower it. */
 export const CREDIT_KINDS: ReadonlySet<StatementLineView["kind"]> = new Set(["payment", "return"]);
 
+/** "US$ 30,00 a interés y US$ 70,00 a capital", when a payment covered interest (D45). */
+function interestSplit(line: StatementLineView): string | null {
+  if (!line.interestPart) return null;
+  const toInterest = Money.parse(line.interestPart);
+  const toCapital = Money.parse(line.amount).subtract(toInterest);
+  const interestText = `${formatAmount("USD", toInterest.toDecimalString())} a interés`;
+  if (!toCapital.isPositive()) return interestText;
+  return `${interestText} y ${formatAmount("USD", toCapital.toDecimalString())} a capital`;
+}
+
 /**
  * What a statement line says, on screen and in the PDF: the main text and an optional note under it.
  * `withRate` adds a payment's exchange rate to its text, where no "T/C" column shows it.
@@ -35,9 +45,12 @@ export function describeLine(
   if (line.receipt) {
     const bolivianos = paymentInBolivianos(line);
     const rate = withRate && line.exchangeRate ? ` · T/C ${formatRate(line.exchangeRate)}` : "";
+    const notes = [line.observation ? `Ref.: ${line.observation}` : null, interestSplit(line)].filter(
+      (note) => note !== null,
+    );
     return {
       text: `Pago · ${METHOD_LABELS[line.receipt.method]}${bolivianos ? ` · ${bolivianos}` : ""}${rate}`,
-      note: line.observation ? `Ref.: ${line.observation}` : null,
+      note: notes.length > 0 ? notes.join(" · ") : null,
     };
   }
   if (line.kind === "charge") {

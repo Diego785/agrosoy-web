@@ -17,7 +17,7 @@ import { deliveryNotes } from "@/modules/sales/infrastructure/notes.tables";
 import { createdAt, id, timestamps } from "@/shared/infrastructure/db/columns";
 import { CHARGE_CONCEPTS, CHARGE_DIRECTIONS, CURRENCIES, PAYMENT_METHODS } from "../domain/payment";
 
-export const LATE_INTEREST_KEY = "late_interest_decisions_due_key";
+export const LATE_INTEREST_KEY = "late_interest_decisions_month_key";
 
 const voidColumns = {
   status: text({ enum: ["recorded", "voided"] })
@@ -162,11 +162,9 @@ export const lateInterestDecisions = pgTable(
     campaignId: uuid()
       .notNull()
       .references(() => campaigns.id),
-    /** The campaign whose due date set it off: the debt's own, or a later one. */
-    dueCampaignId: uuid()
-      .notNull()
-      .references(() => campaigns.id),
-    /** The due date plus the grace days (or the customer's extension) it applied on. */
+    /** The month whose interest it is, "2027-01" (D38). */
+    month: text().notNull(),
+    /** The month's last day, the day its base was measured and its charge is dated. */
     interestDate: date({ mode: "string" }).notNull(),
     baseUsd: numeric({ precision: 14, scale: 2 }).notNull(),
     ratePercent: numeric({ precision: 5, scale: 2 }).notNull(),
@@ -176,7 +174,7 @@ export const lateInterestDecisions = pgTable(
     decidedAt: createdAt(),
   },
   (table) => [
-    uniqueIndex(LATE_INTEREST_KEY).on(table.customerId, table.campaignId, table.dueCampaignId),
+    uniqueIndex(LATE_INTEREST_KEY).on(table.customerId, table.campaignId, table.month),
     check(
       "late_interest_decisions_charged_have_charge",
       sql`${table.outcome} <> 'charged' or ${table.chargeId} is not null`,

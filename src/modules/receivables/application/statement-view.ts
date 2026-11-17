@@ -72,6 +72,8 @@ export type StatementLineView = {
     amount: string;
     usdAmount: string;
   } | null;
+  /** What of a payment covered interest owed at the time; the rest went to capital (D45). */
+  interestPart?: string | null;
   /** The entry a void wrote to cancel a document. */
   isReversal: boolean;
   /** Campaign transfers: the credit in the old campaign ("out") or the charge in the new one ("in"). */
@@ -96,6 +98,8 @@ export type CampaignTotalsView = {
   extension: { dueOn: string; reason: string } | null;
   /** The balance, once the due date has passed and something is owed; "0.00" otherwise. */
   overdue: string;
+  /** The part of the balance that is interest still owed (D45); "0.00" when none. */
+  interestOwed: string;
 };
 
 export type CustomerStatementView = {

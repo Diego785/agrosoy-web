@@ -50,25 +50,26 @@ tables and docs, and the Spanish column in the user interface.
 
 ## Collections
 
-| Spanish (UI)              | English (code)                                                                                | Notes                                                                                            |
-| ------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Cobranza / pago           | `payment`                                                                                     | Money (or goods) received from a customer.                                                       |
-| Medio de pago             | `payment_method`: `cash`, `transfer`, `qr`, `in_kind`                                         | No cards.                                                                                        |
-| Pago en especie           | `in_kind` payment                                                                             | Soy, machinery or products, at an agreed value.                                                  |
-| Tipo de cambio            | `exchange_rate`                                                                               | Bolivianos per US dollar, stored on every operation.                                             |
-| Tipo de cambio vigente    | `rate_in_force`                                                                               | The last rate recorded, used until replaced (D36).                                               |
-| Seguir el oficial         | `follow_official_rate`                                                                        | The official rate becomes the rate in force each day (D42).                                      |
-| Acuerdo de tipo de cambio | `exchange_rate_agreement`: `fixed` / `daily`                                                  | Per customer.                                                                                    |
-| Cargo adicional           | `charge`                                                                                      | Added by administration with a concept and a reason (D24).                                       |
-| Concepto del cargo        | `charge_concept`: `interest`, `price_adjustment`, `notarized_contract`, `legal_fees`, `other` | Codes 079, 080 and 081 of Agrosoil's list; legal fees added on 7 Nov 2026.                       |
-| Interés por mora          | `interest` charge (D38)                                                                       | 3 % of what is still owed after a due date; proposed by the system, confirmed by administration. |
-| Descartar (un interés)    | `waive` an interest proposal (D38)                                                            | Not charged and never proposed again; it can still be charged by hand.                           |
-| Recibo                    | `payment_receipt`                                                                             | PDF given for a payment, like the paper receipt (D26).                                           |
-| Total / a cuenta / saldo  | `balance_before` / payment amount / `balance_after`                                           | Kept as they were when the receipt was issued (D27).                                             |
-| Estado de cuenta          | `account_statement`                                                                           | Debt per customer, total and per campaign.                                                       |
-| Deuda / saldo             | `balance`                                                                                     | Sum of the customer's ledger entries.                                                            |
-| Cancelado / debe          | `settled` / `owing`                                                                           | Status shown in the statement.                                                                   |
-| Antigüedad de la deuda    | `debt_aging`                                                                                  | Age of unpaid deliveries.                                                                        |
+| Spanish (UI)              | English (code)                                                                                | Notes                                                                                                 |
+| ------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Cobranza / pago           | `payment`                                                                                     | Money (or goods) received from a customer.                                                            |
+| Medio de pago             | `payment_method`: `cash`, `transfer`, `qr`, `in_kind`                                         | No cards.                                                                                             |
+| Pago en especie           | `in_kind` payment                                                                             | Soy, machinery or products, at an agreed value.                                                       |
+| Tipo de cambio            | `exchange_rate`                                                                               | Bolivianos per US dollar, stored on every operation.                                                  |
+| Tipo de cambio vigente    | `rate_in_force`                                                                               | The last rate recorded, used until replaced (D36).                                                    |
+| Seguir el oficial         | `follow_official_rate`                                                                        | The official rate becomes the rate in force each day (D42).                                           |
+| Acuerdo de tipo de cambio | `exchange_rate_agreement`: `fixed` / `daily`                                                  | Per customer.                                                                                         |
+| Cargo adicional           | `charge`                                                                                      | Added by administration with a concept and a reason (D24).                                            |
+| Concepto del cargo        | `charge_concept`: `interest`, `price_adjustment`, `notarized_contract`, `legal_fees`, `other` | Codes 079, 080 and 081 of Agrosoil's list; legal fees added on 7 Nov 2026.                            |
+| Interés por mora          | `interest` charge (D38)                                                                       | 3 % of the capital owed each month after the due date; proposed monthly, confirmed by administration. |
+| Capital                   | `capital` (D45)                                                                               | What the customer owes apart from interest; payments cover interest first.                            |
+| Descartar (un interés)    | `waive` an interest proposal (D38)                                                            | Not charged and never proposed again; it can still be charged by hand.                                |
+| Recibo                    | `payment_receipt`                                                                             | PDF given for a payment, like the paper receipt (D26).                                                |
+| Total / a cuenta / saldo  | `balance_before` / payment amount / `balance_after`                                           | Kept as they were when the receipt was issued (D27).                                                  |
+| Estado de cuenta          | `account_statement`                                                                           | Debt per customer, total and per campaign.                                                            |
+| Deuda / saldo             | `balance`                                                                                     | Sum of the customer's ledger entries.                                                                 |
+| Cancelado / debe          | `settled` / `owing`                                                                           | Status shown in the statement.                                                                        |
+| Antigüedad de la deuda    | `debt_aging`                                                                                  | Age of unpaid deliveries.                                                                             |
 
 ## Inventory and purchasing
 

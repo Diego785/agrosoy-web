@@ -183,6 +183,20 @@
       "when": 1794420504026,
       "tag": "0025_interest_by_due_date",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794885159869,
+      "tag": "0026_late_interest_month",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794885238683,
+      "tag": "0027_late_interest_by_month",
+      "breakpoints": true
     }
   ]
 }

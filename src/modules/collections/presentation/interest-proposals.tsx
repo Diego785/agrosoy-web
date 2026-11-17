@@ -5,10 +5,11 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
+import { monthName } from "../domain/interest";
 import { Money } from "@/shared/domain/money";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { errorMessage } from "@/shared/presentation/error-messages";
-import { formatCount, formatDate, formatMoney, formatUsd } from "@/shared/presentation/format";
+import { formatCount, formatMoney, formatUsd } from "@/shared/presentation/format";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import {
@@ -99,7 +100,7 @@ export const InterestProposals = resetOnLeave(function InterestProposals({
     <input
       type="checkbox"
       className="size-4 accent-primary"
-      aria-label={`Elegir a ${proposal.customer.name}, ${campaignLabel(proposal.campaign)}`}
+      aria-label={`Elegir a ${proposal.customer.name}, ${campaignLabel(proposal.campaign)}, ${monthName(proposal.month)}`}
       checked={selected.has(proposal.key)}
       onChange={(event) => toggle(proposal.key, event.target.checked)}
     />
@@ -122,8 +123,8 @@ export const InterestProposals = resetOnLeave(function InterestProposals({
               </TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Campaña</TableHead>
-              <TableHead className="w-32">Al día</TableHead>
-              <TableHead className="text-right">Debía (US$)</TableHead>
+              <TableHead className="w-40">Mes</TableHead>
+              <TableHead className="text-right">Debía al cierre (US$)</TableHead>
               <TableHead className="text-right">Interés (US$)</TableHead>
             </TableRow>
           </TableHeader>
@@ -138,8 +139,8 @@ export const InterestProposals = resetOnLeave(function InterestProposals({
                   {proposal.customer.name}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{campaignLabel(proposal.campaign)}</TableCell>
-                <TableCell className="text-muted-foreground tabular-nums">
-                  {formatDate(proposal.interestDate)}
+                <TableCell className="text-muted-foreground first-letter:uppercase">
+                  {monthName(proposal.month)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatMoney(proposal.baseUsd)}</TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
@@ -183,7 +184,7 @@ export const InterestProposals = resetOnLeave(function InterestProposals({
                 <span className="font-semibold tabular-nums">{formatUsd(proposal.usdAmount)}</span>
               </label>
               <span className="text-xs text-muted-foreground tabular-nums">
-                {campaignLabel(proposal.campaign)} · al {formatDate(proposal.interestDate)}
+                {campaignLabel(proposal.campaign)} · {monthName(proposal.month)}
               </span>
               <CardField label="Debía">US$ {formatMoney(proposal.baseUsd)}</CardField>
             </CardListItem>

@@ -50,7 +50,7 @@ const storedSettings = z
   })
   .catch(DEFAULT_INTEREST_SETTINGS);
 
-/** What administration saved, field by field over the defaults (3 %, no extra days, not started). */
+/** What administration saved, field by field over the defaults (3 %, 30 days, not started). */
 export async function readInterestSettings(settings: SettingsStore): Promise<InterestSettings> {
   return storedSettings.parse((await settings.get("late_interest")) ?? {});
 }
@@ -154,6 +154,7 @@ export async function pendingInterest(
         key: proposalKey(proposal),
         customer,
         campaign: { id: campaign.id, season: campaign.season, year: campaign.year },
+        month: proposal.month,
         interestDate: proposal.interestDate,
         baseUsd: proposal.base.toDecimalString(),
         usdAmount: proposal.amount.toDecimalString(),
@@ -163,8 +164,8 @@ export async function pendingInterest(
   views.sort(
     (a, b) =>
       a.customer.name.localeCompare(b.customer.name, "es") ||
-      a.interestDate.localeCompare(b.interestDate) ||
-      a.campaign.year - b.campaign.year,
+      a.campaign.year - b.campaign.year ||
+      a.month.localeCompare(b.month),
   );
   return {
     settings,
@@ -207,7 +208,11 @@ async function chosenProposals(
   return { settings, chosen };
 }
 
-/** Each chosen proposal becomes an interest charge in the campaign owed, dated today (D24, D38). */
+/**
+ * Each chosen proposal becomes an interest charge in the campaign owed, dated on its month's last
+ * day, so a payment made after that day covers it first (D24, D38, D45). Months go in order: each
+ * one's amount already counts the ones before it as charged.
+ */
 export async function chargeInterest(
   deps: LateInterestDeps,
   actor: Actor,
@@ -216,9 +221,9 @@ export async function chargeInterest(
   assertCan(actor, "payments.manage");
   const { settings, chosen } = await chosenProposals(deps, input);
   const decisions: InterestDecision[] = [];
-  for (const proposal of chosen) {
+  for (const proposal of chosen.toSorted((a, b) => a.month.localeCompare(b.month))) {
     const charge = chargeRecord({
-      chargeDate: deps.today(),
+      chargeDate: proposal.interestDate,
       customerId: proposal.customerId,
       campaignId: proposal.campaignId,
       concept: "interest",
@@ -244,7 +249,7 @@ export async function chargeInterest(
     decisions.push({
       customerId: proposal.customerId,
       campaignId: proposal.campaignId,
-      dueCampaignId: proposal.dueCampaignId,
+      month: proposal.month,
       interestDate: proposal.interestDate,
       base: proposal.base,
       ratePercent: settings.ratePercent,
@@ -259,7 +264,7 @@ export async function chargeInterest(
       payload: {
         chargeId: created.id,
         campaignId: proposal.campaignId,
-        interestDate: proposal.interestDate,
+        month: proposal.month,
         baseUsd: proposal.base.toDecimalString(),
         ratePercent: settings.ratePercent,
         usdAmount: proposal.amount.toDecimalString(),
@@ -282,7 +287,7 @@ export async function waiveInterest(
     chosen.map((proposal) => ({
       customerId: proposal.customerId,
       campaignId: proposal.campaignId,
-      dueCampaignId: proposal.dueCampaignId,
+      month: proposal.month,
       interestDate: proposal.interestDate,
       base: proposal.base,
       ratePercent: settings.ratePercent,
@@ -299,7 +304,7 @@ export async function waiveInterest(
       entityId: proposal.customerId,
       payload: {
         campaignId: proposal.campaignId,
-        interestDate: proposal.interestDate,
+        month: proposal.month,
         usdAmount: proposal.amount.toDecimalString(),
       },
     });

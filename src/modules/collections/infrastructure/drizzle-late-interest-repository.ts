@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { campaigns, dueDateExtensions } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
 import { ledgerEntries } from "@/modules/receivables/infrastructure/ledger.tables";
@@ -20,6 +20,7 @@ export function drizzleLateInterestRepository(executor: DbExecutor): LateInteres
           customerId: ledgerEntries.customerId,
           campaignId: ledgerEntries.campaignId,
           date: ledgerEntries.entryDate,
+          kind: ledgerEntries.kind,
           amount: ledgerEntries.amount,
           reversesEntryId: ledgerEntries.reversesEntryId,
           isInterest: sql<boolean>`coalesce(${charges.concept} = 'interest', false)`,
@@ -28,7 +29,8 @@ export function drizzleLateInterestRepository(executor: DbExecutor): LateInteres
         .leftJoin(
           charges,
           and(eq(ledgerEntries.sourceType, "charge"), eq(charges.id, ledgerEntries.sourceId)),
-        );
+        )
+        .orderBy(asc(ledgerEntries.entryDate), asc(ledgerEntries.createdAt), asc(ledgerEntries.id));
       return rows.map((row) => ({ ...row, amount: Money.parse(row.amount) }));
     },
 
@@ -53,7 +55,7 @@ export function drizzleLateInterestRepository(executor: DbExecutor): LateInteres
         .select({
           customerId: lateInterestDecisions.customerId,
           campaignId: lateInterestDecisions.campaignId,
-          dueCampaignId: lateInterestDecisions.dueCampaignId,
+          month: lateInterestDecisions.month,
         })
         .from(lateInterestDecisions);
       return new Set(rows.map(proposalKey));
@@ -75,7 +77,7 @@ export function drizzleLateInterestRepository(executor: DbExecutor): LateInteres
           decisions.map((decision) => ({
             customerId: decision.customerId,
             campaignId: decision.campaignId,
-            dueCampaignId: decision.dueCampaignId,
+            month: decision.month,
             interestDate: decision.interestDate,
             baseUsd: decision.base.toDecimalString(),
             ratePercent: decision.ratePercent,

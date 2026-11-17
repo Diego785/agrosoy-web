@@ -85,7 +85,9 @@ export function StatementPdf({
             formatMoney(campaign.totals.paid),
             formatMoney(campaign.totals.returned),
             formatMoney(campaign.totals.other),
-            formatMoney(campaign.totals.balance),
+            Money.parse(campaign.interestOwed).isPositive()
+              ? `${formatMoney(campaign.totals.balance)} (int. ${formatMoney(campaign.interestOwed)})`
+              : formatMoney(campaign.totals.balance),
             Money.parse(campaign.overdue).isPositive()
               ? `${formatDate(campaign.dueOn)} (vencida)`
               : formatDate(campaign.dueOn),

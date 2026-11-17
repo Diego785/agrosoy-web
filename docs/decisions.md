@@ -532,7 +532,7 @@ when they buy. Stretching winter to 30 November would put the east's summer sale
 November in winter, and overlapping campaigns would make someone pick the campaign on every note.
 Aging by document date showed winter debt as more than 90 days old while it wasn't due yet.
 
-## D38 · Late-payment interest is proposed each time a due date passes
+## D38 · Late-payment interest is proposed month by month
 
 **Decision:** administration sets the interest rate (3 %, the same for every customer) and how many
 days after a due date it starts (0 by default; 15, 30 or 60 are the usual choices). Each time a
@@ -570,6 +570,31 @@ charging interest on interest.
   administration saw, and fails if any of them changed meanwhile (a paper receipt typed in late),
   so nothing is charged on a figure nobody reviewed.
 - The home page tells administration how many are waiting.
+
+**Changed on 16 November 2026: interest is monthly.** Administration's audios of 12 and 13 November
+answered the question left open on 7 November: interest runs **month by month**, not once per due
+date. Winter closes on 30 November, "todo diciembre, sin interés", and from January the customer is
+charged every month the debt stays unpaid ("enero, febrero, marzo, así hasta llegar a mayo"). The
+rate never grows: it is another 3 % each month, on capital only.
+
+- Debt in a campaign runs from the **first whole month after its due date** (or the customer's
+  extension) **plus the grace days**. The default becomes 30 days: winter debt due on 30 November
+  leaves December free and pays from January; summer debt due on 31 May leaves June free. With 0
+  days, December is charged too.
+- Each month that **ends with capital owed** earns the rate on that capital: a customer who pays in
+  full on 15 May pays January to April. A month is proposed once it has ended, so January's on
+  1 February. The "Desde" day keeps months that start before it out.
+- An interest is known by its **customer, campaign and month** (migrations 0026 and 0027 replace
+  the due-date key of 0025, which never reached staging). One proposal line per month: if nobody
+  reviews the list for three months, three lines show.
+- Months proposed but not decided count as charged for the following ones, so charging several at
+  once gives what charging them one by one would. Charging goes in month order.
+- The charge is **dated on the month's last day**, so a payment made after it covers it first (D45),
+  whenever administration clicks. Its reason names the month: "3 % por mora de enero de 2027 sobre
+  US$ 10.000,00".
+- Assumed in the scope document (version 1.1) for Agrosoil to confirm: the month of payment is not
+  charged if it ends without debt; the rate is the same for everyone, and a case with another rate
+  (the 4.5 % mentioned) is settled apart; June is free in summer as December is in winter.
 
 ## D39 · Every payment shows its amount in bolivianos
 
@@ -669,3 +694,17 @@ the keeper to keep control without going back to paper, and the month's notes to
 The meeting agreed on a place where the keeper and the technician record product that left without
 a note; a withdrawal is that record, and holding it under the technician also covers product taken
 to Yapacaní and brought back unsold.
+
+## D45 · A payment covers interest before capital
+
+**Decision:** within a campaign, a payment first covers the interest the customer owes at the time
+and only the rest lowers capital. Returns, campaign transfers, opening balances and price
+adjustments only move capital. The split is worked out from the ledger in order, never stored: each
+payment line of the statement says "US$ 30,00 a interés y US$ 70,00 a capital", and each campaign
+says how much of its balance is interest. Monthly interest (D38) is computed on capital alone, so
+paying interest first leaves more capital earning it. Allocation across campaigns (D20) doesn't
+change: interest is part of its campaign's debt.
+
+**Why:** administration asked for it on 13 November 2026 ("esos 100 quisiera que 50 aplique primero
+el interés, y lo que queda a capital"). It is the usual order for partial payments and the one
+Agrosoil applies by hand.

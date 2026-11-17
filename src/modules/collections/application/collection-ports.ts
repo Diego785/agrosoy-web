@@ -97,8 +97,8 @@ export interface OpeningBalanceRepository {
 export type InterestDecision = {
   customerId: string;
   campaignId: string;
-  /** The campaign whose due date set the interest off; with the first two, what is never proposed again. */
-  dueCampaignId: string;
+  /** The month whose interest it is, "2027-01"; with the first two, what is never proposed again. */
+  month: string;
   interestDate: string;
   base: Money;
   ratePercent: string;
@@ -108,7 +108,7 @@ export type InterestDecision = {
 
 /** What late-payment interest reads to work out its proposals, and where decisions are kept. */
 export interface LateInterestRepository {
-  /** Every customer's ledger, interest charges flagged. */
+  /** Every customer's ledger in the order it happened, interest charges flagged. */
   entries(): Promise<InterestEntry[]>;
   campaigns(): Promise<(CampaignRef & { dueOn: string })[]>;
   extensions(): Promise<{ customerId: string; campaignId: string; dueOn: string }[]>;
@@ -124,6 +124,8 @@ export type InterestProposalView = {
   key: string;
   customer: CustomerRef;
   campaign: CampaignRef;
+  /** The month whose interest it is, "2027-01". */
+  month: string;
   interestDate: string;
   baseUsd: string;
   usdAmount: string;

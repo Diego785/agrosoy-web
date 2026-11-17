@@ -87,7 +87,8 @@ export const InterestSettingsForm = resetOnLeave(function InterestSettingsForm({
         <h2 className="text-sm font-semibold">Interés por mora</h2>
         {!settings.startsOn && (
           <p className="mt-1 text-sm text-muted-foreground">
-            Elige desde cuándo se cobra y el sistema propondrá los intereses cada vez que venza una campaña.
+            Elige desde cuándo se cobra. Al terminar cada mes, el sistema propone el interés de quien siga
+            debiendo.
           </p>
         )}
       </div>
@@ -115,7 +116,9 @@ export const InterestSettingsForm = resetOnLeave(function InterestSettingsForm({
             aria-invalid={!!errors.graceDays}
             {...form.register("graceDays")}
           />
-          <FieldDescription>Con 0, al día siguiente del vencimiento. Lo usual: 15, 30 o 60.</FieldDescription>
+          <FieldDescription>
+            Con 30, lo que vence el 30/11 paga desde enero. Con 0, desde diciembre.
+          </FieldDescription>
           <FieldError errors={[errors.graceDays]} />
         </Field>
         <Field data-invalid={!!errors.startsOn}>
@@ -126,7 +129,7 @@ export const InterestSettingsForm = resetOnLeave(function InterestSettingsForm({
             render={({ field }) => <DateInput id="startsOn" invalid={!!errors.startsOn} {...field} />}
           />
           <FieldDescription>
-            Los vencimientos anteriores no se proponen: las planillas ya traen su interés.
+            Los meses anteriores no se proponen: las planillas ya traen su interés.
           </FieldDescription>
           <FieldError errors={[errors.startsOn]} />
         </Field>

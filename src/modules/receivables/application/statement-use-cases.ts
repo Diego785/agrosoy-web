@@ -5,6 +5,7 @@ import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
 import { effectiveDueOn } from "@/modules/campaigns/domain/campaign";
+import { splitDebt, standingEntries, type DebtSplit } from "@/modules/collections/domain/interest";
 import { aging, withoutReversedPairs } from "../domain/aging";
 import { overdueByCampaign, totalOverdue } from "../domain/overdue";
 import { collectedPerMille, ledgerTotals } from "../domain/statement";
@@ -122,6 +123,23 @@ export async function customerStatement(
     deps.statements.openingBalances(idsOf("opening_balance")),
   ]);
 
+  // Payments cover interest before capital (D45): each campaign's split, from its standing entries.
+  const splits = new Map<string, DebtSplit>();
+  const standing = standingEntries(
+    entries.map((entry) => ({
+      ...entry,
+      amount: Money.parse(entry.amount),
+      isInterest: entry.source.type === "charge" && charges.get(entry.source.id)?.concept === "interest",
+    })),
+  );
+  for (const [campaignOfEntries, own] of Map.groupBy(standing, (entry) => entry.campaignId)) {
+    splits.set(campaignOfEntries, splitDebt(own));
+  }
+  const interestPartOf = (entry: LedgerRow) => {
+    const part = splits.get(entry.campaignId)?.payments.get(entry.id)?.toInterest;
+    return part?.isPositive() ? part.toDecimalString() : null;
+  };
+
   const lines = entries.flatMap((entry): StatementLineView[] => {
     const isReversal = entry.reversesEntryId !== null;
     const base = {
@@ -180,6 +198,7 @@ export async function customerStatement(
           ...base,
           kind: "payment",
           amount: signed(entry),
+          interestPart: interestPartOf(entry),
           exchangeRate: payment?.exchangeRate ?? null,
           observation: payment?.reference ?? null,
           receipt: payment
@@ -242,6 +261,7 @@ export async function customerStatement(
         campaignDueOn: campaign.dueOn,
         extension: due.extension,
         overdue: (overdue.get(campaign.id) ?? Money.zero()).toDecimalString(),
+        interestOwed: (splits.get(campaign.id)?.interest ?? Money.zero()).toDecimalString(),
       };
     });
 

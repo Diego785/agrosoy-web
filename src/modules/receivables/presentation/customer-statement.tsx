@@ -300,6 +300,13 @@ function CampaignBreakdown({
       />
     );
   const isOverdue = (campaign: CampaignTotalsView) => Money.parse(campaign.overdue).isPositive();
+  // Part of the balance is interest when payments haven't covered it yet (D45).
+  const interestNote = (campaign: CampaignTotalsView) =>
+    Money.parse(campaign.interestOwed).isPositive() && (
+      <span className="block text-xs font-normal text-muted-foreground">
+        con {formatMoney(campaign.interestOwed)} de interés
+      </span>
+    );
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-sm font-medium">Por campaña</h3>
@@ -338,6 +345,7 @@ function CampaignBreakdown({
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
                   {formatMoney(campaign.totals.balance)}
+                  {interestNote(campaign)}
                 </TableCell>
                 <TableCell>
                   <DueDate campaign={campaign} />
@@ -372,6 +380,7 @@ function CampaignBreakdown({
             <CardField label="Otros">{formatMoney(campaign.totals.other)}</CardField>
             <CardField label="Saldo">
               <span className="font-medium">{formatMoney(campaign.totals.balance)}</span>
+              {interestNote(campaign)}
             </CardField>
             <CardField label="Vence">
               <DueDate campaign={campaign} />

@@ -24,7 +24,7 @@ export async function InterestPanel() {
       {settings.startsOn &&
         (proposals.length === 0 ? (
           <EmptyState icon={<PercentIcon />} title="No hay intereses por confirmar">
-            Aparecen aquí cuando un cliente sigue debiendo después de un vencimiento.
+            Aparecen al terminar cada mes, para quien sigue debiendo después del vencimiento.
             {nextDueOn && ` El próximo es el ${formatDate(nextDueOn)}.`}
           </EmptyState>
         ) : (
