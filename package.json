@@ -20,7 +20,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "users:first-admin": "tsx --conditions=react-server scripts/create-first-admin.ts"
+    "users:first-admin": "tsx --conditions=react-server scripts/create-first-admin.ts",
+    "customers:load-lists": "tsx --conditions=react-server scripts/load-customer-lists.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
