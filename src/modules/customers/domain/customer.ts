@@ -10,8 +10,10 @@ export type ExchangeRateAgreement = { kind: "daily" } | { kind: "fixed"; rate: E
 
 export type CustomerDetails = {
   name: string;
-  /** NIT or CI. */
+  /** NIT, for invoices. */
   taxId?: string;
+  /** CI of a person (D48). */
+  identityCard?: string;
   phone?: string;
   /** Agrosoil's sales zone: Norte or Este (meeting of 7 November 2026). */
   zoneId?: string;
@@ -20,6 +22,8 @@ export type CustomerDetails = {
   /** The sales technician whose portfolio the customer belongs to. */
   technicianId?: string;
   exchangeRateAgreement: ExchangeRateAgreement;
+  /** Cash or credit, suggested on new notes (D48). */
+  usualPaymentTerms?: "cash" | "credit";
   notes?: string;
 };
 
@@ -43,11 +47,22 @@ export function customerRecord(details: CustomerDetails): CustomerRecord {
     taxId: optionalText(details.taxId)
       ?.replace(/[\s.-]/g, "")
       .toUpperCase(),
+    identityCard: identityCard(details.identityCard),
     phone: optionalText(details.phone),
     zoneId: details.zoneId || undefined,
     locality: optionalText(details.locality),
     technicianId: details.technicianId || undefined,
     exchangeRateAgreement: details.exchangeRateAgreement,
+    usualPaymentTerms: details.usualPaymentTerms,
     notes: optionalText(details.notes),
   };
+}
+
+/**
+ * A CI as Agrosoil writes it: no spaces or dots, letters in capitals, and the hyphen kept, so a
+ * foreigner's "E-13865035" and a complement like "1234567-1A" stay readable (D48).
+ */
+export function identityCard(value: string | undefined): string | undefined {
+  const cleaned = optionalText(value)?.replace(/[\s.]/g, "").toUpperCase();
+  return cleaned || undefined;
 }

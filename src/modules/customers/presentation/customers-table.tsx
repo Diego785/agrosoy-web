@@ -125,7 +125,7 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
-                      {customer.taxId ?? "—"}
+                      {customer.taxId ?? customer.identityCard ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {customer.zoneName ?? "—"}
@@ -168,9 +168,14 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
                     .filter(Boolean)
                     .join(" · ") || "Sin zona ni técnico"}
                 </span>
-                {(customer.taxId || customer.phone) && (
+                {(customer.taxId || customer.identityCard || customer.phone) && (
                   <span className="text-muted-foreground tabular-nums">
-                    {[customer.taxId && `NIT/CI ${customer.taxId}`, customer.phone]
+                    {[
+                      customer.taxId
+                        ? `NIT ${customer.taxId}`
+                        : customer.identityCard && `CI ${customer.identityCard}`,
+                      customer.phone,
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>

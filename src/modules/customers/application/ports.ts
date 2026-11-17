@@ -7,6 +7,7 @@ export type CustomerListItem = {
   code: number;
   name: string;
   taxId: string | null;
+  identityCard: string | null;
   phone: string | null;
   zoneName: string | null;
   locality: string | null;
@@ -14,17 +15,26 @@ export type CustomerListItem = {
 };
 
 /** An active customer in a picker, with what a document for them needs. */
-export type CustomerOption = { id: string; code: number; name: string; fixedExchangeRate: string | null };
+export type CustomerOption = {
+  id: string;
+  code: number;
+  name: string;
+  fixedExchangeRate: string | null;
+  /** Suggested on a new note (D48). */
+  usualPaymentTerms: "cash" | "credit" | null;
+};
 
 export type CustomerFormData = {
   id: string;
   code: number;
   name: string;
   taxId: string | null;
+  identityCard: string | null;
   phone: string | null;
   zoneId: string | null;
   locality: string | null;
   technicianId: string | null;
+  usualPaymentTerms: "cash" | "credit" | null;
   exchangeRateKind: "daily" | "fixed";
   /** "6.9600" or null. */
   fixedExchangeRate: string | null;
@@ -39,6 +49,18 @@ export type CustomerDetail = CustomerFormData & {
   receivers: { id: string; name: string; documentId: string | null; relationship: string }[];
   /** Portfolio history, newest first; the open one has no end. */
   assignments: { technicianName: string; startsAt: Date; endsAt: Date | null }[];
+  /** Other ways the sheets write the name (D47). */
+  aliases: { id: string; name: string }[];
+};
+
+/** An active customer with who looks after them, for handing several to another technician. */
+export type PortfolioCustomer = {
+  id: string;
+  code: number;
+  name: string;
+  locality: string | null;
+  technicianId: string | null;
+  technicianName: string | null;
 };
 
 export type CustomerQuery = {
@@ -67,6 +89,24 @@ export interface CustomerRepository {
   setActive(id: string, active: boolean): Promise<void>;
   /** Closes the open portfolio assignment and, with a technician, opens a new one. */
   assignTechnician(customerId: string, technicianId: string | null): Promise<void>;
+  /** Every active customer with today's technician, by name. */
+  portfolioList(): Promise<PortfolioCustomer[]>;
+  /** Today's technician of each customer, by id; unknown ids are left out. */
+  technicianOf(customerIds: readonly string[]): Promise<Map<string, string | null>>;
+  /** Changes only the customer's technician column; the history goes through assignTechnician. */
+  setTechnician(customerId: string, technicianId: string | null): Promise<void>;
+  /** The localities already written, each once, for suggestions (D48). */
+  localities(): Promise<string[]>;
+  /** Whether a customer goes by this comparison name. */
+  nameTaken(comparisonName: string): Promise<boolean>;
+  /** DUPLICATE with `details.field` "name" when another customer already has that alias. */
+  addAlias(
+    customerId: string,
+    alias: { name: string; comparisonName: string },
+    actorId: string,
+  ): Promise<{ id: string }>;
+  /** NOT_FOUND when the alias isn't this customer's. */
+  removeAlias(customerId: string, aliasId: string): Promise<{ name: string }>;
   addProperty(customerId: string, property: PropertyRecord): Promise<{ id: string }>;
   /** NOT_FOUND when the property isn't an active one of this customer. */
   deactivateProperty(customerId: string, propertyId: string): Promise<void>;

@@ -55,6 +55,8 @@ export async function ConversionPage({ params }: { params: Promise<{ batchId: st
         batchId={preview.batch.id}
         campaigns={campaigns}
         suggestedCampaignId={suggested?.id ?? null}
+        technicians={preview.technicians}
+        suggestedTechnicianId={preview.suggestedTechnicianId}
         defaultCutoffDate={todayInBolivia()}
         conversion={
           conversion

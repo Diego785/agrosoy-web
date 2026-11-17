@@ -28,13 +28,15 @@ import { reconciliationPath } from "./migration-routes";
 import { DateInput } from "@/shared/presentation/date-input";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-type SalesValues = { campaignId: string; cutoffDate: string };
+type SalesValues = { campaignId: string; cutoffDate: string; technicianId: string };
 
 /** Step 3 of the conversion: the sheet's sales and payments into the ledger, or what was done. */
 export const SalesConversion = resetOnLeave(function SalesConversion({
   batchId,
   campaigns,
   suggestedCampaignId,
+  technicians,
+  suggestedTechnicianId,
   defaultCutoffDate,
   conversion,
   readiness,
@@ -42,6 +44,9 @@ export const SalesConversion = resetOnLeave(function SalesConversion({
   batchId: string;
   campaigns: { id: string; label: string }[];
   suggestedCampaignId: string | null;
+  technicians: { id: string; name: string }[];
+  /** The technician named in the sheet's name ("Ing. Favio Añez"). */
+  suggestedTechnicianId: string | null;
   defaultCutoffDate: string;
   conversion: { campaignLabel: string; cutoffDate: string; at: Date } | null;
   /** Customers and products of the sheet still missing; the sales wait for them (D43). */
@@ -68,6 +73,8 @@ export const SalesConversion = resetOnLeave(function SalesConversion({
           batchId={batchId}
           campaigns={campaigns}
           suggestedCampaignId={suggestedCampaignId}
+          technicians={technicians}
+          suggestedTechnicianId={suggestedTechnicianId}
           defaultCutoffDate={defaultCutoffDate}
           readiness={readiness}
         />
@@ -80,12 +87,16 @@ function SalesForm({
   batchId,
   campaigns,
   suggestedCampaignId,
+  technicians,
+  suggestedTechnicianId,
   defaultCutoffDate,
   readiness,
 }: {
   batchId: string;
   campaigns: { id: string; label: string }[];
   suggestedCampaignId: string | null;
+  technicians: { id: string; name: string }[];
+  suggestedTechnicianId: string | null;
   defaultCutoffDate: string;
   readiness: SalesReadiness;
 }) {
@@ -96,6 +107,7 @@ function SalesForm({
     defaultValues: {
       campaignId: suggestedCampaignId ?? "",
       cutoffDate: defaultCutoffDate,
+      technicianId: suggestedTechnicianId ?? "",
     },
   });
   const { errors } = form.formState;
@@ -113,9 +125,9 @@ function SalesForm({
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        Cada venta pasa como boleta confirmada marcada «de planilla», con su número y el técnico del cliente;
-        los pagos y devoluciones del resumen pasan con la fecha de corte. Las ventas sin tipo de cambio quedan
-        sin él, hasta que se cobren. No mueve stock: el stock inicial sale del conteo físico.
+        Cada venta pasa como boleta confirmada marcada «de planilla», con su número y el técnico de la
+        planilla; los pagos y devoluciones del resumen pasan con la fecha de corte. Las ventas sin tipo de
+        cambio quedan sin él, hasta que se cobren. No mueve stock: el stock inicial sale del conteo físico.
       </p>
       {!isReady && (
         <div className="flex flex-col gap-1 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
@@ -135,7 +147,24 @@ function SalesForm({
           </p>
         </div>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field data-invalid={!!errors.technicianId}>
+          <FieldLabel htmlFor="technicianId">Técnico de la planilla</FieldLabel>
+          <NativeSelect
+            id="technicianId"
+            aria-invalid={!!errors.technicianId}
+            {...form.register("technicianId")}
+          >
+            <NativeSelectOption value="">El técnico de cada cliente</NativeSelectOption>
+            {technicians.map((technician) => (
+              <NativeSelectOption key={technician.id} value={technician.id}>
+                {technician.name}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <FieldDescription>Sus boletas quedan a su nombre, aunque hoy atienda otro.</FieldDescription>
+          <FieldError errors={[errors.technicianId]} />
+        </Field>
         <Field data-invalid={!!errors.campaignId}>
           <FieldLabel htmlFor="campaignId">Campaña de la planilla</FieldLabel>
           <NativeSelect id="campaignId" aria-invalid={!!errors.campaignId} {...form.register("campaignId")}>

@@ -164,6 +164,19 @@ describe("converting a sheet's sales and payments", () => {
     expect(technicians).toEqual(["Favio Añez", "Favio Añez", "Favio Añez"]);
   });
 
+  it("gives the notes the sheet's technician when one is chosen, whoever looks after the customer (D47)", async () => {
+    const technicianId = await technician("Favio Añez");
+    const { batchId, campaignId } = await sheetReadyForSales();
+    const deps = salesConversionDeps(testDb, admin);
+    await convertSales(deps, admin, { ...salesInput(batchId, campaignId), technicianId });
+
+    const notes = await deps.notes.importedFrom(batchId);
+    const technicians = await Promise.all(
+      notes.map(async ({ id }) => (await getNote({ notes: deps.notes }, admin, id)).technician?.name),
+    );
+    expect(technicians).toEqual(["Favio Añez", "Favio Añez", "Favio Añez"]);
+  });
+
   it("runs once, blocks re-importing the sheet, and can be undone", async () => {
     const { batchId, campaignId } = await sheetReadyForSales();
     const deps = salesConversionDeps(testDb, admin);

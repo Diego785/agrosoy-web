@@ -38,6 +38,8 @@ export async function loadNoteFormOptions(actor: Actor) {
           code: customers.code,
           name: customers.name,
           taxId: customers.taxId,
+          identityCard: customers.identityCard,
+          usualPaymentTerms: customers.usualPaymentTerms,
           zoneId: customers.zoneId,
           technicianId: customers.technicianId,
           fixedExchangeRate: customers.fixedExchangeRate,

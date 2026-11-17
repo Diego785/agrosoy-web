@@ -64,6 +64,10 @@ inventory (M8) and receivables (M7) inside one transaction.
 - **Authorized receivers:** name, CI and position or kinship. A delivery records who received.
 - **Import (D29):** Agrosoil's customer list is loaded into a preview, matched by normalized name,
   and saved once reviewed; nothing is created twice.
+- **Aliases (D47):** other ways the sheets write a customer's name. Imports find the customer by
+  them; the conversion suggests similar registered customers for a new name.
+- **CI and NIT (D48):** separate and optional; a foreign CI keeps its "E-". Usual payment terms
+  (cash or credit) are suggested on new notes.
 
 ## Products and prices (M3)
 

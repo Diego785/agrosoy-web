@@ -80,7 +80,11 @@ export function drizzlePaymentRepository(executor: DbExecutor): PaymentRepositor
       const [row] = await executor
         .select({
           payment: payments,
-          customer: { ...customerRef, taxId: customers.taxId },
+          // The receipt's "NIT o C.I." line: the NIT, or the CI of a person without one (D48).
+          customer: {
+            ...customerRef,
+            taxId: sql<string | null>`coalesce(${customers.taxId}, ${customers.identityCard})`,
+          },
           settledNoteNumber: settledNote.number,
           recorderName: recorder.name,
           recorderDocumentId: recorder.documentId,

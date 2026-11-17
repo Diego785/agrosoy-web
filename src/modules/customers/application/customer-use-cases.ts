@@ -15,12 +15,15 @@ import type {
   CustomerListItem,
   CustomerOption,
   CustomerRepository,
+  PortfolioCustomer,
   TechnicianLookup,
   Zone,
   ZoneListItem,
   ZoneRepository,
 } from "./ports";
 import {
+  bulkTechnicianSchema,
+  customerAliasSchema,
   customerIdSchema,
   customerSchema,
   customerSearchSchema,
@@ -248,18 +251,27 @@ export async function removeAuthorizedReceiver(
  * offered even if it was deactivated, so saving other changes doesn't drop it.
  */
 export async function customerFormOptions(
-  deps: Pick<CustomerDeps, "zones" | "technicians">,
+  deps: Pick<CustomerDeps, "zones" | "technicians" | "customers">,
   actor: Actor,
   keepZoneId: string | null = null,
-): Promise<{ zones: (Zone & { isActive: boolean })[]; technicians: { id: string; name: string }[] }> {
+): Promise<{
+  zones: (Zone & { isActive: boolean })[];
+  technicians: { id: string; name: string }[];
+  /** Localities already used, suggested while typing so one place is written one way (D48). */
+  localities: string[];
+}> {
   assertCan(actor, "customers.manage");
-  const [active, technicians] = await Promise.all([deps.zones.list(), deps.technicians.listActive()]);
+  const [active, technicians, localities] = await Promise.all([
+    deps.zones.list(),
+    deps.technicians.listActive(),
+    deps.customers.localities(),
+  ]);
   const zones = active.map((zone) => ({ ...zone, isActive: true }));
   if (keepZoneId && !zones.some((zone) => zone.id === keepZoneId)) {
     const kept = await deps.zones.find(keepZoneId);
     if (kept) zones.push(kept);
   }
-  return { zones, technicians };
+  return { zones, technicians, localities };
 }
 
 /** Every zone, deactivated ones included, for the zones page and the customer search filter. */
@@ -377,4 +389,101 @@ function auditPayload(record: CustomerRecord): Record<string, unknown> {
         ? { kind: "fixed", rate: exchangeRateAgreement.rate.toDecimalString() }
         : { kind: "daily" },
   };
+}
+
+/**
+ * Hands several customers to one technician, or to none (D46): each one's history closes and opens
+ * like a single change, and customers already with that technician are left as they are.
+ */
+export async function assignTechnicianToCustomers(
+  deps: Pick<CustomerDeps, "customers" | "technicians" | "audit">,
+  actor: Actor,
+  input: unknown,
+): Promise<{ changed: number }> {
+  assertCan(actor, "customers.manage");
+  const { customerIds, technicianId } = validateInput(bulkTechnicianSchema, input);
+  if (technicianId && !(await deps.technicians.isActiveTechnician(technicianId))) {
+    throw invalidField("technicianId", "Elige un técnico de venta activo.");
+  }
+  const current = await deps.customers.technicianOf([...new Set(customerIds)]);
+  let changed = 0;
+  for (const [customerId, before] of current) {
+    if ((before ?? "") === technicianId) continue;
+    await deps.customers.setTechnician(customerId, technicianId || null);
+    await deps.customers.assignTechnician(customerId, technicianId || null);
+    await deps.audit.record({
+      actorId: actor.id,
+      action: "customers.assign_technician",
+      entityType: "customer",
+      entityId: customerId,
+      payload: { technicianId: technicianId || null },
+    });
+    changed += 1;
+  }
+  return { changed };
+}
+
+/**
+ * Records another way the sheets write a customer's name, so imports find them by it (D47). A name
+ * that is already a customer's own, or another customer's alias, is refused.
+ */
+export async function linkCustomerName(
+  deps: Pick<CustomerDeps, "customers" | "audit">,
+  actor: Actor,
+  customerId: unknown,
+  input: unknown,
+): Promise<{ id: string }> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(customerIdSchema, customerId);
+  const { name } = validateInput(customerAliasSchema, input);
+  const comparisonName = normalizeForComparison(name);
+  if (await deps.customers.nameTaken(comparisonName)) {
+    throw invalidField("name", "Ese nombre ya es el de un cliente registrado.");
+  }
+  const created = await deps.customers.addAlias(
+    id,
+    { name: name.replace(/\s+/g, " "), comparisonName },
+    actor.id,
+  );
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "customers.link_name",
+    entityType: "customer",
+    entityId: id,
+    payload: { name },
+  });
+  return created;
+}
+
+/** Forgets a name linked by mistake; the next import treats it as a new customer again. */
+export async function unlinkCustomerName(
+  deps: Pick<CustomerDeps, "customers" | "audit">,
+  actor: Actor,
+  customerId: unknown,
+  aliasId: unknown,
+): Promise<void> {
+  assertCan(actor, "customers.manage");
+  const id = validateInput(customerIdSchema, customerId);
+  const alias = validateInput(customerIdSchema, aliasId);
+  const { name } = await deps.customers.removeAlias(id, alias);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "customers.unlink_name",
+    entityType: "customer",
+    entityId: id,
+    payload: { name },
+  });
+}
+
+/** Active customers with today's technician, and the technicians, to hand several over at once. */
+export async function reassignmentOptions(
+  deps: Pick<CustomerDeps, "customers" | "technicians">,
+  actor: Actor,
+): Promise<{ portfolio: PortfolioCustomer[]; technicians: { id: string; name: string }[] }> {
+  assertCan(actor, "customers.manage");
+  const [portfolio, technicians] = await Promise.all([
+    deps.customers.portfolioList(),
+    deps.technicians.listActive(),
+  ]);
+  return { portfolio, technicians };
 }

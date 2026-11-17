@@ -724,3 +724,44 @@ in the same campaign (the lists of 16 November 2026 have one customer in two tec
 Agrosoil reads each technician's sheet as the debt and the collections of their own sales, and the
 share collected is the base of their commission (proposal, M11 report 1). Following today's
 technician would hand the old debt, and the credit for collecting it, to the new one.
+
+## D47 · A sheet's names are linked to registered customers, and its notes are its technician's
+
+**Decision:** when a sheet brings a customer name that isn't registered, the conversion suggests
+the registered customers it may be a short or misspelled form of (every word of the sheet's name,
+two at least, matches a word of theirs, allowing one letter of difference in words of four letters
+or more) and preselects the best one. Administration confirms or changes each one, or leaves it as
+a new customer. A confirmed name is stored as an **alias** of that customer, so every later sheet
+finds them by it; the customer's page lists their aliases and can forget one linked by mistake. A
+name that is already a customer's own, or another customer's alias, is refused.
+
+When the sales are passed, administration chooses **the sheet's technician** (suggested from the
+sheet's name, "Ing. Favio Añez"): every imported note takes it, instead of the technician the
+customer has that day (D43). Leaving it empty keeps the customer's.
+
+**Why:** the technicians' lists arrived on 16 November 2026 with full names ("ALEXANDER JIMENEZ
+MONTERO") while the sales sheets write short ones ("Alexander Jimenez"): only 3 of the 9 debtors in
+Favio's sheet matched. Matching by exact name would have duplicated each customer and split their
+debt. The proposal's M12 already includes normalizing customers' names. A sheet is one technician's
+sales, and customers change technician between campaigns (D46), so the customer's current
+technician would put an old sale under the wrong person.
+
+## D48 · CI and NIT apart, usual payment terms and localities written one way
+
+**Decision:**
+
+- A customer has a **CI** and a **NIT**, both optional. The NIT is what invoices need; the CI keeps
+  its hyphen and letters ("E-13865035" for a foreigner, "1234567-1A" with a complement). Searches
+  find either; notes and receipts print the NIT, or the CI when there is no NIT. The receiver's CI
+  on a note starts from the customer's CI.
+- A customer may have **usual payment terms**, cash or credit. A new note suggests them when the
+  customer is chosen, and the note can still change them.
+- The **locality** field suggests the localities already written, so "4 Cañadas" and "Cuatro
+  Cañadas" stop being two places.
+- Several customers can be handed to another technician at once (Clientes → Cambiar técnico), each
+  with their history (D46).
+
+**Why:** the technicians' lists (16 November 2026) carry CI and NIT in separate columns, some
+customers with both, foreigners with "E-" CIs; one list marks each customer cash or credit; the
+same locality comes written three ways; and administration said customers move between technicians
+from one campaign to the next.

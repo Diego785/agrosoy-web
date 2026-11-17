@@ -3,8 +3,10 @@ import type { Actor } from "@/shared/application/actor";
 import type { AuditTrail } from "@/shared/application/audit-trail";
 import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
+import { DomainError } from "@/shared/domain/domain-error";
 import { Quantity } from "@/shared/domain/quantity";
 import { normalizeForComparison } from "@/shared/domain/text";
+import { similarCustomers } from "../domain/name-match";
 import { parseProductLabel, type ParsedProductLabel } from "../domain/product-label";
 import type {
   CustomerRegistry,
@@ -33,7 +35,15 @@ export type ProductGroup = {
 
 export type ConversionPreview = {
   batch: ImportBatch;
-  customers: { key: string; name: string; existing: ExistingCustomer | null }[];
+  customers: {
+    key: string;
+    name: string;
+    existing: ExistingCustomer | null;
+    /** For a new name: registered customers it may be written for, best first (D47). */
+    suggestions: ExistingCustomer[];
+  }[];
+  /** Every active customer, to link a new name to one not suggested. */
+  allCustomers: ExistingCustomer[];
   technicians: { id: string; name: string }[];
   /** The technician whose name appears in the sheet name ("Ing. Favio Añez"), if any. */
   suggestedTechnicianId: string | null;
@@ -49,45 +59,76 @@ export async function conversionPreview(
 ): Promise<ConversionPreview> {
   assertCan(actor, "imports.manage");
   const batch = await findBatch(deps.imports, batchId);
-  const [customers, products, technicians] = await Promise.all([
+  const [found, products, technicians, allCustomers] = await Promise.all([
     customerCandidates(deps, batch.id),
     productCandidates(deps, batch.id),
     deps.technicians.listActive(),
+    deps.customers.candidates(),
   ]);
+  const customers = found.map((customer) => ({
+    ...customer,
+    suggestions: customer.existing ? [] : similarCustomers(customer.name, allCustomers).slice(0, 5),
+  }));
   const sheetKey = normalizeForComparison(batch.sheetName);
   const suggested = technicians.find((technician) =>
     sheetKey.includes(normalizeForComparison(technician.name)),
   );
-  return { batch, customers, technicians, suggestedTechnicianId: suggested?.id ?? null, ...products };
+  return {
+    batch,
+    customers,
+    allCustomers,
+    technicians,
+    suggestedTechnicianId: suggested?.id ?? null,
+    ...products,
+  };
 }
 
 const convertCustomersSchema = z.object({
   batchId: z.uuid(),
   technicianId: z.union([z.literal(""), z.uuid()]),
+  /** New names that are a registered customer written another way (D47). */
+  links: z.array(z.object({ key: z.string().min(1), customerId: z.uuid() })).default([]),
 });
 
-/** Registers the sheet's customers that don't exist yet; running it again creates nothing new. */
+/**
+ * Registers the sheet's customers that don't exist yet, except the names administration linked to a
+ * registered customer, which are remembered as theirs (D47). Running it again creates nothing new.
+ */
 export async function convertCustomers(
   deps: ConversionDeps,
   actor: Actor,
   input: unknown,
-): Promise<{ created: number }> {
+): Promise<{ created: number; linked: number }> {
   assertCan(actor, "imports.manage");
-  const { batchId, technicianId } = validateInput(convertCustomersSchema, input);
+  const { batchId, technicianId, links } = validateInput(convertCustomersSchema, input);
   const batch = await findBatch(deps.imports, batchId);
   const missing = (await customerCandidates(deps, batch.id)).filter((customer) => !customer.existing);
+  const linkTo = new Map(links.map((link) => [link.key, link.customerId]));
+  const known = new Set((await deps.customers.candidates()).map((customer) => customer.id));
 
+  let linked = 0;
   for (const customer of missing) {
-    await deps.customers.register({ name: customer.name, technicianId: technicianId || null });
+    const customerId = linkTo.get(customer.key);
+    if (customerId) {
+      if (!known.has(customerId)) {
+        throw new DomainError("VALIDATION_FAILED", {
+          fieldErrors: { links: [`El cliente elegido para «${customer.name}» ya no está activo.`] },
+        });
+      }
+      await deps.customers.link({ customerId, name: customer.name });
+      linked += 1;
+    } else {
+      await deps.customers.register({ name: customer.name, technicianId: technicianId || null });
+    }
   }
   await deps.audit.record({
     actorId: actor.id,
     action: "migration.convert_customers",
     entityType: "import_batch",
     entityId: batch.id,
-    payload: { sheetName: batch.sheetName, created: missing.length },
+    payload: { sheetName: batch.sheetName, created: missing.length - linked, linked },
   });
-  return { created: missing.length };
+  return { created: missing.length - linked, linked };
 }
 
 const convertProductsSchema = z.object({

@@ -15,7 +15,12 @@ import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import { parseProductLabel } from "../domain/product-label";
-import type { CampaignLookup, CustomerRegistry, ProductRegistry } from "./conversion-ports";
+import type {
+  CampaignLookup,
+  CustomerRegistry,
+  ProductRegistry,
+  TechnicianOptions,
+} from "./conversion-ports";
 import { findBatch } from "./import-use-cases";
 import type { ImportBatch, ImportRepository, StoredLine } from "./ports";
 import { sheetTotalsFor } from "./statement-preview";
@@ -25,6 +30,8 @@ export type SalesConversionDeps = {
   customers: Pick<CustomerRegistry, "findByKeys">;
   products: Pick<ProductRegistry, "findByKeys">;
   campaigns: CampaignLookup;
+  /** The sheet's technician, chosen when its sales are passed (D47). */
+  technicians: TechnicianOptions;
   notes: NoteRepository;
   ledger: LedgerRepository;
   /** What the conversion recorded per customer, for the reconciliation. */
@@ -41,6 +48,8 @@ const convertSalesSchema = z.object({
   batchId: z.uuid(),
   campaignId: z.uuid({ error: "Elige la campaña de la planilla." }),
   cutoffDate: z.iso.date({ error: "Escribe la fecha de corte como dd/mm/aaaa." }),
+  /** Whose sheet it is: its notes take this technician; empty keeps each customer's (D47). */
+  technicianId: z.union([z.literal(""), z.uuid()]).default(""),
 });
 
 const undoSchema = z.object({
@@ -98,7 +107,15 @@ export async function convertSales(
   if (!campaign)
     throw new DomainError("VALIDATION_FAILED", { fieldErrors: { campaignId: ["Elige una campaña."] } });
 
-  const plan = await planSales(deps, batch, data.cutoffDate);
+  if (data.technicianId) {
+    const active = await deps.technicians.listActive();
+    if (!active.some((technician) => technician.id === data.technicianId)) {
+      throw new DomainError("VALIDATION_FAILED", {
+        fieldErrors: { technicianId: ["Elige un técnico de venta activo."] },
+      });
+    }
+  }
+  const plan = await planSales(deps, batch, data.cutoffDate, data.technicianId || null);
   if (plan.skipped.length > 0) {
     throw new DomainError("VALIDATION_FAILED", {
       fieldErrors: { root: [missingMessage(readinessOf(plan.skipped))] },
@@ -230,6 +247,7 @@ async function planSales(
   deps: Pick<SalesConversionDeps, "imports" | "customers" | "products">,
   batch: ImportBatch,
   cutoffDate: string,
+  sheetTechnicianId: string | null = null,
 ): Promise<Plan> {
   const [lines, summary] = await Promise.all([deps.imports.lines(batch.id), deps.imports.summary(batch.id)]);
   const customers = await deps.customers.findByKeys([
@@ -270,7 +288,8 @@ async function planSales(
       sheetNumber: first.noteNumber,
       noteDate: first.date ?? cutoffDate,
       customerId: customer.id,
-      technicianId: customer.technicianId,
+      // A sheet is one technician's sales: its notes are theirs, whoever looks after the customer now.
+      technicianId: sheetTechnicianId ?? customer.technicianId,
       exchangeRate: rate ? ExchangeRate.parse(rate) : null,
       receiverName: customer.name,
       observations: observations || null,

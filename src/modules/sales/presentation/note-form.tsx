@@ -105,12 +105,14 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
     const chosen = options.customers.find((option) => option.id === id);
     form.setValue("propertyId", "");
     chooseTechnician(chosen?.technicianId ?? "");
+    // Cash or credit as the customer usually buys (D48); the note can still change it.
+    if (chosen?.usualPaymentTerms) form.setValue("paymentTerms", chosen.usualPaymentTerms);
     // Each customer starts from their own agreement, so nothing carries over from the previous one.
     form.setValue("rateAtPayment", false);
     form.setValue("exchangeRate", suggestedRate(chosen));
     // The customer receives unless someone else comes: their data is filled in, and stays editable.
     form.setValue("receiverName", chosen?.name ?? "");
-    form.setValue("receiverDocumentId", chosen?.taxId ?? "");
+    form.setValue("receiverDocumentId", chosen?.identityCard ?? chosen?.taxId ?? "");
     form.setValue("receiverRelationship", chosen ? CUSTOMER_RELATIONSHIP : "");
   }
 

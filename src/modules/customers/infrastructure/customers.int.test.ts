@@ -9,8 +9,12 @@ import { auditLog } from "@/shared/infrastructure/audit/audit-log.table";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import {
+  assignTechnicianToCustomers,
   createZone,
   customerFormOptions,
+  getCustomerDetail,
+  linkCustomerName,
+  unlinkCustomerName,
   listAllZones,
   renameZone,
   setZoneActive,
@@ -227,5 +231,71 @@ describe("customers", () => {
     await expect(inTransaction((deps) => setZoneActive(deps, favio, zoneId, false))).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
+  });
+});
+
+describe("customer lists (D46, D47, D48)", () => {
+  it("keeps CI and NIT apart, a foreigner's CI with its hyphen, and finds customers by either", async () => {
+    const { id } = await register({
+      name: "Johan Friesen Reimer",
+      identityCard: " e-13865035 ",
+      taxId: "9672310012",
+      usualPaymentTerms: "cash",
+      locality: "San Rafael",
+    });
+    expect(await getCustomerForEdit(depsFor(testDb), admin, id)).toMatchObject({
+      identityCard: "E-13865035",
+      taxId: "9672310012",
+      usualPaymentTerms: "cash",
+    });
+    expect((await search({ text: "13865035" })).items.map((customer) => customer.name)).toEqual([
+      "Johan Friesen Reimer",
+    ]);
+    expect((await customerFormOptions(depsFor(testDb), admin)).localities).toEqual(["San Rafael"]);
+  });
+
+  it("hands several customers to one technician at once, keeping each history", async () => {
+    const favio = await user("Favio Añez", "sales_technician");
+    const alexander = await user("Alexander Llampa", "sales_technician");
+    const ramiro = await register({ name: "Ramiro Duran", technicianId: alexander.id });
+    const kevin = await register({ name: "Kevin Arias", technicianId: favio.id });
+
+    const { changed } = await inTransaction((deps) =>
+      assignTechnicianToCustomers(deps, admin, {
+        customerIds: [ramiro.id, kevin.id],
+        technicianId: favio.id,
+      }),
+    );
+    expect(changed).toBe(1);
+    const detail = await getCustomerDetail(depsFor(testDb), admin, ramiro.id);
+    expect(detail.technicianId).toBe(favio.id);
+    expect(detail.assignments.map((assignment) => [assignment.technicianName, !assignment.endsAt])).toEqual([
+      ["Favio Añez", true],
+      ["Alexander Llampa", false],
+    ]);
+    await expect(
+      inTransaction((deps) =>
+        assignTechnicianToCustomers(deps, favio, { customerIds: [ramiro.id], technicianId: "" }),
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("links other ways of writing a name, refuses a customer's own, and forgets a wrong one", async () => {
+    const { id } = await register({ name: "Alexander Jimenez Montero" });
+    await register({ name: "Rodolfo Romero" });
+    const { id: aliasId } = await inTransaction((deps) =>
+      linkCustomerName(deps, admin, id, { name: "Alexander  Jimenez" }),
+    );
+    await expect(
+      inTransaction((deps) => linkCustomerName(deps, admin, id, { name: "rodolfo romero" })),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    await expect(
+      inTransaction((deps) => linkCustomerName(deps, admin, id, { name: "ALEXANDER JIMENEZ" })),
+    ).rejects.toMatchObject({ code: "DUPLICATE" });
+    expect((await getCustomerDetail(depsFor(testDb), admin, id)).aliases).toEqual([
+      { id: aliasId, name: "Alexander Jimenez" },
+    ]);
+    await inTransaction((deps) => unlinkCustomerName(deps, admin, id, aliasId));
+    expect((await getCustomerDetail(depsFor(testDb), admin, id)).aliases).toEqual([]);
   });
 });

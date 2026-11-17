@@ -97,7 +97,13 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
       const [row] = await executor
         .select({
           note: deliveryNotes,
-          customer: { id: customers.id, code: customers.code, name: customers.name, taxId: customers.taxId },
+          // The note's "NIT o C.I." line: the NIT, or the CI of a person without one (D48).
+          customer: {
+            id: customers.id,
+            code: customers.code,
+            name: customers.name,
+            taxId: sql<string | null>`coalesce(${customers.taxId}, ${customers.identityCard})`,
+          },
           propertyName: customerProperties.name,
           campaign: { id: campaigns.id, season: campaigns.season, year: campaigns.year },
           technicianName: users.name,

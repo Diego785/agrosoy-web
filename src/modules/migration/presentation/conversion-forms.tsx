@@ -29,21 +29,50 @@ export const CustomerConversion = resetOnLeave(function CustomerConversion({
 }) {
   const router = useRouter();
   const [technicianId, setTechnicianId] = useState(preview.suggestedTechnicianId ?? "");
+  // A new name starts linked to the customer it most likely is (D47); "" registers it as new.
+  const [links, setLinks] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      preview.customers
+        .filter((customer) => !customer.existing && customer.suggestions[0])
+        .map((customer) => [customer.key, customer.suggestions[0]!.id]),
+    ),
+  );
   const [isWorking, startWorking] = useTransition();
-  const missing = preview.customers.filter((customer) => !customer.existing).length;
+  const missing = preview.customers.filter((customer) => !customer.existing);
+  const linked = missing.filter((customer) => links[customer.key]).length;
+  const created = missing.length - linked;
 
   function convert() {
     startWorking(async () => {
-      const result = await convertCustomersAction(preview.batch.id, technicianId);
+      const result = await convertCustomersAction(
+        preview.batch.id,
+        technicianId,
+        missing.flatMap((customer) =>
+          links[customer.key] ? [{ key: customer.key, customerId: links[customer.key]! }] : [],
+        ),
+      );
       if (!result.ok) return void toast.error(errorMessage(result.error));
-      toast.success(`${result.data.created} clientes registrados`);
+      const { created: registered, linked: joined } = result.data;
+      toast.success(
+        [registered > 0 && `${registered} clientes registrados`, joined > 0 && `${joined} nombres enlazados`]
+          .filter(Boolean)
+          .join(" y "),
+      );
       router.refresh();
     });
   }
 
+  const code = (number: number) => String(number).padStart(4, "0");
+
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-base font-semibold">Clientes</h2>
+      {missing.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Si un nombre nuevo es un cliente ya registrado escrito de otra forma, elígelo: el nombre queda
+          enlazado y las próximas planillas lo encuentran solo.
+        </p>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -58,34 +87,66 @@ export const CustomerConversion = resetOnLeave(function CustomerConversion({
               <TableCell>
                 {customer.existing ? (
                   <Badge variant="neutral">
-                    Ya existe ·{" "}
-                    <span className="font-mono">{String(customer.existing.code).padStart(4, "0")}</span>
+                    Ya existe · <span className="font-mono">{code(customer.existing.code)}</span>
+                    {customer.existing.name !== customer.name && ` ${customer.existing.name}`}
                   </Badge>
                 ) : (
-                  <Badge variant="info">Nuevo</Badge>
+                  <NativeSelect
+                    value={links[customer.key] ?? ""}
+                    onChange={(event) =>
+                      setLinks((previous) => ({ ...previous, [customer.key]: event.target.value }))
+                    }
+                    aria-label={`Qué es «${customer.name}» en el sistema`}
+                    className="max-w-96"
+                  >
+                    <NativeSelectOption value="">Cliente nuevo</NativeSelectOption>
+                    {customer.suggestions.length > 0 && (
+                      <optgroup label="Parecidos">
+                        {customer.suggestions.map((suggestion) => (
+                          <NativeSelectOption key={suggestion.id} value={suggestion.id}>
+                            Es {code(suggestion.code)} · {suggestion.name}
+                          </NativeSelectOption>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="Todos los clientes">
+                      {preview.allCustomers.map((option) => (
+                        <NativeSelectOption key={option.id} value={option.id}>
+                          Es {code(option.code)} · {option.name}
+                        </NativeSelectOption>
+                      ))}
+                    </optgroup>
+                  </NativeSelect>
                 )}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      {missing > 0 ? (
+      {missing.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
-          <NativeSelect
-            value={technicianId}
-            onChange={(event) => setTechnicianId(event.target.value)}
-            aria-label="Técnico de los clientes nuevos"
-          >
-            <NativeSelectOption value="">Sin técnico asignado</NativeSelectOption>
-            {preview.technicians.map((technician) => (
-              <NativeSelectOption key={technician.id} value={technician.id}>
-                {technician.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+          {created > 0 && (
+            <NativeSelect
+              value={technicianId}
+              onChange={(event) => setTechnicianId(event.target.value)}
+              aria-label="Técnico de los clientes nuevos"
+            >
+              <NativeSelectOption value="">Sin técnico asignado</NativeSelectOption>
+              {preview.technicians.map((technician) => (
+                <NativeSelectOption key={technician.id} value={technician.id}>
+                  {technician.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          )}
           <Button onClick={convert} disabled={isWorking}>
             <UserPlusIcon aria-hidden />
-            {isWorking ? "Registrando…" : `Registrar ${missing} clientes nuevos`}
+            {isWorking
+              ? "Guardando…"
+              : [created > 0 && `Registrar ${created} nuevos`, linked > 0 && `enlazar ${linked}`]
+                  .filter(Boolean)
+                  .join(" y ")
+                  .replace(/^e/, "E")}
           </Button>
         </div>
       ) : (

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { DomainError } from "@/shared/domain/domain-error";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
@@ -7,8 +7,10 @@ import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-er
 import type { CustomerQuery, CustomerRepository } from "../application/ports";
 import type { CustomerRecord } from "../domain/customer";
 import {
+  CUSTOMER_ALIAS_KEY,
   CUSTOMER_NAME_KEY,
   authorizedReceivers,
+  customerAliases,
   customerProperties,
   customers,
   technicianAssignments,
@@ -47,10 +49,12 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
         code: row.code,
         name: row.name,
         taxId: row.taxId,
+        identityCard: row.identityCard,
         phone: row.phone,
         zoneId: row.zoneId,
         locality: row.locality,
         technicianId: row.technicianId,
+        usualPaymentTerms: row.usualPaymentTerms,
         exchangeRateKind: row.exchangeRateKind,
         fixedExchangeRate: row.fixedExchangeRate,
         notes: row.notes,
@@ -65,7 +69,7 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
         .leftJoin(users, eq(users.id, customers.technicianId))
         .where(eq(customers.id, id));
       if (!row) return undefined;
-      const [properties, receivers, assignments] = await Promise.all([
+      const [properties, receivers, assignments, aliases] = await Promise.all([
         executor
           .select({
             id: customerProperties.id,
@@ -95,6 +99,11 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
           .innerJoin(users, eq(users.id, technicianAssignments.technicianId))
           .where(eq(technicianAssignments.customerId, id))
           .orderBy(desc(technicianAssignments.startsAt)),
+        executor
+          .select({ id: customerAliases.id, name: customerAliases.name })
+          .from(customerAliases)
+          .where(eq(customerAliases.customerId, id))
+          .orderBy(asc(customerAliases.comparisonName)),
       ]);
       const { customer } = row;
       return {
@@ -102,10 +111,12 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
         code: customer.code,
         name: customer.name,
         taxId: customer.taxId,
+        identityCard: customer.identityCard,
         phone: customer.phone,
         zoneId: customer.zoneId,
         locality: customer.locality,
         technicianId: customer.technicianId,
+        usualPaymentTerms: customer.usualPaymentTerms,
         exchangeRateKind: customer.exchangeRateKind,
         fixedExchangeRate: customer.fixedExchangeRate,
         notes: customer.notes,
@@ -115,6 +126,7 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
         properties,
         receivers,
         assignments,
+        aliases,
       };
     },
 
@@ -197,6 +209,7 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
           code: customers.code,
           name: customers.name,
           fixedExchangeRate: customers.fixedExchangeRate,
+          usualPaymentTerms: customers.usualPaymentTerms,
         })
         .from(customers)
         .where(eq(customers.isActive, true))
@@ -216,6 +229,7 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
             code: customers.code,
             name: customers.name,
             taxId: customers.taxId,
+            identityCard: customers.identityCard,
             phone: customers.phone,
             zoneName: zones.name,
             locality: customers.locality,
@@ -232,6 +246,80 @@ export function drizzleCustomerRepository(executor: DbExecutor): CustomerReposit
       ]);
       return { items, total: totals[0]?.total ?? 0 };
     },
+
+    portfolioList() {
+      return executor
+        .select({
+          id: customers.id,
+          code: customers.code,
+          name: customers.name,
+          locality: customers.locality,
+          technicianId: customers.technicianId,
+          technicianName: users.name,
+        })
+        .from(customers)
+        .leftJoin(users, eq(users.id, customers.technicianId))
+        .where(eq(customers.isActive, true))
+        .orderBy(asc(customers.comparisonName));
+    },
+
+    async technicianOf(customerIds) {
+      if (customerIds.length === 0) return new Map();
+      const rows = await executor
+        .select({ id: customers.id, technicianId: customers.technicianId })
+        .from(customers)
+        .where(inArray(customers.id, [...customerIds]));
+      return new Map(rows.map((row) => [row.id, row.technicianId]));
+    },
+
+    async setTechnician(customerId, technicianId) {
+      await executor
+        .update(customers)
+        .set({ technicianId, updatedAt: new Date() })
+        .where(eq(customers.id, customerId));
+    },
+
+    async localities() {
+      const rows = await executor
+        .selectDistinct({ locality: customers.locality })
+        .from(customers)
+        .where(isNotNull(customers.locality))
+        .orderBy(asc(customers.locality));
+      return rows.flatMap((row) => row.locality ?? []);
+    },
+
+    async nameTaken(comparisonName) {
+      const [row] = await executor
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.comparisonName, comparisonName));
+      return row !== undefined;
+    },
+
+    async addAlias(customerId, alias, actorId) {
+      try {
+        const [row] = await executor
+          .insert(customerAliases)
+          .values({ customerId, ...alias, createdBy: actorId })
+          .returning({ id: customerAliases.id });
+        if (!row) throw new Error("Insert returned no alias");
+        return row;
+      } catch (error) {
+        if (violatedUniqueConstraint(error) === CUSTOMER_ALIAS_KEY) {
+          throw new DomainError("DUPLICATE", { field: "name" });
+        }
+        throw error;
+      }
+    },
+
+    async removeAlias(customerId, aliasId) {
+      const rows = await executor
+        .delete(customerAliases)
+        .where(and(eq(customerAliases.id, aliasId), eq(customerAliases.customerId, customerId)))
+        .returning({ name: customerAliases.name });
+      if (!rows[0]) throw new DomainError("NOT_FOUND", { entity: "alias", id: aliasId });
+      return rows[0];
+    },
   };
 }
 
@@ -241,10 +329,12 @@ function toRow(customer: CustomerRecord) {
     ...rest,
     // Explicit nulls so an update clears fields that were emptied in the form.
     taxId: rest.taxId ?? null,
+    identityCard: rest.identityCard ?? null,
     phone: rest.phone ?? null,
     zoneId: rest.zoneId ?? null,
     locality: rest.locality ?? null,
     technicianId: rest.technicianId ?? null,
+    usualPaymentTerms: rest.usualPaymentTerms ?? null,
     notes: rest.notes ?? null,
     exchangeRateKind: exchangeRateAgreement.kind,
     fixedExchangeRate:
@@ -271,6 +361,7 @@ function searchFilter({ text, zoneId, status }: CustomerQuery): SQL | undefined 
     const matches: SQL[] = [
       ilike(customers.comparisonName, pattern),
       ilike(customers.taxId, pattern),
+      ilike(customers.identityCard, pattern),
       ilike(comparableText(customers.locality), pattern),
     ];
     // "42" and "0042" both find customer code 42.

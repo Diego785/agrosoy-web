@@ -12,11 +12,12 @@ import { conversionDeps, salesConversionDeps } from "../infrastructure/conversio
 export async function convertCustomersAction(
   batchId: string,
   technicianId: string,
-): Promise<ActionResult<{ created: number }>> {
+  links: { key: string; customerId: string }[],
+): Promise<ActionResult<{ created: number; linked: number }>> {
   return runAction(async () => {
     const actor = await requireActor();
     const result = await withTransaction((tx) =>
-      convertCustomers(conversionDeps(tx, actor), actor, { batchId, technicianId }),
+      convertCustomers(conversionDeps(tx, actor), actor, { batchId, technicianId, links }),
     );
     revalidatePath("/", "layout");
     return result;
@@ -41,6 +42,7 @@ export async function convertSalesAction(input: {
   batchId: string;
   campaignId: string;
   cutoffDate: string;
+  technicianId: string;
 }): Promise<ActionResult<{ notes: number; entries: number }>> {
   return runAction(async () => {
     const actor = await requireActor();

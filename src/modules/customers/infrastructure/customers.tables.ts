@@ -16,6 +16,7 @@ import { createdAt, id, timestamps } from "@/shared/infrastructure/db/columns";
 
 export const ZONE_NAME_KEY = "zones_comparison_name_key";
 export const CUSTOMER_NAME_KEY = "customers_comparison_name_key";
+export const CUSTOMER_ALIAS_KEY = "customer_aliases_comparison_name_key";
 
 export const zones = pgTable(
   "zones",
@@ -37,7 +38,10 @@ export const customers = pgTable(
     code: integer().notNull().unique().generatedAlwaysAsIdentity(),
     name: text().notNull(),
     comparisonName: text().notNull(),
+    /** NIT, for invoices. */
     taxId: text(),
+    /** CI of a person; a foreigner's keeps its "E-" (D48). */
+    identityCard: text(),
     phone: text(),
     zoneId: uuid().references(() => zones.id),
     /** The technician's own area within the zone. */
@@ -47,6 +51,8 @@ export const customers = pgTable(
       .notNull()
       .default("daily"),
     fixedExchangeRate: numeric({ precision: 10, scale: 4 }),
+    /** Cash or credit, as the technicians' lists mark it; suggested on new notes (D48). */
+    usualPaymentTerms: text({ enum: ["cash", "credit"] }),
     notes: text(),
     isActive: boolean().notNull().default(true),
     ...timestamps,
@@ -54,6 +60,7 @@ export const customers = pgTable(
   (table) => [
     uniqueIndex(CUSTOMER_NAME_KEY).on(table.comparisonName),
     index("customers_tax_id_idx").on(table.taxId),
+    index("customers_identity_card_idx").on(table.identityCard),
     index("customers_zone_id_idx").on(table.zoneId),
     index("customers_technician_id_idx").on(table.technicianId),
     // A fixed agreement always has its rate, and a daily one never does.
@@ -116,4 +123,22 @@ export const technicianAssignments = pgTable(
       .on(table.customerId)
       .where(sql`${table.endsAt} is null`),
   ],
+);
+
+/**
+ * Other ways a customer's name is written in Agrosoil's sheets ("Alexander Jimenez" for "Alexander
+ * Jimenez Montero"): imports find the customer by them instead of creating another (D47).
+ */
+export const customerAliases = pgTable(
+  "customer_aliases",
+  {
+    id: id(),
+    customerId: customerId(),
+    /** As written in the sheet. */
+    name: text().notNull(),
+    comparisonName: text().notNull(),
+    createdBy: text().notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [uniqueIndex(CUSTOMER_ALIAS_KEY).on(table.comparisonName), index().on(table.customerId)],
 );
