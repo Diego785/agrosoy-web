@@ -3,6 +3,42 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-12 to 2026-11-16 (branch `feature/week-3`)
+
+- **Staging moved to `agrosoil.marketia.store`** after the old domain expired (commit `ba6fd28`,
+  details and undo in `deploy/server-log.md`). Checked from outside on 13 November; signing in
+  there is still to try. The certificate renews between 11 January and 10 February 2027.
+- **Local presentation:** a production build of `f9e22fe` on a copy of the demo database
+  (`agrosoy_inversor`, all migrations); the original demo database is untouched.
+- **Administration's audios (12 and 13 November):**
+  - interest is **monthly**: December free, then 3 % for every month the debt stays unpaid,
+    simple interest. This replaces D38's once-per-due-date rule (to build in week 5);
+  - a partial payment covers **interest first**, then capital, and the statement shows the split;
+  - a customer's technician changes between campaigns, and a customer may have none (Adagro).
+    Already supported, with the portfolio history.
+- **The technicians' customer lists arrived** (16 November): eight lists, 153 customers. The
+  analysis script and a full dump live outside the repo. Findings:
+  - each row's "ZONA" is the system's locality; the footer's "ZONA: ESTE/NORTE" is the zone and
+    "ENCARGADO" the technician;
+  - the lists hold only customers who still owe: the six customers missing from Favio's sheet are
+    paid up (or only got free lines);
+  - one customer (same CI) is in two lists: one customer, with each sale kept under its technician;
+  - two rows are estates without an owner ("Suelo Rico", "Palmarito II"), asked to administration;
+  - only 3 of the 9 debtors in Favio's sales sheet are written as in his list ("Alexander Jimenez"
+    vs "ALEXANDER JIMENEZ MONTERO"), so importing the sheets today would duplicate customers;
+  - "0" means empty in one list; CI and NIT come apart, some with both; foreign CIs start "E-";
+    the same locality is written several ways ("4 Cañadas", "CUATRO CAÑADAS").
+- **The portfolio per technician follows the customer's current technician**
+  (`drizzle-statement-reader.ts`), so a customer who changes technician takes their old debt along.
+  Planned: debt and collections per technician follow the notes.
+- **Scope:** everything new is free of charge for Agrosoil and goes into version 1.1 of the scope
+  change document (`agrosoy/propuesta/`). The roadmap lists it by week. Decisions get recorded as
+  each piece is built (D38 rewritten, D20 amended, new ones for the rest).
+- **Still to do before pushing:** a full `corepack pnpm check` with free memory on `f9e22fe` and
+  `ba6fd28` (the tests timed out from low memory); the CI and `deploy/compose.yaml` image name for
+  the repository's new owner.
+- Nothing pushed yet.
+
 ## 2026-11-11 (week 3, branch `feature/week-3`)
 
 - **Week 3's remaining items are built**, one commit each, every one with `corepack pnpm check`
