@@ -70,9 +70,9 @@ Changes that the proposal's M2, M11 and M12 already cover are adjustments, not s
 | S5   | Monthly interest (replaces D38's once-per-due-date rule and migrations 0023/0025, which never reached staging): the month after the due date is free with 30 days' grace, then 3 % of the capital still owed at the end of each month, one proposal line per month. Payments cover interest before capital, and the statement shows the split. The customer's usual terms (cash or credit), suggested on new notes. The photo of the signed note (M5), sharing file storage with the travel-allowance receipts                                                                                                                                        |
 | S6   | Before the import of full sheets: the name links above must be in place                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
-Still open from week 3: a payment received with a cash note can't take a printed receipt number;
-returns don't ask who receives for Agrosoil or the carrier; the return and transfer screen (D25)
-hasn't been checked in the browser. Waiting on Agrosoil: when 4.5 % applies instead of 3 %, whether
+Week 3's last gaps closed on 19 November: a cash note's payment takes a printed receipt number,
+and a return asks who receives for Agrosoil and the carrier. The signed note's photo waits for S5,
+where travel allowances bring the file storage both use. Waiting on Agrosoil: when 4.5 % applies instead of 3 %, whether
 the month of payment is charged, and the owners of the estates "Suelo Rico" and "Palmarito II".
 
 ## Foundation steps (week 1)

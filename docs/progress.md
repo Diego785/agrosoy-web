@@ -3,6 +3,27 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-16 to 2026-11-19 (branch `feature/week-3`)
+
+- **Built the changes from administration's audios and the customer lists** (roadmap section of
+  12–16 November): monthly interest and payments that cover interest first (D38 rewritten, D45);
+  debt and collections per technician follow the notes (D46); sheet names linked to existing
+  customers (D47); CI apart from NIT, usual payment terms, locality suggestions and changing the
+  technician of several customers at once (D48). Migrations 0026–0028.
+- **Loader for the cleaned lists**: `corepack pnpm customers:load-lists` (and
+  `load-customer-lists.mjs` in the image). Its JSON holds personal data and stays outside the
+  repository, with the test guide and the test users' temporary passwords
+  (`agrosoy/pruebas-listas/`).
+- **Local test database `agrosoy_listas`**: the 153 customers, the 8 technicians, both 2026
+  campaigns and the product list. Administration confirmed Favio Añez looks after Ramiro Durán
+  this summer.
+- **Week 3's last gaps**: a cash note's payment takes a printed receipt number; a return asks who
+  receives for Agrosoil and the carrier.
+- **Left for week 5**: the signed note's photo, with the travel allowances' file storage.
+- **Waiting on Agrosoil**: when 4.5 % applies, whether the month of payment is charged, the
+  estates' owners.
+- Nothing pushed yet.
+
 ## 2026-11-12 to 2026-11-16 (branch `feature/week-3`)
 
 - **Staging moved to `agrosoil.marketia.store`** after the old domain expired (commit `ba6fd28`,
