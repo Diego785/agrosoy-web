@@ -43,7 +43,7 @@ export async function confirmNote(
 ): Promise<{ number: number; receiptNumber: number | null }> {
   assertCan(actor, "notes.manage");
   const id = validateInput(z.uuid(), noteId);
-  const { paperNumber, payment } = validateInput(confirmNoteSchema, input);
+  const { paperNumber, paperReceiptNumber, payment } = validateInput(confirmNoteSchema, input);
   const note = await existingNote(deps.notes, id);
   if (note.status !== "draft") throw new DomainError("INVALID_STATE", { status: note.status });
 
@@ -103,7 +103,13 @@ export async function confirmNote(
       noteId: id,
     });
     const allocation = { campaignId: note.campaign.id, noteId: id, amount: total };
-    ({ receiptNumber } = await savePayment(deps, record, [allocation], actor.id));
+    ({ receiptNumber } = await savePayment(
+      deps,
+      record,
+      [allocation],
+      actor.id,
+      paperReceiptNumber || undefined,
+    ));
   }
   await deps.audit.record({
     actorId: actor.id,

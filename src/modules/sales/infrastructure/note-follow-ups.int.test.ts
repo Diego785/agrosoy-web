@@ -5,6 +5,8 @@ import { testDb } from "@test/test-database";
 import { createCampaign } from "@/modules/campaigns/application/campaign-use-cases";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { customerStatement } from "@/modules/receivables/application/statement-use-cases";
+import { newUserAccount } from "@/modules/identity/domain/user-account";
+import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import { drizzleStatementReader } from "@/modules/receivables/infrastructure/drizzle-statement-reader";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import {
@@ -109,6 +111,48 @@ describe("returns", () => {
       ["Fulvin 40-22", "550.00"],
       ["4-energy", "0.00"],
     ]);
+  });
+
+  it("record who receives the product for Agrosoil and the carrier (D26)", async () => {
+    const ids = await seedNoteFixtures();
+    const { target, fulvin } = await noteParts(await delivered(ids));
+    const { id: keeperId } = await drizzleUserDirectory(testDb).create(
+      newUserAccount({
+        name: "Mario Rojas",
+        username: "mrojas",
+        role: "warehouse_keeper",
+        position: "Encargado de almacén",
+      }),
+      "temporary-password",
+    );
+
+    const { id } = await registerReturn(
+      noteDeps(),
+      technician,
+      returnInput(target, [{ originalLineId: fulvin, quantity: "20" }], {
+        handedOverById: keeperId,
+        carrierName: "Transportes Chiquitano",
+        carrierVehicle: "Volvo 2345-XYZ",
+        carrierDocumentId: "4567890 sc",
+      }),
+    );
+    expect(await getNote(noteDeps(), admin, id)).toMatchObject({
+      receiver: { name: "Juan Mamani" },
+      handedOverBy: { id: keeperId, name: "Mario Rojas", position: "Encargado de almacén" },
+      carrier: { name: "Transportes Chiquitano", vehicle: "Volvo 2345-XYZ", documentId: "4567890 SC" },
+    });
+    await expect(
+      registerReturn(
+        noteDeps(),
+        technician,
+        returnInput(target, [{ originalLineId: fulvin, quantity: "1" }], {
+          handedOverById: crypto.randomUUID(),
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { handedOverById: [expect.any(String)] } },
+    });
   });
 
   it("gather lines from several deliveries of the customer in the campaign, each at its own price (D25)", async () => {

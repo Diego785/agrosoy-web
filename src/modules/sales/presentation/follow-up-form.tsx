@@ -12,6 +12,7 @@ import { formatMoney, formatQuantity } from "@/shared/presentation/format";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import {
   Table,
   TableBody,
@@ -44,6 +45,10 @@ export type FollowUpFormLine = {
 type Values = {
   noteDate: string;
   receiverName: string;
+  handedOverById: string;
+  carrierName: string;
+  carrierVehicle: string;
+  carrierDocumentId: string;
   exchangeRate: string;
   observations: string;
   paperNumber: string;
@@ -61,6 +66,7 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
   lines,
   today,
   defaults,
+  staff = [],
 }: {
   mode: "return" | "transfer";
   /** Whose product, from which campaign. */
@@ -68,6 +74,8 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
   lines: FollowUpFormLine[];
   today: string;
   defaults: { receiverName: string; exchangeRate: string };
+  /** Returns: who can receive the product for Agrosoil, with their position. */
+  staff?: { id: string; name: string; position: string | null }[];
 }) {
   const router = useRouter();
   const [isPaper, setIsPaper] = useState(false);
@@ -76,6 +84,10 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
     defaultValues: {
       noteDate: today,
       receiverName: defaults.receiverName,
+      handedOverById: "",
+      carrierName: "",
+      carrierVehicle: "",
+      carrierDocumentId: "",
       exchangeRate: defaults.exchangeRate,
       observations: "",
       paperNumber: "",
@@ -112,6 +124,10 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
             ...target,
             noteDate: values.noteDate,
             receiverName: values.receiverName,
+            handedOverById: values.handedOverById,
+            carrierName: values.carrierName,
+            carrierVehicle: values.carrierVehicle,
+            carrierDocumentId: values.carrierDocumentId,
             observations: values.observations,
             paperNumber,
             lines: values.lines.map(({ originalLineId, quantity }) => ({ originalLineId, quantity })),
@@ -243,6 +259,44 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
             </Field>
           )}
         </div>
+        {!isTransfer && (
+          <div className="grid gap-5 sm:grid-cols-[1fr_2fr]">
+            <Field data-invalid={!!errors.handedOverById}>
+              <FieldLabel htmlFor="handedOverById">Recibe (Agrosoil)</FieldLabel>
+              <NativeSelect id="handedOverById" {...form.register("handedOverById")}>
+                <NativeSelectOption value="">Sin especificar</NativeSelectOption>
+                {staff.map((person) => (
+                  <NativeSelectOption key={person.id} value={person.id}>
+                    {person.position ? `${person.name} · ${person.position}` : person.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <FieldError errors={[errors.handedOverById]} />
+            </Field>
+            <fieldset className="flex min-w-0 flex-col gap-3">
+              <legend className="mb-2 text-sm font-medium text-muted-foreground">
+                Transporte (opcional)
+              </legend>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <Field data-invalid={!!errors.carrierName}>
+                  <FieldLabel htmlFor="carrierName">Empresa o transportista</FieldLabel>
+                  <Input id="carrierName" {...form.register("carrierName")} />
+                  <FieldError errors={[errors.carrierName]} />
+                </Field>
+                <Field data-invalid={!!errors.carrierVehicle}>
+                  <FieldLabel htmlFor="carrierVehicle">Vehículo o placa</FieldLabel>
+                  <Input id="carrierVehicle" {...form.register("carrierVehicle")} />
+                  <FieldError errors={[errors.carrierVehicle]} />
+                </Field>
+                <Field data-invalid={!!errors.carrierDocumentId}>
+                  <FieldLabel htmlFor="carrierDocumentId">CI del conductor</FieldLabel>
+                  <Input id="carrierDocumentId" {...form.register("carrierDocumentId")} />
+                  <FieldError errors={[errors.carrierDocumentId]} />
+                </Field>
+              </div>
+            </fieldset>
+          </div>
+        )}
         <Field data-invalid={!!errors.observations}>
           <FieldLabel htmlFor="observations">Observaciones (opcional)</FieldLabel>
           <Textarea id="observations" {...form.register("observations")} />

@@ -22,7 +22,7 @@ import type { ConsignedLine, FollowUpItem, NoteLookups } from "./note-ports";
 import { followUpTargetSchema, returnSchema, transferSchema } from "./note-schemas";
 
 type FollowUpDeps = Omit<NoteLifecycleDeps, "payments" | "receipts" | "today" | "lookups"> & {
-  lookups: Pick<NoteLookups, "campaignOn" | "customer">;
+  lookups: Pick<NoteLookups, "campaignOn" | "customer" | "isActiveUser">;
 };
 type Source = ConsignedLine["source"];
 
@@ -72,6 +72,11 @@ export async function registerReturn(
   assertCan(actor, "notes.manage");
   const data = validateInput(returnSchema, input);
   const customer = await existingCustomer(deps, data.customerId);
+  if (data.handedOverById && !(await deps.lookups.isActiveUser(data.handedOverById))) {
+    throw new DomainError("VALIDATION_FAILED", {
+      fieldErrors: { handedOverById: ["Elige un usuario activo."] },
+    });
+  }
   await openCampaignOn(deps, data.noteDate);
   const consigned = await deps.notes.consignedLines(data.customerId, data.campaignId);
   const lines = linesOrFieldErrors(() =>
@@ -92,6 +97,13 @@ export async function registerReturn(
   return saveFollowUp(deps, actor, data.paperNumber, sources, {
     note: {
       ...followUpHeader(data, sources, customer),
+      // On a return the customer's person hands over and this is Agrosoil's person who receives (D26).
+      handedOverById: data.handedOverById || null,
+      carrier: {
+        name: optionalText(data.carrierName) ?? null,
+        vehicle: optionalText(data.carrierVehicle) ?? null,
+        documentId: optionalText(data.carrierDocumentId)?.toUpperCase() ?? null,
+      },
       type: "return",
       campaignId: data.campaignId,
       paymentTerms: allCash && rate ? "cash" : "credit",
@@ -220,7 +232,7 @@ function followUpHeader(
     propertyId: shared(sources.map((source) => source.propertyId)),
     // The deliveries' technician when they agree; otherwise whoever looks after the customer now.
     technicianId: shared(sources.map((source) => source.technicianId)) ?? customer.technicianId,
-    // Who receives a return for Agrosoil and the carrier aren't asked yet; the form adds them later.
+    // A transfer moves nothing physically; a return fills these in.
     handedOverById: null,
     carrier: { name: null, vehicle: null, documentId: null },
     observations: optionalText(data.observations) ?? null,

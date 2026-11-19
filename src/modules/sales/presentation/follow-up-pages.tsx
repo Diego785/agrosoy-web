@@ -7,6 +7,7 @@ import { contentLabel } from "@/modules/catalog/presentation/catalog-labels";
 import { customerOptions } from "@/modules/customers/application/customer-use-cases";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
 import { customerDeps } from "@/modules/customers/presentation/customer-deps";
+import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
@@ -103,6 +104,13 @@ export async function FollowUpPage({
   // A transfer suggests the new campaign's reference price for the customer's zone, and the rate.
   let suggested: Record<string, string> = {};
   let exchangeRate = "";
+  let staff: { id: string; name: string; position: string | null }[] = [];
+  if (mode === "return") {
+    // Whoever receives the product for Agrosoil: any active user, as on a delivery's "Entrega".
+    staff = (await drizzleUserDirectory(db).list())
+      .filter((user) => user.active)
+      .map(({ id, name, position }) => ({ id, name, position }));
+  }
   if (mode === "transfer") {
     const formOptions = await loadNoteFormOptions(actor);
     const zoneId = formOptions.customers.find((option) => option.id === customer.id)?.zoneId ?? "";
@@ -122,6 +130,7 @@ export async function FollowUpPage({
         target={{ customerId: customer.id, campaignId: campaign.id }}
         today={today}
         defaults={{ receiverName: customer.name, exchangeRate }}
+        staff={staff}
         lines={lines.map((line) => ({
           id: line.id,
           source: `${sourceLabel(line.source)} · ${formatDate(line.source.noteDate)}${

@@ -125,6 +125,10 @@ const noteNumber = (message: string) =>
 export const confirmNoteSchema = z.object({
   /** Empty: the system gives the next number. Filled: a paper note typed in later keeps its printed number. */
   paperNumber: z.union([z.literal(""), noteNumber("Escribe el número impreso, por ejemplo 1250.")]),
+  /** A cash note paid with a paper receipt keeps the receipt's printed number (D28). */
+  paperReceiptNumber: z
+    .union([z.literal(""), noteNumber("Escribe el número impreso del recibo, por ejemplo 3480.")])
+    .default(""),
   /** How a cash note was paid; its amount is the note's total. */
   payment: z
     .object(paymentMethodFields)
@@ -188,6 +192,11 @@ export const returnSchema = followUpTargetSchema.extend({
     .trim()
     .min(2, { error: "Escribe quién devuelve." })
     .max(120, { error: "Admite hasta 120 caracteres." }),
+  /** Who receives the product for Agrosoil, and who brings it (D26). */
+  handedOverById: z.union([z.literal(""), z.uuid()]).optional(),
+  carrierName: optionalText(80),
+  carrierVehicle: optionalText(40),
+  carrierDocumentId: optionalText(20),
   observations: optionalText(500),
   paperNumber: paperNumberField,
   lines: z

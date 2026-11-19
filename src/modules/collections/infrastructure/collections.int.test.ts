@@ -217,6 +217,26 @@ describe("cash notes", () => {
     ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
   });
 
+  it("keep the printed number of a paper receipt, never one already used (D28)", async () => {
+    const ids = await seedNoteFixtures();
+    const first = await createDraftNote(noteDeps(), technician, draftInput(ids, { paymentTerms: "cash" }));
+    expect(
+      await confirmNote(noteDeps(), technician, first.id, {
+        paperNumber: "",
+        paperReceiptNumber: "3480",
+        payment: { currency: "USD", method: "cash" },
+      }),
+    ).toEqual({ number: 1, receiptNumber: 3480 });
+    const second = await createDraftNote(noteDeps(), technician, draftInput(ids, { paymentTerms: "cash" }));
+    await expect(
+      confirmNote(noteDeps(), technician, second.id, {
+        paperNumber: "",
+        paperReceiptNumber: "3480",
+        payment: { currency: "USD", method: "cash" },
+      }),
+    ).rejects.toMatchObject({ code: "DUPLICATE", details: { field: "paperReceiptNumber" } });
+  });
+
   it("void their payment together with the note", async () => {
     const ids = await seedNoteFixtures();
     const { id } = await createDraftNote(noteDeps(), technician, draftInput(ids, { paymentTerms: "cash" }));

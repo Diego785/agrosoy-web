@@ -57,6 +57,7 @@ export const ConfirmNoteButton = resetOnLeave(function ConfirmNoteButton({
   const form = useForm<ConfirmFormValues>({
     defaultValues: {
       paperNumber: "",
+      paperReceiptNumber: "",
       payment: { currency: "USD", method: "cash", reference: "", inKindDescription: "" },
     },
   });
@@ -71,10 +72,14 @@ export const ConfirmNoteButton = resetOnLeave(function ConfirmNoteButton({
     startWorking(async () => {
       const result = await confirmNoteAction(noteId, {
         paperNumber: isPaper ? values.paperNumber : "",
+        paperReceiptNumber: isPaidNow ? values.paperReceiptNumber : "",
         payment: isPaidNow ? values.payment : undefined,
       });
       if (!result.ok) {
-        return applyActionError(form, result.error, { paperNumber: "Ya hay una boleta con ese número." });
+        return applyActionError(form, result.error, {
+          paperNumber: "Ya hay una boleta con ese número.",
+          paperReceiptNumber: "Ya hay un recibo con ese número.",
+        });
       }
       setOpen(false);
       toast.success(
@@ -142,10 +147,25 @@ export const ConfirmNoteButton = resetOnLeave(function ConfirmNoteButton({
                     <FieldError errors={[errors.payment?.inKindDescription]} />
                   </Field>
                 )}
-                <Field>
-                  <FieldLabel htmlFor="paymentReference">Referencia (opcional)</FieldLabel>
-                  <Input id="paymentReference" {...form.register("payment.reference")} />
-                </Field>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="paymentReference">Referencia (opcional)</FieldLabel>
+                    <Input id="paymentReference" {...form.register("payment.reference")} />
+                  </Field>
+                  <Field data-invalid={!!errors.paperReceiptNumber}>
+                    <FieldLabel htmlFor="paperReceiptNumber">Recibo de papel (opcional)</FieldLabel>
+                    <Input
+                      id="paperReceiptNumber"
+                      inputMode="numeric"
+                      selectOnFocus
+                      placeholder="N.º impreso"
+                      aria-invalid={!!errors.paperReceiptNumber}
+                      {...form.register("paperReceiptNumber")}
+                    />
+                    <FieldDescription>Vacío: el sistema le da el siguiente número.</FieldDescription>
+                    <FieldError errors={[errors.paperReceiptNumber]} />
+                  </Field>
+                </div>
               </fieldset>
             )}
 
