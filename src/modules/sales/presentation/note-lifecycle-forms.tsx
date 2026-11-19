@@ -153,7 +153,7 @@ export const ConfirmNoteButton = resetOnLeave(function ConfirmNoteButton({
                     <Input id="paymentReference" {...form.register("payment.reference")} />
                   </Field>
                   <Field data-invalid={!!errors.paperReceiptNumber}>
-                    <FieldLabel htmlFor="paperReceiptNumber">Recibo de papel (opcional)</FieldLabel>
+                    <FieldLabel htmlFor="paperReceiptNumber">Recibo de papel</FieldLabel>
                     <Input
                       id="paperReceiptNumber"
                       inputMode="numeric"
