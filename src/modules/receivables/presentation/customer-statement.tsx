@@ -93,7 +93,7 @@ export function CustomerStatement({
               </TableHeader>
               <TableBody>
                 {rows.map(({ line, balance: running }, index) => (
-                  <TableRow key={index} className={line.isReversal ? "text-muted-foreground" : ""}>
+                  <TableRow key={index}>
                     <TableCell className="tabular-nums">{line.date ? formatDate(line.date) : "—"}</TableCell>
                     <TableCell className="tabular-nums">
                       <DocumentCell line={line} />
@@ -148,7 +148,7 @@ export function CustomerStatement({
           </WideOnly>
           <CardList label="Movimientos">
             {rows.map(({ line, balance: running }, index) => (
-              <CardListItem key={index} className={line.isReversal ? "text-muted-foreground" : ""}>
+              <CardListItem key={index}>
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {line.date ? formatDate(line.date) : "Sin fecha"}
                   {documentLabel(line) && (

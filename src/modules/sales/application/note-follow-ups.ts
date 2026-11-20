@@ -194,7 +194,7 @@ async function saveFollowUp(
   document: { note: FollowUpNote; postings: (id: string) => LedgerPosting[] },
 ): Promise<{ id: string; number: number }> {
   const { note } = document;
-  if (paperNumber && (await deps.notes.numberInUse(paperNumber))) {
+  if (paperNumber && (await deps.notes.numberTaken(paperNumber))) {
     throw new DomainError("DUPLICATE", { field: "paperNumber" });
   }
   const number = paperNumber || (await deps.numbering.take((candidate) => deps.notes.numberInUse(candidate)));

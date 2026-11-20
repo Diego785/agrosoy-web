@@ -1,6 +1,12 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { actorWithRole } from "@test/actors";
 import { draftInput, noteDeps, seedNoteFixtures } from "@test/note-fixtures";
+import { createCampaign } from "@/modules/campaigns/application/campaign-use-cases";
+import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
+import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
+import { ledgerEntries } from "@/modules/receivables/infrastructure/ledger.tables";
+import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import { newUserAccount } from "@/modules/identity/domain/user-account";
 import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import { testDb } from "@test/test-database";
@@ -114,6 +120,47 @@ describe("draft delivery notes", () => {
     ).rejects.toMatchObject({
       code: "VALIDATION_FAILED",
       details: { fieldErrors: { noteDate: [expect.any(String)], propertyId: [expect.any(String)] } },
+    });
+  });
+
+  it("takes the campaign before the date's when chosen, while that one is open (D37)", async () => {
+    const ids = await seedNoteFixtures();
+    const campaignDeps = { campaigns: drizzleCampaignRepository(testDb), audit: drizzleAuditTrail(testDb) };
+    const winter = { season: "winter", year: 2026, startsOn: "2026-04-01", endsOn: "2026-09-30" };
+    const { id: winterId } = await createCampaign(campaignDeps, admin, winter);
+    const { id: olderId } = await createCampaign(campaignDeps, admin, {
+      ...winter,
+      year: 2025,
+      startsOn: "2025-04-01",
+      endsOn: "2025-09-30",
+    });
+
+    // The north still delivers winter product on 26 October, in summer's sales period.
+    const { id } = await createDraftNote(deps(), admin, draftInput(ids, { campaignId: winterId }));
+    expect(await getNote(deps(), admin, id)).toMatchObject({
+      noteDate: "2026-10-26",
+      campaign: { season: "winter", year: 2026 },
+    });
+    const later = (await createDraftNote(deps(), admin, draftInput(ids, { campaignId: winterId }))).id;
+    await confirmNote(deps(), admin, id, { paperNumber: "" });
+    expect(await testDb.select({ campaignId: ledgerEntries.campaignId }).from(ledgerEntries)).toEqual([
+      { campaignId: winterId },
+    ]);
+
+    // Only the campaign right before the date's, and only while it is open.
+    await expect(
+      createDraftNote(deps(), admin, draftInput(ids, { campaignId: olderId })),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { campaignId: [expect.any(String)] } },
+    });
+    await testDb.update(campaigns).set({ status: "closed" }).where(eq(campaigns.id, winterId));
+    await expect(
+      createDraftNote(deps(), admin, draftInput(ids, { campaignId: winterId })),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    await expect(confirmNote(deps(), admin, later, { paperNumber: "" })).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { noteDate: [expect.any(String)] } },
     });
   });
 

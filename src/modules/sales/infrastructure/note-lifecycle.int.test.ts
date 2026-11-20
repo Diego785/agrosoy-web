@@ -132,6 +132,25 @@ describe("voiding delivery notes", () => {
     });
   });
 
+  it("lets a voided note's printed number be typed again, but the counter never gives it (D28)", async () => {
+    const ids = await seedNoteFixtures();
+    const wrong = await draft(ids);
+    await confirmNote(noteDeps(), technician, wrong, { paperNumber: "12458" });
+    await voidNote(noteDeps("2026-10-27"), admin, wrong, { reason: "Se cargó en la campaña equivocada" });
+
+    // The note that replaces it keeps the number printed on the paper.
+    expect(await confirmNote(noteDeps(), technician, await draft(ids), { paperNumber: "12458" })).toEqual({
+      number: 12458,
+      receiptNumber: null,
+    });
+    await expect(
+      confirmNote(noteDeps(), technician, await draft(ids), { paperNumber: "12458" }),
+    ).rejects.toMatchObject({ code: "DUPLICATE", details: { field: "paperNumber" } });
+    await expect(setNextNoteNumber(noteDeps(), admin, { nextNumber: "12458" })).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+    });
+  });
+
   it("only voids confirmed notes", async () => {
     const ids = await seedNoteFixtures();
     const id = await draft(ids);

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 import { cn } from "cn";
+import { noteCampaigns } from "@/modules/campaigns/domain/campaign";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { contentLabel, priceUnitLabel } from "@/modules/catalog/presentation/catalog-labels";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
@@ -688,6 +689,8 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
   if (!canEdit) notFound();
   const actor = await requireActor();
   const options = await loadNoteFormOptions(actor);
+  // Empty stands for the date's own campaign; anything else is the earlier one chosen (D37).
+  const dateCampaign = noteCampaigns(options.allCampaigns, note.noteDate)[0];
   return (
     <NoteForm
       options={options}
@@ -696,6 +699,7 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
         id: note.id,
         values: {
           noteDate: note.noteDate,
+          campaignId: note.campaign.id === dateCampaign?.id ? "" : note.campaign.id,
           customerId: note.customer.id,
           propertyId: note.property?.id ?? "",
           technicianId: note.technician?.id ?? "",

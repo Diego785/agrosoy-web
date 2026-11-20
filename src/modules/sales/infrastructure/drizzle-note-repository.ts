@@ -27,9 +27,8 @@ import { comparableText } from "@/shared/infrastructure/db/comparable-text";
 import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
 import type { NoteRepository } from "../application/note-ports";
 import { lineTotal, type DraftNote, type ImportedNote } from "../domain/delivery-note";
-import { deliveryNoteLines, deliveryNotes } from "./notes.tables";
+import { deliveryNoteLines, deliveryNotes, NOTE_NUMBER_KEY } from "./notes.tables";
 
-const NOTE_NUMBER_KEY = "delivery_notes_number_unique";
 const confirmer = alias(users, "confirmer");
 const voider = alias(users, "voider");
 const sourceNote = alias(deliveryNotes, "source_note");
@@ -235,6 +234,14 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         .select({ id: deliveryNotes.id })
         .from(deliveryNotes)
         .where(eq(deliveryNotes.number, number));
+      return row !== undefined;
+    },
+
+    async numberTaken(number) {
+      const [row] = await executor
+        .select({ id: deliveryNotes.id })
+        .from(deliveryNotes)
+        .where(and(eq(deliveryNotes.number, number), ne(deliveryNotes.status, "voided")));
       return row !== undefined;
     },
 

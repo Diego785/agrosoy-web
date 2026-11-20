@@ -74,8 +74,6 @@ export type StatementLineView = {
   } | null;
   /** What of a payment covered interest owed at the time; the rest went to capital (D45). */
   interestPart?: string | null;
-  /** The entry a void wrote to cancel a document. */
-  isReversal: boolean;
   /** Campaign transfers: the credit in the old campaign ("out") or the charge in the new one ("in"). */
   transfer: "out" | "in" | null;
   /** Payments and returns brought in from a spreadsheet, which have no document of their own. */
@@ -148,7 +146,6 @@ export function plainLine(
     observation: null,
     invoiceNumber: null,
     receipt: null,
-    isReversal: false,
     transfer: null,
     fromSheet: false,
     document: null,

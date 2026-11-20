@@ -91,7 +91,9 @@ inventory (M8) and receivables (M7) inside one transaction.
 - `summer` or `winter` plus year, with start and end dates (its sales period; campaigns never
   overlap); one is the current campaign.
 - Every note, payment and ledger entry belongs to the campaign its date falls in, which gives the
-  per-campaign breakdown of debt.
+  per-campaign breakdown of debt. A note can instead take the campaign right before its date's
+  while that one is open: the north still delivers winter product when the east has started
+  summer (D37).
 - **Due date (D37):** when the campaign's debt has to be paid, 30 November for winter and 31 May of
   the next year for summer by default; administration can move it, and can give one customer a
   later date for one campaign (an extension, with a reason). Past it, what is still owed in that
@@ -127,8 +129,9 @@ A note has a header and lines.
 - **States:** `draft` → `confirmed` → `voided` (with reason). Only drafts can be edited.
 - **Numbering (D19, D28):** one gapless counter, shared by the three types, given on confirmation.
   Paper notes typed in later keep their printed number; the counter skips numbers already taken and
-  a repeated number is rejected. Administration sets where the counter starts: the system's own
-  numbers go in a range the paper pads won't reach.
+  a repeated number is rejected. A voided note's printed number can be typed again on the note that
+  replaces it, but the counter never gives it. Administration sets where the counter starts: the
+  system's own numbers go in a range the paper pads won't reach.
 
 ### What confirming a note does
 
@@ -198,7 +201,7 @@ The **ledger** is an append-only table of entries:
   and status `settled` (balance 0 or in favor) or `owing`, per campaign and in total, plus the
   dated detail (each note line, receipt and charge) and the consigned product. Charges, opening
   balances and campaign transfers add an "others" column only when there are any. Voided
-  documents stay in the detail with their cancelling line and net out of their own column.
+  documents and their reversals are left out of the detail; they add nothing (D6).
 - In the detail, each payment shows its amount in bolivianos with its rate (D39) and each note its
   invoice number, when it has one (D40). Next to the total, the statement shows what is overdue
   (D37).
@@ -267,15 +270,15 @@ minimum, transfers unconfirmed for 3 days, customers with overdue debt (D37).
 
 ## Storage conventions
 
-| Kind of value             | Postgres type                      | TypeScript                            |
-| ------------------------- | ---------------------------------- | ------------------------------------- |
-| Money (USD or BOB)        | `numeric(14,2)`                    | `Money` (integer cents)               |
-| Quantity                  | `numeric(12,3)`                    | `Quantity` (integer thousandths)      |
-| Exchange rate             | `numeric(10,4)`                    | `ExchangeRate`                        |
-| Business date             | `date`                             | ISO string `YYYY-MM-DD`, Bolivia time |
-| Moment something happened | `timestamptz`                      | `Date`                                |
-| Identifier                | `uuid`                             | `string`                              |
-| Human document number     | `integer` with a unique constraint | `number`                              |
+| Kind of value             | Postgres type                 | TypeScript                            |
+| ------------------------- | ----------------------------- | ------------------------------------- |
+| Money (USD or BOB)        | `numeric(14,2)`               | `Money` (integer cents)               |
+| Quantity                  | `numeric(12,3)`               | `Quantity` (integer thousandths)      |
+| Exchange rate             | `numeric(10,4)`               | `ExchangeRate`                        |
+| Business date             | `date`                        | ISO string `YYYY-MM-DD`, Bolivia time |
+| Moment something happened | `timestamptz`                 | `Date`                                |
+| Identifier                | `uuid`                        | `string`                              |
+| Human document number     | `integer` with a unique index | `number`                              |
 
 Column names are `snake_case` in the database and `camelCase` in TypeScript (Drizzle maps them).
 

@@ -65,3 +65,18 @@ export function campaignOn<T extends CampaignPeriod>(
 ): T | undefined {
   return campaigns.find((campaign) => campaign.startsOn <= isoDate && isoDate <= campaign.endsOn);
 }
+
+/**
+ * The campaigns a note dated on this day can belong to: the date's own first, then the one right
+ * before it while that is still open. The north is still selling winter product when the east has
+ * started summer (D37, amended on 20 November 2026). Expects every campaign, closed ones included.
+ */
+export function noteCampaigns<T extends CampaignPeriod & { id: string; status: "open" | "closed" }>(
+  campaigns: readonly T[],
+  isoDate: string,
+): T[] {
+  const own = campaignOn(campaigns, isoDate);
+  if (!own) return [];
+  const before = previousCampaign(campaigns, own);
+  return before?.status === "open" ? [own, before] : [own];
+}

@@ -95,7 +95,7 @@ export async function listNotes(
   return paged({ page, pages }, result);
 }
 
-/** Validates the form data and the facts it points at; the campaign comes from the date. */
+/** Validates the form data and the facts it points at; the campaign comes from the date (D37). */
 async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNote> {
   const data = validateInput(draftNoteSchema, input);
   const fieldErrors: Record<string, string[]> = {};
@@ -106,8 +106,11 @@ async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNot
   if (data.propertyId && !customer?.propertyIds.includes(data.propertyId)) {
     fail("propertyId", "La propiedad no es de este cliente.");
   }
-  const campaign = await lookups.campaignOn(data.noteDate);
-  if (!campaign) fail("noteDate", "La fecha no cae en ninguna campaña.");
+  // The date's campaign unless the one before it was chosen, while that one is still open.
+  const choices = await lookups.noteCampaigns(data.noteDate);
+  const campaign = data.campaignId ? choices.find((choice) => choice.id === data.campaignId) : choices[0];
+  if (choices.length === 0) fail("noteDate", "La fecha no cae en ninguna campaña.");
+  else if (!campaign) fail("campaignId", "Elige la campaña de la fecha o la anterior.");
   else if (campaign.status === "closed") fail("noteDate", "La campaña de esa fecha ya está cerrada.");
   if (data.technicianId && !(await lookups.isActiveTechnician(data.technicianId))) {
     fail("technicianId", "Elige un técnico de venta activo.");

@@ -254,7 +254,8 @@ describe("returns", () => {
     await voidNote(noteDeps(), admin, returnId, { reason: "Devolución mal cargada" });
     expect((await remainingOf(target))[fulvin]).toBe("200.000");
     await voidNote(noteDeps(), admin, noteId, { reason: "Error de carga" });
-    expect(await balances(ids.customerId)).toEqual({ summer: "0.00" });
+    // Everything was voided, so the statement has no campaign left to show.
+    expect(await balances(ids.customerId)).toEqual({});
     expect(await followUpOptions(noteDeps(), admin, target)).toEqual([]);
   });
 });

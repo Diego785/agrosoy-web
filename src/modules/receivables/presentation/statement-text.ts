@@ -10,13 +10,6 @@ import { formatRate } from "@/shared/presentation/format";
 import type { StatementLineView } from "../application/statement-view";
 
 const FREE_LABELS = { bonus: "bonificación", sample: "muestra" } as const;
-const VOIDED: Record<StatementLineView["kind"], string> = {
-  delivery: "Anulación de la boleta",
-  return: "Anulación de la devolución",
-  payment: "Anulación del pago",
-  charge: "Anulación del cargo",
-  other: "Anulación del ajuste",
-};
 
 /** Debit kinds raise the balance; these lower it. */
 export const CREDIT_KINDS: ReadonlySet<StatementLineView["kind"]> = new Set(["payment", "return"]);
@@ -39,9 +32,6 @@ export function describeLine(
   line: StatementLineView,
   { withRate = false }: { withRate?: boolean } = {},
 ): { text: string; note: string | null } {
-  if (line.isReversal) {
-    return { text: line.opening ? "Anulación del saldo inicial" : VOIDED[line.kind], note: null };
-  }
   if (line.receipt) {
     const bolivianos = paymentInBolivianos(line);
     const rate = withRate && line.exchangeRate ? ` · T/C ${formatRate(line.exchangeRate)}` : "";

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Controller, useFieldArray, useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
-import { campaignOn } from "@/modules/campaigns/domain/campaign";
+import { noteCampaigns } from "@/modules/campaigns/domain/campaign";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { measureDelivered, measureOf } from "@/modules/catalog/domain/product";
 import { presentationLabel, quantityUnitLabel } from "@/modules/catalog/presentation/catalog-labels";
@@ -51,6 +51,7 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
       draft?.values ??
       ({
         noteDate: today,
+        campaignId: "",
         customerId: "",
         propertyId: "",
         technicianId: "",
@@ -71,21 +72,44 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
   });
   const lines = useFieldArray({ control: form.control, name: "lines" });
   const { errors } = form.formState;
-  const [noteDate, customerId, exchangeRate, paymentTerms, rateAtPayment, watchedLines] = useWatch({
-    control: form.control,
-    name: ["noteDate", "customerId", "exchangeRate", "paymentTerms", "rateAtPayment", "lines"],
-  });
+  const [noteDate, campaignId, customerId, exchangeRate, paymentTerms, rateAtPayment, watchedLines] =
+    useWatch({
+      control: form.control,
+      name: [
+        "noteDate",
+        "campaignId",
+        "customerId",
+        "exchangeRate",
+        "paymentTerms",
+        "rateAtPayment",
+        "lines",
+      ],
+    });
 
   const customer = options.customers.find((option) => option.id === customerId);
-  const campaign = campaignOn(options.campaigns, noteDate ?? "");
+  // The date's campaign, or the open one before it if chosen: the north still sells winter (D37).
+  const campaignChoices = noteCampaigns(options.allCampaigns, noteDate ?? "").filter(
+    (choice) => choice.status === "open",
+  );
+  const campaign = campaignChoices.find((choice) => choice.id === campaignId) ?? campaignChoices[0];
   const presentationsById = new Map(
     options.presentations.map((presentation) => [presentation.id, presentation]),
   );
 
-  function suggestedPrice(presentationId: string): string {
-    if (!campaign) return "";
-    const byZone = options.prices[campaign.id] ?? {};
+  function suggestedPrice(presentationId: string, from = campaign): string {
+    if (!from) return "";
+    const byZone = options.prices[from.id] ?? {};
     return byZone[customer?.zoneId ?? ""]?.[presentationId] ?? byZone[""]?.[presentationId] ?? "";
+  }
+
+  /** Lines still at the old campaign's price take the new one's; a price typed by hand stays. */
+  function chooseCampaign(id: string) {
+    const chosen = campaignChoices.find((choice) => choice.id === id) ?? campaignChoices[0];
+    form.getValues("lines").forEach((line, index) => {
+      if (line.presentationId && line.unitPrice === suggestedPrice(line.presentationId)) {
+        form.setValue(`lines.${index}.unitPrice`, suggestedPrice(line.presentationId, chosen));
+      }
+    });
   }
 
   /** The customer's fixed rate or, without one, the rate in force set in Cobros (D36). */
@@ -133,8 +157,10 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
     form.setValue("receiverRelationship", receiver.relationship);
   }
 
-  const submit = form.handleSubmit((values) =>
+  const submit = form.handleSubmit((input) =>
     startSaving(async () => {
+      // A campaign chosen for an earlier date no longer applies: the new date's own is shown.
+      const values = { ...input, campaignId: campaign && campaign !== campaignChoices[0] ? campaign.id : "" };
       if (draft) {
         const result = await updateDraftNoteAction(draft.id, values);
         if (!result.ok) return applyActionError(form, result.error);
@@ -163,10 +189,28 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
                 name="noteDate"
                 render={({ field }) => <DateInput id="noteDate" invalid={!!errors.noteDate} {...field} />}
               />
-              <span className="text-xs text-muted-foreground">
-                {campaign ? `Campaña ${campaignLabel(campaign)}` : "Sin campaña abierta para esta fecha"}
-              </span>
-              <FieldError errors={[errors.noteDate]} />
+              {campaignChoices.length > 1 ? (
+                <NativeSelect
+                  size="sm"
+                  aria-label="Campaña"
+                  aria-invalid={!!errors.campaignId}
+                  {...form.register("campaignId", {
+                    onChange: (event) => chooseCampaign(event.target.value),
+                  })}
+                >
+                  {campaignChoices.map((choice, index) => (
+                    <NativeSelectOption key={choice.id} value={index === 0 ? "" : choice.id}>
+                      Campaña {campaignLabel(choice)}
+                      {index === 0 ? " (por la fecha)" : ""}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {campaign ? `Campaña ${campaignLabel(campaign)}` : "Sin campaña abierta para esta fecha"}
+                </span>
+              )}
+              <FieldError errors={[errors.noteDate, errors.campaignId]} />
             </Field>
             <Field data-invalid={!!errors.customerId} className="sm:col-span-2">
               <FieldLabel htmlFor="customerId">Cliente</FieldLabel>

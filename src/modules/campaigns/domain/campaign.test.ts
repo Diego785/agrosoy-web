@@ -5,6 +5,7 @@ import {
   campaignRecord,
   defaultDueOn,
   effectiveDueOn,
+  noteCampaigns,
   overlaps,
   previousCampaign,
 } from "./campaign";
@@ -57,5 +58,36 @@ describe("campaigns", () => {
     expect(previousCampaign(all, all[0]!)?.id).toBe("w26");
     expect(previousCampaign(all, all[1]!)?.id).toBe("w25");
     expect(previousCampaign(all, older)).toBeUndefined();
+  });
+
+  it("lets a note take the campaign before its date's while that one is open (D37)", () => {
+    const open = { status: "open" as const };
+    const summer26 = { id: "s26", ...summer, ...open };
+    const winter26 = { id: "w26", ...winter, ...open };
+    const summer25 = {
+      id: "s25",
+      ...summer,
+      year: 2025,
+      startsOn: "2025-10-01",
+      endsOn: "2026-03-31",
+      status: "closed" as const,
+    };
+    const winter25 = {
+      id: "w25",
+      ...winter,
+      year: 2025,
+      startsOn: "2025-04-01",
+      endsOn: "2025-09-30",
+      ...open,
+    };
+    const all = [summer26, winter26, summer25, winter25];
+    type Choice = { id: string; startsOn: string; endsOn: string; status: "open" | "closed" };
+    const ids = (date: string, campaigns: readonly Choice[] = all) =>
+      noteCampaigns(campaigns, date).map((one) => one.id);
+    expect(ids("2026-10-26")).toEqual(["s26", "w26"]);
+    // Only the one right before, and only while it is open: winter 2025 is open but older.
+    expect(ids("2026-06-01")).toEqual(["w26"]);
+    expect(ids("2026-10-26", [summer26, { ...winter26, status: "closed" }])).toEqual(["s26"]);
+    expect(ids("2027-04-01")).toEqual([]);
   });
 });

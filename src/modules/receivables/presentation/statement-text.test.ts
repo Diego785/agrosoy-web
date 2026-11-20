@@ -62,10 +62,7 @@ describe("describeLine for payments (D39)", () => {
     });
   });
 
-  it("leaves voided payments and the sheet's payments as they were", () => {
-    const voided = payment("-400.00", { usdAmount: "400.00" }, { isReversal: true });
-    expect(describeLine(voided).text).toBe("Anulación del pago");
-
+  it("leaves the sheet's payments as they were", () => {
     const fromSheet = plainLine({
       kind: "payment",
       date: "2026-09-30",

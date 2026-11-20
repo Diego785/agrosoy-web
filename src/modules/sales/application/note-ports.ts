@@ -120,7 +120,10 @@ export interface NoteRepository {
   markConfirmed(id: string, number: number, actorId: string): Promise<void>;
   /** Confirmed → voided. INVALID_STATE if it isn't confirmed. */
   markVoided(id: string, reason: string, actorId: string): Promise<void>;
+  /** Any note has the number, voided ones included: the counter never gives it again. */
   numberInUse(number: number): Promise<boolean>;
+  /** A note that isn't voided has the number; a voided note's printed number can be typed again (D28). */
+  numberTaken(number: number): Promise<boolean>;
   /**
    * The lines a customer received in a campaign, from confirmed deliveries and transfers into it,
    * with what confirmed returns and transfers already took from each; oldest first (D25).
@@ -159,6 +162,8 @@ export interface NoteLookups {
   >;
   /** The open or closed campaign containing the date. */
   campaignOn(isoDate: string): Promise<{ id: string; status: "open" | "closed" } | undefined>;
+  /** The campaigns a note of that date can belong to, the date's own first (D37). */
+  noteCampaigns(isoDate: string): Promise<{ id: string; status: "open" | "closed" }[]>;
   isActiveTechnician(id: string): Promise<boolean>;
   /** Any active user can hand the product over (technician, warehouse keeper…). */
   isActiveUser(id: string): Promise<boolean>;

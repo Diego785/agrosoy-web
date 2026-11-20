@@ -74,7 +74,7 @@ async function seedHistory() {
 }
 
 describe("customer statement", () => {
-  it("lists every movement with the sheet's columns, per campaign and aged", async () => {
+  it("lists every movement with the sheet's columns, per campaign and aged, without voided ones", async () => {
     const { ids } = await seedHistory();
     const statement = await customerStatement(deps, technician, ids.customerId, {});
 
@@ -87,26 +87,18 @@ describe("customer statement", () => {
       status: "owing",
     });
     expect(
-      statement.lines.map((line) => [
-        line.date,
-        line.kind,
-        line.noteNumber,
-        line.description,
-        line.amount,
-        line.isReversal,
-      ]),
+      statement.lines.map((line) => [line.date, line.kind, line.noteNumber, line.description, line.amount]),
     ).toEqual([
-      ["2026-05-10", "delivery", 1, "Fulvin 40-22", "2200.00", false],
-      ["2026-05-10", "delivery", 1, "4-energy", "0.00", false],
-      ["2026-10-26", "delivery", 2, "Fulvin 40-22", "2200.00", false],
-      ["2026-10-26", "delivery", 2, "4-energy", "0.00", false],
-      ["2026-10-27", "delivery", 3, "4-energy", "250.00", false],
-      ["2026-10-28", "delivery", 3, "", "-250.00", true],
-      ["2026-11-01", "payment", null, "", "2200.00", false],
-      ["2026-11-01", "payment", null, "", "800.00", false],
-      ["2026-11-02", "charge", null, "Interés acordado", "50.00", false],
+      ["2026-05-10", "delivery", 1, "Fulvin 40-22", "2200.00"],
+      ["2026-05-10", "delivery", 1, "4-energy", "0.00"],
+      ["2026-10-26", "delivery", 2, "Fulvin 40-22", "2200.00"],
+      ["2026-10-26", "delivery", 2, "4-energy", "0.00"],
+      // Note 3 was voided: neither it nor its reversal reaches the customer.
+      ["2026-11-01", "payment", null, "", "2200.00"],
+      ["2026-11-01", "payment", null, "", "800.00"],
+      ["2026-11-02", "charge", null, "Interés acordado", "50.00"],
     ]);
-    expect(statement.lines[6]?.receipt).toEqual({
+    expect(statement.lines[4]?.receipt).toEqual({
       number: 1,
       method: "transfer",
       currency: "BOB",

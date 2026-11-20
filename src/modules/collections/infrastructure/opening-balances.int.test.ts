@@ -75,10 +75,8 @@ describe("opening balances (D29)", () => {
     });
     const after = await customerStatement(statementOn("2026-11-03"), admin, ids.customerId, {});
     expect(after.totals.balance).toBe("0.00");
-    expect(after.lines.map((line) => describeLine(line).text)).toEqual([
-      "Saldo inicial a favor del cliente",
-      "Anulación del saldo inicial",
-    ]);
+    // The voided balance and its reversal stay off the statement.
+    expect(after.lines).toEqual([]);
     // Voided, the campaign takes the right one.
     await recordOpeningBalance(collectionDeps(), admin, { ...input, amount: "50" });
     const { items } = await listOpeningBalances(collectionDeps(), admin, {});

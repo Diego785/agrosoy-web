@@ -95,6 +95,15 @@ export async function loadNoteFormOptions(actor: Actor) {
       product.presentations.map((presentation) => ({ ...presentation, productName: product.name })),
     ),
     campaigns: openCampaigns,
+    /** Closed ones too: a note can take the campaign before its date's only while that one is open (D37). */
+    allCampaigns: campaigns.map(({ id, season, year, startsOn, endsOn, status }) => ({
+      id,
+      season,
+      year,
+      startsOn,
+      endsOn,
+      status,
+    })),
     technicians,
     /** Who can hand the product over: any active user, shown with their position. */
     staff: users.filter((user) => user.active).map(({ id, name, position }) => ({ id, name, position })),

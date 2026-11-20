@@ -151,11 +151,12 @@ export async function customerStatement(
     return part?.isPositive() ? part.toDecimalString() : null;
   };
 
-  const lines = entries.flatMap((entry): StatementLineView[] => {
-    const isReversal = entry.reversesEntryId !== null;
+  // A voided document and the reversal that cancels it stay off the statement the customer gets:
+  // together they add nothing, and the voided list and the change log keep them (D6).
+  const shown = withoutReversedPairs(entries);
+  const lines = shown.flatMap((entry): StatementLineView[] => {
     const base = {
       date: entry.date,
-      isReversal,
       document: null,
       noteNumber: null,
       description: "",
@@ -183,8 +184,8 @@ export async function customerStatement(
         const transfer = entry.kind === "campaign_transfer_out" ? "out" : "in";
         return [{ ...base, ...noteFields, kind: "other", amount: signed(entry), transfer }];
       }
-      // A voided note shows as one line that cancels it; deliveries and returns show their products.
-      if (isReversal || !note || (entry.kind !== "delivery" && entry.kind !== "return")) {
+      // Deliveries and returns show their products.
+      if (!note || (entry.kind !== "delivery" && entry.kind !== "return")) {
         return [{ ...base, ...noteFields, kind: kindOf(entry), amount: signed(entry) }];
       }
       const kind = entry.kind;
@@ -258,7 +259,7 @@ export async function customerStatement(
     today,
   );
   const byCampaign = campaigns
-    .filter((campaign) => entries.some((entry) => entry.campaignId === campaign.id))
+    .filter((campaign) => shown.some((entry) => entry.campaignId === campaign.id))
     .map((campaign) => {
       const due = dueOf(customer.id, campaign.id)!;
       return {

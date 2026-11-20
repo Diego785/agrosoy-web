@@ -39,6 +39,8 @@ export const noteLineSchema = z.object({
 export const draftNoteSchema = z
   .object({
     noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
+    /** Empty for the date's campaign; the one before it can be chosen while it is open (D37). */
+    campaignId: z.union([z.literal(""), z.uuid({ error: "Elige la campaña." })]).optional(),
     customerId: z.uuid({ error: "Elige el cliente." }),
     propertyId: z.union([z.literal(""), z.uuid()]).optional(),
     technicianId: z.union([z.literal(""), z.uuid()]).optional(),

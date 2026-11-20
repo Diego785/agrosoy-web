@@ -65,6 +65,12 @@ documents are never edited or deleted; voiding writes the opposite entries with 
 **Why:** the proposal promises that nothing is deleted and every change is traceable. It also
 makes the statement and the kardex reproducible at any past date.
 
+**Amended on 20 November 2026, at administration's request:** the statement a customer gets leaves
+out a voided document together with the reversal that cancels it. The two add up to nothing, and a
+customer reading "Anulación de la boleta" asks what that discount is. The ledger keeps both; the
+voided notes list and the change log show what was voided and why. The technician's statement (D46)
+and aging already left them out.
+
 ## D7 · Stock can never go negative, enforced by the database
 
 **Decision:** a `stock_balances` projection (warehouse × lot) is updated in the same transaction
@@ -359,6 +365,11 @@ its origin. Completes D19: the counter is the same, it only starts elsewhere.
 **Why:** technicians keep using pads in the field, often without signal, while the system issues
 documents. A counter that continued the pad would collide with its next sheet.
 
+**Amended on 20 November 2026, at administration's request:** a number is unique among notes that
+aren't voided (migration 0029). A note voided to be entered again (wrong campaign, wrong customer)
+keeps its number, and the new one is confirmed as a paper note with the same printed number. The
+counter still never gives out a number any note has had, so a printed system number never repeats.
+
 ## D29 · Agrosoil enters its own opening debts; spreadsheets are optional
 
 **Decision:** going live doesn't depend on Agrosoil sharing its sales spreadsheets. Administration
@@ -539,6 +550,15 @@ harvesting, and some customers get more time. What differs between zones is when
 when they buy. Stretching winter to 30 November would put the east's summer sales of October and
 November in winter, and overlapping campaigns would make someone pick the campaign on every note.
 Aging by document date showed winter debt as more than 90 days old while it wasn't due yet.
+
+**Amended on 20 November 2026, at administration's request:** a note can belong to the campaign
+right before its date's while that one is open. The form proposes the date's campaign and, when
+there is an open one before it, offers it next to the date; changing it moves the lines still at
+the suggested price to the other campaign's price. The north still delivers winter product when
+the east has started summer, and a winter note had to be voided because its date put it in summer.
+It works the same in every zone: a customer's zone is optional, and the note and its PDF show the
+campaign. Campaigns still don't overlap, payments are still applied as D20 says, returns go back to
+the campaign the product came from, and a transfer still moves it on (D25).
 
 ## D38 · Late-payment interest is proposed month by month
 
