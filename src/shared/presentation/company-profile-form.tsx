@@ -96,13 +96,17 @@ export const CompanyProfileForm = resetOnLeave(function CompanyProfileForm({
         </FieldDescription>
         {accounts.fields.map((account, index) => {
           const accountErrors = errors.bankAccounts?.[index];
+          // On wide screens the rows line up under the first one's labels, like a table.
+          const label = index > 0 ? "sm:sr-only" : undefined;
           return (
             <div
               key={account.id}
-              className="grid items-start gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_5.5rem_minmax(0,2fr)_auto]"
+              className="grid items-start gap-3 sm:grid-cols-[minmax(0,2fr)_10.5rem_5.5rem_minmax(0,1.6fr)_auto]"
             >
               <Field data-invalid={!!accountErrors?.bank}>
-                <FieldLabel htmlFor={`bank-${index}`}>Banco</FieldLabel>
+                <FieldLabel htmlFor={`bank-${index}`} className={label}>
+                  Banco
+                </FieldLabel>
                 <Input
                   id={`bank-${index}`}
                   placeholder="Banco BISA S.A."
@@ -112,7 +116,9 @@ export const CompanyProfileForm = resetOnLeave(function CompanyProfileForm({
                 <FieldError errors={[accountErrors?.bank]} />
               </Field>
               <Field>
-                <FieldLabel htmlFor={`kind-${index}`}>Tipo</FieldLabel>
+                <FieldLabel htmlFor={`kind-${index}`} className={label}>
+                  Tipo
+                </FieldLabel>
                 <NativeSelect id={`kind-${index}`} {...form.register(`bankAccounts.${index}.kind`)}>
                   {BANK_ACCOUNT_KINDS.map((kind) => (
                     <NativeSelectOption key={kind} value={kind}>
@@ -122,14 +128,18 @@ export const CompanyProfileForm = resetOnLeave(function CompanyProfileForm({
                 </NativeSelect>
               </Field>
               <Field>
-                <FieldLabel htmlFor={`currency-${index}`}>Moneda</FieldLabel>
+                <FieldLabel htmlFor={`currency-${index}`} className={label}>
+                  Moneda
+                </FieldLabel>
                 <NativeSelect id={`currency-${index}`} {...form.register(`bankAccounts.${index}.currency`)}>
                   <NativeSelectOption value="BOB">{BANK_ACCOUNT_CURRENCY_LABELS.BOB}</NativeSelectOption>
                   <NativeSelectOption value="USD">{BANK_ACCOUNT_CURRENCY_LABELS.USD}</NativeSelectOption>
                 </NativeSelect>
               </Field>
               <Field data-invalid={!!accountErrors?.number}>
-                <FieldLabel htmlFor={`number-${index}`}>Número de cuenta</FieldLabel>
+                <FieldLabel htmlFor={`number-${index}`} className={label}>
+                  Número de cuenta
+                </FieldLabel>
                 <Input
                   id={`number-${index}`}
                   inputMode="numeric"
@@ -142,7 +152,7 @@ export const CompanyProfileForm = resetOnLeave(function CompanyProfileForm({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="sm:mt-6"
+                className={index === 0 ? "sm:mt-6" : undefined}
                 aria-label={`Quitar la cuenta ${index + 1}`}
                 onClick={() => accounts.remove(index)}
               >

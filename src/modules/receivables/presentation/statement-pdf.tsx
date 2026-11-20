@@ -144,7 +144,7 @@ export function StatementPdf({
           <Text style={[pdfStyles.label, { marginBottom: 3 }]}>Cuentas para pagar</Text>
           <Text style={{ marginBottom: 2 }}>{bankAccountsHeading(company)}</Text>
           {accounts.map((line) => (
-            <Text key={line} style={pdfStyles.bold}>
+            <Text key={line} style={[pdfStyles.bold, { lineHeight: 1.5 }]}>
               {line}
             </Text>
           ))}
