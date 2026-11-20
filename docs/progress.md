@@ -3,6 +3,19 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-20 (branch `feature/week-3`)
+
+- **Administration's audio of 20 November**, after trying staging: a winter note for the north
+  fell in summer because of its date, was voided, and its number couldn't be typed again; the
+  customer's statement showed the void as a discount. Built, to ship with week 3:
+  - the customer's statement leaves out voided documents and their reversals (D6 amended);
+  - a note can take the open campaign right before its date's, in every zone (D37 amended);
+  - a voided note's printed number can be typed again; the counter never gives it (D28 amended,
+    migration 0029).
+- **Not built**: "void and correct" (a voided note copied into a new draft), and the same number
+  rule for paper receipts. Both wait for administration to ask.
+- Nothing pushed yet.
+
 ## 2026-11-16 to 2026-11-19 (branch `feature/week-3`)
 
 - **Built the changes from administration's audios and the customer lists** (roadmap section of
