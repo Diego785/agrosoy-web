@@ -3,6 +3,7 @@ import { Text, View } from "@react-pdf/renderer";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import type { CompanyProfile } from "@/shared/domain/company-profile";
 import { Money } from "@/shared/domain/money";
+import { bankAccountLines, bankAccountsHeading } from "@/shared/presentation/bank-accounts";
 import { loadCompanyProfile } from "@/shared/presentation/company-profile";
 import { formatDate, formatMoney, formatQuantity } from "@/shared/presentation/format";
 import { PdfFields, PdfPage, PdfTable, pdfResponse, pdfStyles } from "@/shared/presentation/pdf";
@@ -37,6 +38,7 @@ export function StatementPdf({
 }) {
   const { totals } = statement;
   const hasOther = !Money.parse(totals.other).isZero();
+  const accounts = bankAccountLines(company.bankAccounts);
 
   return (
     <PdfPage
@@ -136,6 +138,18 @@ export function StatementPdf({
           ]}
         />
       </View>
+
+      {accounts.length > 0 && (
+        <View wrap={false} style={{ borderTopWidth: 0.5, borderColor: "#999", paddingTop: 6 }}>
+          <Text style={[pdfStyles.label, { marginBottom: 3 }]}>Cuentas para pagar</Text>
+          <Text style={{ marginBottom: 2 }}>{bankAccountsHeading(company)}</Text>
+          {accounts.map((line) => (
+            <Text key={line} style={pdfStyles.bold}>
+              {line}
+            </Text>
+          ))}
+        </View>
+      )}
     </PdfPage>
   );
 }

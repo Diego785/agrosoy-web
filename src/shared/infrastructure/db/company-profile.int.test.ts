@@ -29,6 +29,27 @@ describe("company profile (D26)", () => {
     });
   });
 
+  it("keeps the bank accounts to pay into, in their order, and refuses one without a number", async () => {
+    const accounts = [
+      { bank: " Banco  BISA S.A. ", kind: "checking", currency: "BOB", number: "1000000001" },
+      { bank: "Banco BISA S.A.", kind: "checking", currency: "USD", number: "1000 0000 09" },
+      { bank: "Banco Solidario S.A.", kind: "savings", currency: "BOB", number: "3000000000003" },
+    ];
+    await updateCompanyProfile(deps(), admin, { ...DEFAULT_COMPANY_PROFILE, bankAccounts: accounts });
+    expect((await readCompanyProfile(drizzleSettingsStore(testDb))).bankAccounts).toEqual([
+      { bank: "Banco BISA S.A.", kind: "checking", currency: "BOB", number: "1000000001" },
+      { bank: "Banco BISA S.A.", kind: "checking", currency: "USD", number: "1000 0000 09" },
+      { bank: "Banco Solidario S.A.", kind: "savings", currency: "BOB", number: "3000000000003" },
+    ]);
+
+    await expect(
+      updateCompanyProfile(deps(), admin, {
+        ...DEFAULT_COMPANY_PROFILE,
+        bankAccounts: [{ bank: "Banco BISA S.A.", kind: "checking", currency: "BOB", number: "" }],
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+  });
+
   it("keeps the defaults for what is missing or unreadable, and is for administration", async () => {
     await drizzleSettingsStore(testDb).set("company_profile", { brand: "Agrosoil", phone: 42 }, "test");
     expect(await readCompanyProfile(drizzleSettingsStore(testDb))).toEqual({

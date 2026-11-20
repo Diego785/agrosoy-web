@@ -19,6 +19,9 @@ up without re-reading the whole history.
   this summer.
 - **Week 3's last gaps**: a cash note's payment takes a printed receipt number; a return asks who
   receives for Agrosoil and the carrier.
+- **Administration's request of 18 November** (D26 amended): the statement's letterhead shows the
+  legal name, and Datos de la empresa keeps the bank accounts printed at the statement's foot. The
+  real numbers are typed by administration on the settings page, never committed.
 - **Left for week 5**: the signed note's photo, with the travel allowances' file storage.
 - **Waiting on Agrosoil**: when 4.5 % applies, whether the month of payment is charged, the
   estates' owners.

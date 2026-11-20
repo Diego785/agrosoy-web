@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import type { CompanyProfile } from "@/shared/domain/company-profile";
+import { bankAccountLines, bankAccountsHeading } from "@/shared/presentation/bank-accounts";
 import { Skeleton } from "@/shared/presentation/skeletons";
 import { Badge } from "@/shared/presentation/ui/badge";
 import type { StatementSource, StatementTotalsView } from "../application/statement-view";
@@ -32,6 +34,25 @@ export function SourceNotice({ source }: { source: StatementSource }) {
         </Badge>
       )}
     </p>
+  );
+}
+
+/** The accounts to pay into, under the statement as at the foot of its PDF (D26). */
+export function PaymentAccounts({ company }: { company: CompanyProfile }) {
+  const lines = bankAccountLines(company.bankAccounts);
+  if (lines.length === 0) return null;
+  return (
+    <section aria-labelledby="payment-accounts" className="rounded-xl border bg-card p-5 text-sm shadow-xs">
+      <h3 id="payment-accounts" className="font-semibold">
+        Cuentas para pagar
+      </h3>
+      <p className="mt-1 text-muted-foreground">{bankAccountsHeading(company)}</p>
+      <ul className="mt-2 flex flex-col gap-1 font-medium tabular-nums">
+        {lines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

@@ -329,6 +329,14 @@ email, website and Facebook, stored in `app_settings`; every PDF reads them when
 an unreadable field falls back to the details Agrosoil gave us. The logo stays the one bundled with
 the application.
 
+**Amended on 19 November 2026, at administration's request:** the statement's letterhead names the
+company by its legal name (AGROSOILBOLIVIA S.R.L.), since it asks the customer to pay; the brand
+field, now "Nombre comercial", only names the PDF file's author. The same page keeps the bank
+accounts customers pay into (bank, checking or savings, Bs or US$, number; up to 10, in order).
+They print at the foot of the statement, PDF and screen, under one line with the legal name and
+NIT, grouped per bank and kind of account. No account ships with the code: administration types
+them, so the numbers stay out of the public repository.
+
 **Why:** customers and staff already know and sign these forms; the printed copy stays the
 physical record, so it must look like the one they trust.
 

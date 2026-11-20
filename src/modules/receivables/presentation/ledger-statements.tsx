@@ -10,6 +10,7 @@ import { can } from "@/shared/application/permissions";
 import { isDomainError } from "@/shared/domain/domain-error";
 import { getDb } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
+import { loadCompanyProfile } from "@/shared/presentation/company-profile";
 import { EmptyState } from "@/shared/presentation/empty-state";
 import { formatDate } from "@/shared/presentation/format";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
@@ -19,6 +20,7 @@ import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/nativ
 import { customerStatement, portfolioStatement } from "../application/statement-use-cases";
 import { CustomerStatement, CustomerStatementSkeleton } from "./customer-statement";
 import { PortfolioStatement, PortfolioStatementSkeleton } from "./portfolio-statement";
+import { PaymentAccounts } from "./statement-parts";
 import { statementDeps as deps } from "./statement-deps";
 import { STATEMENTS_PATH, customerStatementPath, customerStatementPdfPath } from "./statement-routes";
 
@@ -152,6 +154,7 @@ export async function LedgerCustomerStatement({
         statement={statement}
         extendFor={can(actor, "payments.manage") ? { customerId: statement.customerId } : undefined}
       />
+      <PaymentAccounts company={await loadCompanyProfile()} />
     </div>
   );
 }

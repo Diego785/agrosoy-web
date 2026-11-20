@@ -116,7 +116,8 @@ export function PdfPage({
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image src={AGROSOIL_LOGO_PNG} style={pdfStyles.logo} />
             <View>
-              <Text style={pdfStyles.companyName}>{company.brand}</Text>
+              {/* A statement asks for payment, so it names the company by its legal name. */}
+              <Text style={pdfStyles.companyName}>{company.legalName}</Text>
               <Text style={pdfStyles.company}>
                 {[company.taxId && `NIT ${company.taxId}`, company.phone && `Telf. ${company.phone}`]
                   .filter(Boolean)
