@@ -23,6 +23,15 @@ export function drizzleCampaignRepository(executor: DbExecutor): CampaignReposit
       if (rows.length === 0) throw new DomainError("NOT_FOUND", { entity: "campaign", id });
     },
 
+    async setStatus(id, status) {
+      const rows = await executor
+        .update(campaigns)
+        .set({ status })
+        .where(eq(campaigns.id, id))
+        .returning({ id: campaigns.id });
+      if (rows.length === 0) throw new DomainError("NOT_FOUND", { entity: "campaign", id });
+    },
+
     async findById(id) {
       const [row] = await executor.select().from(campaigns).where(eq(campaigns.id, id));
       return row ? toCampaign(row) : undefined;

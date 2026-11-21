@@ -106,12 +106,12 @@ async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNot
   if (data.propertyId && !customer?.propertyIds.includes(data.propertyId)) {
     fail("propertyId", "La propiedad no es de este cliente.");
   }
-  // The date's campaign unless the one before it was chosen, while that one is still open.
+  // The date's campaign unless an open one right before or after it was chosen (D37).
   const choices = await lookups.noteCampaigns(data.noteDate);
   const campaign = data.campaignId ? choices.find((choice) => choice.id === data.campaignId) : choices[0];
   if (choices.length === 0) fail("noteDate", "La fecha no cae en ninguna campaña.");
-  else if (!campaign) fail("campaignId", "Elige la campaña de la fecha o la anterior.");
-  else if (campaign.status === "closed") fail("noteDate", "La campaña de esa fecha ya está cerrada.");
+  else if (choices[0]?.status === "closed") fail("noteDate", "La campaña de esa fecha ya está cerrada.");
+  else if (!campaign) fail("campaignId", "Elige la campaña de la fecha, la anterior o la siguiente.");
   if (data.technicianId && !(await lookups.isActiveTechnician(data.technicianId))) {
     fail("technicianId", "Elige un técnico de venta activo.");
   }

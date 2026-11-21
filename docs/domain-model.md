@@ -91,9 +91,9 @@ inventory (M8) and receivables (M7) inside one transaction.
 - `summer` or `winter` plus year, with start and end dates (its sales period; campaigns never
   overlap); one is the current campaign.
 - Every note, payment and ledger entry belongs to the campaign its date falls in, which gives the
-  per-campaign breakdown of debt. A note can instead take the campaign right before its date's
-  while that one is open: the north still delivers winter product when the east has started
-  summer (D37).
+  per-campaign breakdown of debt. A note can instead take the campaign right before or right after
+  its date's while that one is open: zones change season on different days, the north still
+  delivering winter product when the east has started summer (D37).
 - **Due date (D37):** when the campaign's debt has to be paid, 30 November for winter and 31 May of
   the next year for summer by default; administration can move it, and can give one customer a
   later date for one campaign (an extension, with a reason). Past it, what is still owed in that
@@ -106,8 +106,10 @@ inventory (M8) and receivables (M7) inside one transaction.
   is dated on the month's last day.
 - **Interest first (D45):** a payment covers the interest owed at the time before capital; the
   statement shows the split on each payment and the interest still owed in each campaign.
-- **Closing** a campaign produces its summary (sales, collected, pending debt, consigned product)
-  and blocks new documents dated in it, except campaign transfers out of it.
+- **Closing** a campaign is done by hand, never by its dates (D37), and can be undone. It blocks new
+  documents dated in it, taking it on a note and new charges in it, except campaign transfers out
+  of it; its debt is still collected. Its summary (sales, collected, pending debt, consigned
+  product) is still to build.
 
 ## Delivery notes (M5)
 

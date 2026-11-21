@@ -23,6 +23,8 @@ export interface CampaignRepository {
   insert(campaign: CampaignRecord): Promise<{ id: string }>;
   /** Same duplicate rule; NOT_FOUND when missing. */
   update(id: string, campaign: CampaignRecord): Promise<void>;
+  /** NOT_FOUND when missing. */
+  setStatus(id: string, status: Campaign["status"]): Promise<void>;
   findById(id: string): Promise<Campaign | undefined>;
   /** Newest first. */
   list(): Promise<Campaign[]>;

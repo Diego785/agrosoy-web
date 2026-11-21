@@ -7,7 +7,12 @@ import { withTransaction, type DbExecutor } from "@/shared/infrastructure/db/cli
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
 import type { CampaignInput, DueDateExtensionInput } from "../application/campaign-schemas";
-import { createCampaign, updateCampaign, type CampaignDeps } from "../application/campaign-use-cases";
+import {
+  createCampaign,
+  setCampaignStatus,
+  updateCampaign,
+  type CampaignDeps,
+} from "../application/campaign-use-cases";
 import {
   removeDueDateExtension,
   setDueDateExtension,
@@ -41,6 +46,19 @@ export async function updateCampaignAction(
     const actor = await requireActor();
     await withTransaction((tx) => updateCampaign(deps(tx), actor, campaignId, input));
     // The due date decides what statements show as overdue.
+    revalidatePath("/", "layout");
+    return null;
+  });
+}
+
+export async function setCampaignStatusAction(
+  campaignId: string,
+  status: "open" | "closed",
+): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setCampaignStatus(deps(tx), actor, campaignId, status));
+    // Every form that offers a campaign, and every rule that checks one, changes with it.
     revalidatePath("/", "layout");
     return null;
   });

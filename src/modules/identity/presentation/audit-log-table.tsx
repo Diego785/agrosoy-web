@@ -51,6 +51,8 @@ const ACTION_LABELS: Record<string, string> = {
   "settings.update_company": "Actualizó los datos de la empresa",
   "campaigns.create": "Creó la campaña",
   "campaigns.update": "Editó la campaña",
+  "campaigns.close": "Cerró la campaña",
+  "campaigns.reopen": "Reabrió la campaña",
   "campaigns.extend_due_date": "Dio más plazo de pago a",
   "campaigns.remove_extension": "Quitó el plazo extra de",
   "catalog.create_product": "Creó el producto",
