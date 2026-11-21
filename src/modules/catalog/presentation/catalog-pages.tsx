@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
-import { campaignOn, previousCampaign } from "@/modules/campaigns/domain/campaign";
+import { campaignOn, nextCampaign, previousCampaign } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { listAllZones } from "@/modules/customers/application/customer-use-cases";
@@ -495,8 +495,12 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
   const zoneId = zones.some((zone) => zone.id === first(params.zone)) ? (first(params.zone) ?? "") : "";
   const deps = catalogDeps(db);
   const canEdit = can(actor, "catalog.manage");
-  const previous = previousCampaign(campaigns, campaign);
-  const copyFrom = canEdit && previous && first(params.copyFrom) === previous.id ? previous : undefined;
+  // Prices usually carry over from the campaign before; the one after serves a campaign set up
+  // later than it, as winter 2026 was after summer.
+  const sources = [previousCampaign(campaigns, campaign), nextCampaign(campaigns, campaign)].filter(
+    (source) => source !== undefined,
+  );
+  const copyFrom = canEdit ? sources.find((source) => source.id === first(params.copyFrom)) : undefined;
   const [sheet, general, copied] = await Promise.all([
     priceSheet(deps, actor, { campaignId: campaign.id, zoneId }),
     zoneId ? priceSheet(deps, actor, { campaignId: campaign.id }) : Promise.resolve([]),
@@ -532,14 +536,19 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
             </button>
           </form>
         </ResetOnLeave>
-        {canEdit && previous && sheet.length > 0 && !copyFrom && (
-          <Link
-            href={`${PRICES_PATH}?${new URLSearchParams({ campaign: campaign.id, zone: zoneId, copyFrom: previous.id })}`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            <CopyIcon aria-hidden />
-            Copiar precios de {campaignLabel(previous)}
-          </Link>
+        {canEdit && sources.length > 0 && sheet.length > 0 && !copyFrom && (
+          <div className="flex flex-wrap gap-2">
+            {sources.map((source) => (
+              <Link
+                key={source.id}
+                href={`${PRICES_PATH}?${new URLSearchParams({ campaign: campaign.id, zone: zoneId, copyFrom: source.id })}`}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <CopyIcon aria-hidden />
+                Copiar precios de {campaignLabel(source)}
+              </Link>
+            ))}
+          </div>
         )}
       </div>
       {zoneId && (
