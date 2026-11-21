@@ -1,4 +1,19 @@
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
@@ -8,17 +23,19 @@ import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
+import { comparableText } from "@/shared/infrastructure/db/comparable-text";
 import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
 import type { NoteRepository } from "../application/note-ports";
 import { lineTotal, type DraftNote, type ImportedNote } from "../domain/delivery-note";
-import { deliveryNoteLines, deliveryNotes } from "./notes.tables";
+import { deliveryNoteLines, deliveryNotes, NOTE_NUMBER_KEY } from "./notes.tables";
 
-const NOTE_NUMBER_KEY = "delivery_notes_number_unique";
 const confirmer = alias(users, "confirmer");
 const voider = alias(users, "voider");
-const originalNote = alias(deliveryNotes, "original_note");
-const originalCampaign = alias(campaigns, "original_campaign");
+const sourceNote = alias(deliveryNotes, "source_note");
+const sourceLine = alias(deliveryNoteLines, "source_line");
+const sourceCampaign = alias(campaigns, "source_campaign");
 const followUpNote = alias(deliveryNotes, "follow_up_note");
+const followUpLine = alias(deliveryNoteLines, "follow_up_line");
 
 function uniqueNumber<T>(write: () => Promise<T>): Promise<T> {
   return write().catch((error: unknown) => {
@@ -79,14 +96,18 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
       const [row] = await executor
         .select({
           note: deliveryNotes,
-          customer: { id: customers.id, code: customers.code, name: customers.name, taxId: customers.taxId },
+          // The note's "NIT o C.I." line: the NIT, or the CI of a person without one (D48).
+          customer: {
+            id: customers.id,
+            code: customers.code,
+            name: customers.name,
+            taxId: sql<string | null>`coalesce(${customers.taxId}, ${customers.identityCard})`,
+          },
           propertyName: customerProperties.name,
           campaign: { id: campaigns.id, season: campaigns.season, year: campaigns.year },
           technicianName: users.name,
           confirmerName: confirmer.name,
           voiderName: voider.name,
-          originalNumber: originalNote.number,
-          originalCampaign: { season: originalCampaign.season, year: originalCampaign.year },
           handedOverBy: {
             id: handedOverBy.id,
             name: handedOverBy.name,
@@ -101,8 +122,6 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         .leftJoin(users, eq(users.id, deliveryNotes.technicianId))
         .leftJoin(confirmer, sql`${confirmer.id}::text = ${deliveryNotes.confirmedBy}`)
         .leftJoin(voider, sql`${voider.id}::text = ${deliveryNotes.voidedBy}`)
-        .leftJoin(originalNote, eq(originalNote.id, deliveryNotes.originalNoteId))
-        .leftJoin(originalCampaign, eq(originalCampaign.id, originalNote.campaignId))
         .leftJoin(handedOverBy, eq(handedOverBy.id, deliveryNotes.handedOverById))
         .where(eq(deliveryNotes.id, id));
       if (!row) return undefined;
@@ -119,12 +138,34 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           unitPrice: deliveryNoteLines.unitPrice,
           freeOfCharge: deliveryNoteLines.freeOfCharge,
           total: deliveryNoteLines.total,
+          sourceNoteId: sourceLine.noteId,
         })
         .from(deliveryNoteLines)
         .innerJoin(presentations, eq(presentations.id, deliveryNoteLines.presentationId))
         .innerJoin(products, eq(products.id, presentations.productId))
+        .leftJoin(sourceLine, eq(sourceLine.id, deliveryNoteLines.originalLineId))
         .where(eq(deliveryNoteLines.noteId, id))
         .orderBy(asc(deliveryNoteLines.position));
+
+      const sources =
+        row.note.type === "delivery"
+          ? []
+          : await executor
+              .selectDistinct({
+                id: sourceNote.id,
+                type: sourceNote.type,
+                number: sourceNote.number,
+                sheetNumber: sourceNote.sheetNumber,
+                imported: sourceNote.imported,
+                noteDate: sourceNote.noteDate,
+                campaign: { season: sourceCampaign.season, year: sourceCampaign.year },
+              })
+              .from(deliveryNoteLines)
+              .innerJoin(sourceLine, eq(sourceLine.id, deliveryNoteLines.originalLineId))
+              .innerJoin(sourceNote, eq(sourceNote.id, sourceLine.noteId))
+              .innerJoin(sourceCampaign, eq(sourceCampaign.id, sourceNote.campaignId))
+              .where(eq(deliveryNoteLines.noteId, id))
+              .orderBy(asc(sourceNote.noteDate), asc(sourceNote.number), asc(sourceNote.id));
 
       const { note } = row;
       return {
@@ -133,10 +174,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         status: note.status,
         number: note.number,
         imported: note.imported ? { sheetNumber: note.sheetNumber } : null,
-        original:
-          note.originalNoteId && row.originalCampaign
-            ? { id: note.originalNoteId, number: row.originalNumber, campaign: row.originalCampaign }
-            : null,
+        sources,
         noteDate: note.noteDate,
         customer: row.customer,
         property:
@@ -199,17 +237,26 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
       return row !== undefined;
     },
 
-    async originalLines(noteId) {
+    async numberTaken(number) {
+      const [row] = await executor
+        .select({ id: deliveryNotes.id })
+        .from(deliveryNotes)
+        .where(and(eq(deliveryNotes.number, number), ne(deliveryNotes.status, "voided")));
+      return row !== undefined;
+    },
+
+    async consignedLines(customerId, campaignId) {
       const settled = executor
         .select({
-          originalLineId: deliveryNoteLines.originalLineId,
-          quantity: sql<string>`sum(${deliveryNoteLines.quantity})`.as("settled_quantity"),
+          originalLineId: followUpLine.originalLineId,
+          quantity: sql<string>`sum(${followUpLine.quantity})`.as("settled_quantity"),
         })
-        .from(deliveryNoteLines)
-        .innerJoin(followUpNote, eq(followUpNote.id, deliveryNoteLines.noteId))
+        .from(followUpLine)
+        .innerJoin(followUpNote, eq(followUpNote.id, followUpLine.noteId))
         .where(eq(followUpNote.status, "confirmed"))
-        .groupBy(deliveryNoteLines.originalLineId)
+        .groupBy(followUpLine.originalLineId)
         .as("settled");
+      // Product reaches a campaign by delivery or by a transfer into it; either can come back (D25).
       const rows = await executor
         .select({
           id: deliveryNoteLines.id,
@@ -218,33 +265,72 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           unitPrice: deliveryNoteLines.unitPrice,
           freeOfCharge: deliveryNoteLines.freeOfCharge,
           settled: sql<string>`coalesce(${settled.quantity}, 0)::numeric(12,3)::text`,
+          source: {
+            id: deliveryNotes.id,
+            type: deliveryNotes.type,
+            number: deliveryNotes.number,
+            sheetNumber: deliveryNotes.sheetNumber,
+            imported: deliveryNotes.imported,
+            noteDate: deliveryNotes.noteDate,
+            propertyId: deliveryNotes.propertyId,
+            technicianId: deliveryNotes.technicianId,
+            paymentTerms: deliveryNotes.paymentTerms,
+            exchangeRate: deliveryNotes.exchangeRate,
+          },
+          productName: products.name,
+          content: presentations.content,
+          unit: presentations.unit,
+          saleUnit: presentations.saleUnit,
         })
         .from(deliveryNoteLines)
+        .innerJoin(deliveryNotes, eq(deliveryNotes.id, deliveryNoteLines.noteId))
+        .innerJoin(presentations, eq(presentations.id, deliveryNoteLines.presentationId))
+        .innerJoin(products, eq(products.id, presentations.productId))
         .leftJoin(settled, eq(settled.originalLineId, deliveryNoteLines.id))
-        .where(eq(deliveryNoteLines.noteId, noteId))
-        .orderBy(asc(deliveryNoteLines.position));
+        .where(
+          and(
+            eq(deliveryNotes.customerId, customerId),
+            eq(deliveryNotes.campaignId, campaignId),
+            eq(deliveryNotes.status, "confirmed"),
+            inArray(deliveryNotes.type, ["delivery", "campaign_transfer"]),
+          ),
+        )
+        .orderBy(
+          asc(deliveryNotes.noteDate),
+          asc(deliveryNotes.number),
+          asc(deliveryNotes.id),
+          asc(deliveryNoteLines.position),
+        );
       return rows.map((row) => ({
-        id: row.id,
-        presentationId: row.presentationId,
+        ...row,
         quantity: Quantity.parse(row.quantity),
         unitPrice: Money.parse(row.unitPrice),
-        freeOfCharge: row.freeOfCharge,
         settled: Quantity.parse(row.settled),
       }));
     },
 
     async followUps(noteId) {
-      return executor
-        .select({
-          id: deliveryNotes.id,
-          type: deliveryNotes.type,
-          status: deliveryNotes.status,
-          number: deliveryNotes.number,
-          noteDate: deliveryNotes.noteDate,
+      const rows = await executor
+        .selectDistinct({
+          id: followUpNote.id,
+          type: followUpNote.type,
+          status: followUpNote.status,
+          number: followUpNote.number,
+          noteDate: followUpNote.noteDate,
+          createdAt: followUpNote.createdAt,
         })
-        .from(deliveryNotes)
-        .where(eq(deliveryNotes.originalNoteId, noteId))
-        .orderBy(asc(deliveryNotes.noteDate), asc(deliveryNotes.createdAt));
+        .from(followUpLine)
+        .innerJoin(followUpNote, eq(followUpNote.id, followUpLine.noteId))
+        .innerJoin(sourceLine, eq(sourceLine.id, followUpLine.originalLineId))
+        .where(eq(sourceLine.noteId, noteId))
+        .orderBy(asc(followUpNote.noteDate), asc(followUpNote.createdAt));
+      return rows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        status: row.status,
+        number: row.number,
+        noteDate: row.noteDate,
+      }));
     },
 
     async insertFollowUp(note, number, actorId) {
@@ -255,7 +341,6 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
             status: "confirmed",
             type: note.type,
             number,
-            originalNoteId: note.originalNoteId,
             noteDate: note.noteDate,
             customerId: note.customerId,
             propertyId: note.propertyId,
@@ -266,6 +351,10 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
             receiverName: note.receiver.name,
             receiverDocumentId: note.receiver.documentId,
             receiverRelationship: note.receiver.relationship,
+            handedOverById: note.handedOverById,
+            carrierName: note.carrier.name,
+            carrierVehicle: note.carrier.vehicle,
+            carrierDocumentId: note.carrier.documentId,
             observations: note.observations,
             createdBy: actorId,
             confirmedAt: new Date(),
@@ -301,6 +390,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           noteDate: note.noteDate,
           customerId: note.customerId,
           campaignId: note.campaignId,
+          technicianId: note.technicianId,
           paymentTerms: "credit",
           exchangeRate: note.exchangeRate?.toDecimalString() ?? null,
           receiverName: note.receiverName,
@@ -331,10 +421,91 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         .where(and(eq(deliveryNotes.importBatchId, batchId), eq(deliveryNotes.status, "confirmed")));
     },
 
-    async list({ status, customerId, limit, offset }) {
+    async invoiceCandidates(customerId, campaignId) {
+      const rows = await executor
+        .select({
+          id: deliveryNotes.id,
+          number: sql<number | null>`coalesce(${deliveryNotes.number}, ${deliveryNotes.sheetNumber})`,
+          imported: deliveryNotes.imported,
+          noteDate: deliveryNotes.noteDate,
+          total: sql<string>`coalesce(sum(${deliveryNoteLines.total}), 0)::numeric(14,2)::text`,
+          taxInvoiceNumber: deliveryNotes.taxInvoiceNumber,
+        })
+        .from(deliveryNotes)
+        .leftJoin(deliveryNoteLines, eq(deliveryNoteLines.noteId, deliveryNotes.id))
+        .where(
+          and(
+            eq(deliveryNotes.customerId, customerId),
+            eq(deliveryNotes.campaignId, campaignId),
+            eq(deliveryNotes.type, "delivery"),
+            eq(deliveryNotes.status, "confirmed"),
+          ),
+        )
+        .groupBy(deliveryNotes.id)
+        .orderBy(asc(deliveryNotes.noteDate), asc(deliveryNotes.createdAt));
+      return rows;
+    },
+
+    async setTaxInvoiceNumber(ids, value) {
+      if (ids.length === 0) return;
+      await executor
+        .update(deliveryNotes)
+        .set({ taxInvoiceNumber: value })
+        .where(
+          and(
+            inArray(deliveryNotes.id, [...ids]),
+            eq(deliveryNotes.type, "delivery"),
+            eq(deliveryNotes.status, "confirmed"),
+          ),
+        );
+    },
+
+    async list({ text, status, customerId, from, to, limit, offset }) {
+      const matches: SQL[] = [];
+      if (text && /^\d{1,9}$/.test(text)) {
+        // A number is a note's (the system's or the sheet's), a customer's code or a product code;
+        // "2" shouldn't bring every note of "Fulvin 40-22".
+        const number = Number(text);
+        matches.push(
+          eq(deliveryNotes.number, number),
+          eq(deliveryNotes.sheetNumber, number),
+          eq(customers.code, number),
+          exists(
+            executor
+              .select({ one: sql`1` })
+              .from(deliveryNoteLines)
+              .innerJoin(presentations, eq(presentations.id, deliveryNoteLines.presentationId))
+              .where(and(eq(deliveryNoteLines.noteId, deliveryNotes.id), eq(presentations.code, text))),
+          ),
+        );
+      } else if (text) {
+        const pattern = `%${escapeLike(text)}%`;
+        matches.push(
+          ilike(customers.comparisonName, pattern),
+          ilike(comparableText(users.name), pattern),
+          // A product of any of its lines.
+          exists(
+            executor
+              .select({ one: sql`1` })
+              .from(deliveryNoteLines)
+              .innerJoin(presentations, eq(presentations.id, deliveryNoteLines.presentationId))
+              .innerJoin(products, eq(products.id, presentations.productId))
+              .where(
+                and(eq(deliveryNoteLines.noteId, deliveryNotes.id), ilike(products.comparisonName, pattern)),
+              ),
+          ),
+        );
+      }
       const where = and(
-        status ? eq(deliveryNotes.status, status) : undefined,
+        matches.length > 0 ? or(...matches) : undefined,
+        status === "all"
+          ? undefined
+          : status
+            ? eq(deliveryNotes.status, status)
+            : ne(deliveryNotes.status, "voided"),
         customerId ? eq(deliveryNotes.customerId, customerId) : undefined,
+        from ? gte(deliveryNotes.noteDate, from) : undefined,
+        to ? lte(deliveryNotes.noteDate, to) : undefined,
       );
       const totals = executor
         .select({
@@ -351,23 +522,35 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
             type: deliveryNotes.type,
             status: deliveryNotes.status,
             number: sql<number | null>`coalesce(${deliveryNotes.number}, ${deliveryNotes.sheetNumber})`,
+            imported: deliveryNotes.imported,
             noteDate: deliveryNotes.noteDate,
             customerName: customers.name,
+            technicianName: users.name,
             paymentTerms: deliveryNotes.paymentTerms,
             total: sql<string>`coalesce(${totals.total}, 0)::numeric(14,2)::text`,
           })
           .from(deliveryNotes)
           .innerJoin(customers, eq(customers.id, deliveryNotes.customerId))
+          .leftJoin(users, eq(users.id, deliveryNotes.technicianId))
           .leftJoin(totals, eq(totals.noteId, deliveryNotes.id))
           .where(where)
           .orderBy(desc(deliveryNotes.noteDate), desc(deliveryNotes.createdAt))
           .limit(limit)
           .offset(offset),
-        executor.select({ total: count() }).from(deliveryNotes).where(where),
+        executor
+          .select({ total: count() })
+          .from(deliveryNotes)
+          .innerJoin(customers, eq(customers.id, deliveryNotes.customerId))
+          .leftJoin(users, eq(users.id, deliveryNotes.technicianId))
+          .where(where),
       ]);
       return { items, total: counted[0]?.total ?? 0 };
     },
   };
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`);
 }
 
 function headerRow(note: DraftNote) {

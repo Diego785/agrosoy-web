@@ -19,7 +19,7 @@ import { confirmNoteSchema, nextNoteNumberSchema, voidNoteSchema } from "./note-
 
 export type NoteLifecycleDeps = {
   notes: NoteRepository;
-  lookups: Pick<NoteLookups, "campaignOn">;
+  lookups: Pick<NoteLookups, "noteCampaigns">;
   numbering: DocumentCounter;
   ledger: LedgerRepository;
   /** Cash notes are confirmed together with their payment (collections). */
@@ -43,14 +43,21 @@ export async function confirmNote(
 ): Promise<{ number: number; receiptNumber: number | null }> {
   assertCan(actor, "notes.manage");
   const id = validateInput(z.uuid(), noteId);
-  const { paperNumber, payment } = validateInput(confirmNoteSchema, input);
+  const { paperNumber, paperReceiptNumber, payment } = validateInput(confirmNoteSchema, input);
   const note = await existingNote(deps.notes, id);
   if (note.status !== "draft") throw new DomainError("INVALID_STATE", { status: note.status });
 
-  const campaign = await deps.lookups.campaignOn(note.noteDate);
-  if (campaign?.id !== note.campaign.id || campaign.status === "closed") {
+  // Campaigns may have closed or moved since the draft was saved.
+  const campaign = (await deps.lookups.noteCampaigns(note.noteDate)).find(
+    (choice) => choice.id === note.campaign.id,
+  );
+  if (campaign?.status !== "open") {
     throw new DomainError("VALIDATION_FAILED", {
-      fieldErrors: { noteDate: ["La campaña de esta boleta está cerrada. Corrige la fecha del borrador."] },
+      fieldErrors: {
+        noteDate: [
+          "La campaña de esta boleta está cerrada o ya no corresponde a su fecha. Corrige el borrador.",
+        ],
+      },
     });
   }
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
@@ -64,7 +71,7 @@ export async function confirmNote(
   if (isPaidNow && !note.exchangeRate) {
     throw new DomainError("INVALID_STATE", { reason: "cash_note_without_rate" });
   }
-  if (paperNumber && (await deps.notes.numberInUse(paperNumber))) {
+  if (paperNumber && (await deps.notes.numberTaken(paperNumber))) {
     throw new DomainError("DUPLICATE", { field: "paperNumber" });
   }
 
@@ -103,7 +110,13 @@ export async function confirmNote(
       noteId: id,
     });
     const allocation = { campaignId: note.campaign.id, noteId: id, amount: total };
-    ({ receiptNumber } = await savePayment(deps, record, [allocation], actor.id));
+    ({ receiptNumber } = await savePayment(
+      deps,
+      record,
+      [allocation],
+      actor.id,
+      paperReceiptNumber || undefined,
+    ));
   }
   await deps.audit.record({
     actorId: actor.id,

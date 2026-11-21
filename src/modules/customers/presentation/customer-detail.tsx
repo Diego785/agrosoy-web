@@ -18,6 +18,7 @@ import {
   AddPropertyForm,
   AddReceiverForm,
   CustomerStatusButton,
+  RemoveAliasButton,
   RemovePropertyButton,
   RemoveReceiverButton,
 } from "./customer-contact-forms";
@@ -89,9 +90,11 @@ export async function CustomerDetail({ params }: { params: Promise<{ id: string 
         </header>
 
         <dl className="grid gap-x-8 gap-y-4 border-t p-5 sm:grid-cols-2 lg:grid-cols-3">
-          <Fact label="NIT o CI">{customer.taxId}</Fact>
+          <Fact label="CI">{customer.identityCard}</Fact>
+          <Fact label="NIT">{customer.taxId}</Fact>
           <Fact label="Teléfono">{customer.phone}</Fact>
           <Fact label="Zona">{customer.zoneName}</Fact>
+          <Fact label="Localidad">{customer.locality}</Fact>
           <Fact label="Técnico de venta">{customer.technicianName}</Fact>
           <Fact label="Tipo de cambio">
             {customer.exchangeRateKind === "fixed" && customer.fixedExchangeRate
@@ -167,6 +170,21 @@ export async function CustomerDetail({ params }: { params: Promise<{ id: string 
           </ul>
         )}
       </Section>
+
+      {customer.aliases.length > 0 && (
+        <Section title="Cómo figura en las planillas" count={customer.aliases.length}>
+          <ul className="divide-y">
+            {customer.aliases.map((alias) => (
+              <li key={alias.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
+                <span className="font-medium">{alias.name}</span>
+                {canEdit && (
+                  <RemoveAliasButton customerId={customer.id} aliasId={alias.id} name={alias.name} />
+                )}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       <Section title="Historial de cartera">
         {customer.assignments.length === 0 ? (

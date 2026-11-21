@@ -24,6 +24,11 @@ RUN pnpm exec esbuild scripts/create-first-admin.ts --bundle --platform=node --f
     --conditions=react-server --tsconfig=tsconfig.json \
     --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" \
     --outfile=dist/create-first-admin.mjs
+# So is the loader of Agrosoil's customer lists (D48), run once with the JSON copied in.
+RUN pnpm exec esbuild scripts/load-customer-lists.ts --bundle --platform=node --format=esm --target=node22 \
+    --conditions=react-server --tsconfig=tsconfig.json \
+    --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" \
+    --outfile=dist/load-customer-lists.mjs
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -38,6 +43,7 @@ COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/drizzle ./drizzle
 COPY --from=build --chown=app:app /app/dist/migrate.mjs ./migrate.mjs
 COPY --from=build --chown=app:app /app/dist/create-first-admin.mjs ./create-first-admin.mjs
+COPY --from=build --chown=app:app /app/dist/load-customer-lists.mjs ./load-customer-lists.mjs
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

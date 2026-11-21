@@ -18,6 +18,7 @@ describe("customerRecord", () => {
       taxId: "1234567LP",
       phone: undefined,
       zoneId: undefined,
+      locality: undefined,
       technicianId: undefined,
       exchangeRateAgreement: { kind: "daily" },
       notes: undefined,

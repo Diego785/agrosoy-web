@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Controller, useFieldArray, useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
-import { campaignOn } from "@/modules/campaigns/domain/campaign";
+import { noteCampaigns } from "@/modules/campaigns/domain/campaign";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { measureDelivered, measureOf } from "@/modules/catalog/domain/product";
 import { presentationLabel, quantityUnitLabel } from "@/modules/catalog/presentation/catalog-labels";
@@ -51,6 +51,7 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
       draft?.values ??
       ({
         noteDate: today,
+        campaignId: "",
         customerId: "",
         propertyId: "",
         technicianId: "",
@@ -71,21 +72,44 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
   });
   const lines = useFieldArray({ control: form.control, name: "lines" });
   const { errors } = form.formState;
-  const [noteDate, customerId, exchangeRate, paymentTerms, rateAtPayment, watchedLines] = useWatch({
-    control: form.control,
-    name: ["noteDate", "customerId", "exchangeRate", "paymentTerms", "rateAtPayment", "lines"],
-  });
+  const [noteDate, campaignId, customerId, exchangeRate, paymentTerms, rateAtPayment, watchedLines] =
+    useWatch({
+      control: form.control,
+      name: [
+        "noteDate",
+        "campaignId",
+        "customerId",
+        "exchangeRate",
+        "paymentTerms",
+        "rateAtPayment",
+        "lines",
+      ],
+    });
 
   const customer = options.customers.find((option) => option.id === customerId);
-  const campaign = campaignOn(options.campaigns, noteDate ?? "");
+  // The date's campaign, or the open one before it if chosen: the north still sells winter (D37).
+  const campaignChoices = noteCampaigns(options.allCampaigns, noteDate ?? "").filter(
+    (choice) => choice.status === "open",
+  );
+  const campaign = campaignChoices.find((choice) => choice.id === campaignId) ?? campaignChoices[0];
   const presentationsById = new Map(
     options.presentations.map((presentation) => [presentation.id, presentation]),
   );
 
-  function suggestedPrice(presentationId: string): string {
-    if (!campaign) return "";
-    const byZone = options.prices[campaign.id] ?? {};
+  function suggestedPrice(presentationId: string, from = campaign): string {
+    if (!from) return "";
+    const byZone = options.prices[from.id] ?? {};
     return byZone[customer?.zoneId ?? ""]?.[presentationId] ?? byZone[""]?.[presentationId] ?? "";
+  }
+
+  /** Lines still at the old campaign's price take the new one's; a price typed by hand stays. */
+  function chooseCampaign(id: string) {
+    const chosen = campaignChoices.find((choice) => choice.id === id) ?? campaignChoices[0];
+    form.getValues("lines").forEach((line, index) => {
+      if (line.presentationId && line.unitPrice === suggestedPrice(line.presentationId)) {
+        form.setValue(`lines.${index}.unitPrice`, suggestedPrice(line.presentationId, chosen));
+      }
+    });
   }
 
   /** The customer's fixed rate or, without one, the rate in force set in Cobros (D36). */
@@ -105,12 +129,14 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
     const chosen = options.customers.find((option) => option.id === id);
     form.setValue("propertyId", "");
     chooseTechnician(chosen?.technicianId ?? "");
+    // Cash or credit as the customer usually buys (D48); the note can still change it.
+    if (chosen?.usualPaymentTerms) form.setValue("paymentTerms", chosen.usualPaymentTerms);
     // Each customer starts from their own agreement, so nothing carries over from the previous one.
     form.setValue("rateAtPayment", false);
     form.setValue("exchangeRate", suggestedRate(chosen));
     // The customer receives unless someone else comes: their data is filled in, and stays editable.
     form.setValue("receiverName", chosen?.name ?? "");
-    form.setValue("receiverDocumentId", chosen?.taxId ?? "");
+    form.setValue("receiverDocumentId", chosen?.identityCard ?? chosen?.taxId ?? "");
     form.setValue("receiverRelationship", chosen ? CUSTOMER_RELATIONSHIP : "");
   }
 
@@ -131,8 +157,10 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
     form.setValue("receiverRelationship", receiver.relationship);
   }
 
-  const submit = form.handleSubmit((values) =>
+  const submit = form.handleSubmit((input) =>
     startSaving(async () => {
+      // A campaign chosen for an earlier date no longer applies: the new date's own is shown.
+      const values = { ...input, campaignId: campaign && campaign !== campaignChoices[0] ? campaign.id : "" };
       if (draft) {
         const result = await updateDraftNoteAction(draft.id, values);
         if (!result.ok) return applyActionError(form, result.error);
@@ -161,10 +189,28 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
                 name="noteDate"
                 render={({ field }) => <DateInput id="noteDate" invalid={!!errors.noteDate} {...field} />}
               />
-              <span className="text-xs text-muted-foreground">
-                {campaign ? `Campaña ${campaignLabel(campaign)}` : "Sin campaña abierta para esta fecha"}
-              </span>
-              <FieldError errors={[errors.noteDate]} />
+              {campaignChoices.length > 1 ? (
+                <NativeSelect
+                  size="sm"
+                  aria-label="Campaña"
+                  aria-invalid={!!errors.campaignId}
+                  {...form.register("campaignId", {
+                    onChange: (event) => chooseCampaign(event.target.value),
+                  })}
+                >
+                  {campaignChoices.map((choice, index) => (
+                    <NativeSelectOption key={choice.id} value={index === 0 ? "" : choice.id}>
+                      Campaña {campaignLabel(choice)}
+                      {index === 0 ? " (por la fecha)" : ""}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {campaign ? `Campaña ${campaignLabel(campaign)}` : "Sin campaña abierta para esta fecha"}
+                </span>
+              )}
+              <FieldError errors={[errors.noteDate, errors.campaignId]} />
             </Field>
             <Field data-invalid={!!errors.customerId} className="sm:col-span-2">
               <FieldLabel htmlFor="customerId">Cliente</FieldLabel>
@@ -297,14 +343,15 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
                 <span className="self-center text-xs text-muted-foreground">
                   {presentation ? quantityUnitLabel(presentation) : ""}
                 </span>
+                {/* On a free line the price is its commercial value: shown, never charged (D41). */}
                 <Input
                   className="w-28 text-right"
                   inputMode="decimal"
                   selectOnFocus
-                  placeholder="Precio US$"
-                  aria-label="Precio"
+                  placeholder={line?.freeOfCharge ? "Valor US$" : "Precio US$"}
+                  aria-label={line?.freeOfCharge ? "Valor comercial" : "Precio"}
+                  title={line?.freeOfCharge ? "Valor comercial: no se cobra" : undefined}
                   aria-invalid={!!lineErrors?.unitPrice}
-                  disabled={!!line?.freeOfCharge}
                   {...form.register(`lines.${index}.unitPrice`)}
                 />
                 <NativeSelect aria-label="Sin costo" {...form.register(`lines.${index}.freeOfCharge`)}>
@@ -314,6 +361,9 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
                 </NativeSelect>
                 <span className="ml-auto min-w-20 self-center text-right font-medium tabular-nums">
                   {formatMoney(totalOf(line))}
+                  {line?.freeOfCharge && (
+                    <span className="block text-xs font-normal text-muted-foreground">sin costo</span>
+                  )}
                 </span>
                 {lines.fields.length > 1 && (
                   <Button

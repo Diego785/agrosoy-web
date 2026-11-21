@@ -1,11 +1,21 @@
 /** Writes go through the customers and catalog use cases, so their rules and audit apply. */
 
-export type ExistingCustomer = { id: string; code: number; name: string };
+export type ExistingCustomer = {
+  id: string;
+  code: number;
+  name: string;
+  /** Imported notes take it (D43); the first step sets it from the sheet. */
+  technicianId: string | null;
+};
 
 export interface CustomerRegistry {
-  /** Existing customers by comparison key (normalized name). */
+  /** Existing customers by comparison key (normalized name), or by a name linked to them (D47). */
   findByKeys(keys: string[]): Promise<Map<string, ExistingCustomer>>;
   register(input: { name: string; technicianId: string | null }): Promise<{ id: string }>;
+  /** Active customers, to suggest who a new name in the sheet may be. */
+  candidates(): Promise<ExistingCustomer[]>;
+  /** Remembers the sheet's name as another way of writing the customer's (D47). */
+  link(input: { customerId: string; name: string }): Promise<void>;
 }
 
 export type PresentationSpec = {

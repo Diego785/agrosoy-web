@@ -17,13 +17,24 @@ export const customerSchema = z
     taxId: z
       .string()
       .trim()
-      .regex(/^[0-9A-Za-z\s.-]*$/, { error: "El NIT o CI solo lleva números y letras." })
-      .max(20, { error: "El NIT o CI admite hasta 20 caracteres." })
+      .regex(/^[0-9A-Za-z\s.-]*$/, { error: "El NIT solo lleva números y letras." })
+      .max(20, { error: "El NIT admite hasta 20 caracteres." })
+      .optional(),
+    identityCard: z
+      .string()
+      .trim()
+      .regex(/^[0-9A-Za-z\s.-]*$/, { error: "El CI solo lleva números, letras y guion." })
+      .max(20, { error: "El CI admite hasta 20 caracteres." })
       .optional(),
     phone: optionalText(30, "El teléfono admite hasta 30 caracteres."),
     zoneId: z.union([z.literal(""), z.uuid()]).optional(),
+    locality: optionalText(60, "La localidad admite hasta 60 caracteres."),
     technicianId: z.union([z.literal(""), z.uuid()]).optional(),
     exchangeRateKind: z.enum(["daily", "fixed"], { error: "Elige el tipo de cambio acordado." }),
+    usualPaymentTerms: z
+      .union([z.literal(""), z.enum(["cash", "credit"])])
+      .optional()
+      .transform((value) => value || undefined),
     fixedExchangeRate: z.string().trim().optional(),
     notes: optionalText(500, "Las notas admiten hasta 500 caracteres."),
   })
@@ -92,3 +103,18 @@ export const zoneSchema = z.object({
 });
 
 export type ZoneInput = z.input<typeof zoneSchema>;
+
+/** Another way the customer's name is written in the sheets (D47). */
+export const customerAliasSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, { error: "Escribe el nombre como figura en la planilla." })
+    .max(120, { error: "El nombre admite hasta 120 caracteres." }),
+});
+
+/** Several customers handed to one technician, or to none (D46). */
+export const bulkTechnicianSchema = z.object({
+  customerIds: z.array(z.uuid()).min(1, { error: "Elige al menos un cliente." }).max(500),
+  technicianId: z.union([z.literal(""), z.uuid()]),
+});

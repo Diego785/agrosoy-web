@@ -17,6 +17,7 @@ import {
   removePropertyAction,
   removeReceiverAction,
   setCustomerActiveAction,
+  unlinkNameAction,
 } from "./customer-actions";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
@@ -140,6 +141,27 @@ export function RemoveReceiverButton({
       description="Ya no podrá elegirse como quien recibe en nuevas boletas."
       confirm="Quitar"
       run={() => removeReceiverAction(customerId, receiverId)}
+    />
+  );
+}
+
+/** Forgets a sheet name linked to the customer by mistake (D47). */
+export function RemoveAliasButton({
+  customerId,
+  aliasId,
+  name,
+}: {
+  customerId: string;
+  aliasId: string;
+  name: string;
+}) {
+  return (
+    <ConfirmButton
+      label="Quitar"
+      title={`¿Olvidar «${name}»?`}
+      description="Las boletas ya importadas no cambian. Si una planilla vuelve a traer ese nombre, se tratará como un cliente nuevo."
+      confirm="Quitar"
+      run={() => unlinkNameAction(customerId, aliasId)}
     />
   );
 }

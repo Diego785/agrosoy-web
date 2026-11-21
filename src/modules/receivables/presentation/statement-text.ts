@@ -4,35 +4,55 @@ import {
   METHOD_LABELS,
   formatAmount,
 } from "@/modules/collections/presentation/collection-labels";
+import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
+import { formatRate } from "@/shared/presentation/format";
 import type { StatementLineView } from "../application/statement-view";
 
 const FREE_LABELS = { bonus: "bonificación", sample: "muestra" } as const;
-const VOIDED: Record<StatementLineView["kind"], string> = {
-  delivery: "Anulación de la boleta",
-  return: "Anulación de la devolución",
-  payment: "Anulación del pago",
-  charge: "Anulación del cargo",
-  other: "Anulación del ajuste",
-};
 
 /** Debit kinds raise the balance; these lower it. */
 export const CREDIT_KINDS: ReadonlySet<StatementLineView["kind"]> = new Set(["payment", "return"]);
 
-/** What a statement line says, on screen and in the PDF: the main text and an optional note under it. */
-export function describeLine(line: StatementLineView): { text: string; note: string | null } {
-  if (line.isReversal) return { text: VOIDED[line.kind], note: null };
+/** "US$ 30,00 a interés y US$ 70,00 a capital", when a payment covered interest (D45). */
+function interestSplit(line: StatementLineView): string | null {
+  if (!line.interestPart) return null;
+  const toInterest = Money.parse(line.interestPart);
+  const toCapital = Money.parse(line.amount).subtract(toInterest);
+  const interestText = `${formatAmount("USD", toInterest.toDecimalString())} a interés`;
+  if (!toCapital.isPositive()) return interestText;
+  return `${interestText} y ${formatAmount("USD", toCapital.toDecimalString())} a capital`;
+}
+
+/**
+ * What a statement line says, on screen and in the PDF: the main text and an optional note under it.
+ * `withRate` adds a payment's exchange rate to its text, where no "T/C" column shows it.
+ */
+export function describeLine(
+  line: StatementLineView,
+  { withRate = false }: { withRate?: boolean } = {},
+): { text: string; note: string | null } {
   if (line.receipt) {
-    const inBolivianos =
-      line.receipt.currency === "BOB" ? ` · ${formatAmount("BOB", line.receipt.amount)}` : "";
+    const bolivianos = paymentInBolivianos(line);
+    const rate = withRate && line.exchangeRate ? ` · T/C ${formatRate(line.exchangeRate)}` : "";
+    const notes = [line.observation ? `Ref.: ${line.observation}` : null, interestSplit(line)].filter(
+      (note) => note !== null,
+    );
     return {
-      text: `Pago · ${METHOD_LABELS[line.receipt.method]}${inBolivianos}`,
-      note: line.observation ? `Ref.: ${line.observation}` : null,
+      text: `Pago · ${METHOD_LABELS[line.receipt.method]}${bolivianos ? ` · ${bolivianos}` : ""}${rate}`,
+      note: notes.length > 0 ? notes.join(" · ") : null,
     };
   }
   if (line.kind === "charge") {
     const concept = line.chargeConcept ? CHARGE_CONCEPT_LABELS[line.chargeConcept] : "Cargo";
     return { text: `${concept}: ${line.description}`, note: null };
+  }
+  if (line.opening) {
+    const inFavor = Money.parse(line.amount).isNegative();
+    return {
+      text: inFavor ? "Saldo inicial a favor del cliente" : "Saldo inicial",
+      note: line.opening.note,
+    };
   }
   if (line.fromSheet && line.kind === "payment") return { text: "Pagos según la planilla", note: null };
   if (line.fromSheet && line.kind === "return") return { text: "Devoluciones según la planilla", note: null };
@@ -52,6 +72,30 @@ export function describeLine(line: StatementLineView): { text: string; note: str
     text: `${line.description}${packaging}${free}${returned}`,
     note: line.observation ? `Obs.: ${line.observation}` : null,
   };
+}
+
+/**
+ * A payment's line in bolivianos (D39): what was received when it was paid in Bs, its equivalent when it
+ * was paid in dollars. A payment split over several campaigns (D20) shows each campaign's part, and
+ * the whole Bs received, so two lines never claim the same bolivianos.
+ */
+function paymentInBolivianos(line: StatementLineView): string | null {
+  const receipt = line.receipt;
+  if (!receipt || !line.exchangeRate) return null;
+  const part = Money.parse(line.amount);
+  const isWhole = part.equals(Money.parse(receipt.usdAmount));
+  if (receipt.currency === "BOB" && isWhole) return formatAmount("BOB", receipt.amount);
+  const partInBolivianos = formatAmount(
+    "BOB",
+    ExchangeRate.parse(line.exchangeRate).toBob(part).toDecimalString(),
+  );
+  if (receipt.currency === "BOB") return `${partInBolivianos} de ${formatAmount("BOB", receipt.amount)}`;
+  return `equivale a ${partInBolivianos}`;
+}
+
+/** "Fact. 4471" under a delivery's number, when it has a SIN invoice (D40). */
+export function invoiceLabel(line: StatementLineView): string | null {
+  return line.invoiceNumber ? `Fact. ${line.invoiceNumber}` : null;
 }
 
 /** "Boleta 12", "Recibo 3", the sheet's note number, or nothing. */

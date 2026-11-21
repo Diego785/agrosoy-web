@@ -22,26 +22,35 @@ import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/shared/presentation/ui/field";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import { Textarea } from "@/shared/presentation/ui/textarea";
+import type { SalesReadiness } from "../application/sales-conversion";
 import { convertSalesAction, undoSalesConversionAction } from "./conversion-actions";
 import { reconciliationPath } from "./migration-routes";
 import { DateInput } from "@/shared/presentation/date-input";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 
-type SalesValues = { campaignId: string; cutoffDate: string };
+type SalesValues = { campaignId: string; cutoffDate: string; technicianId: string };
 
 /** Step 3 of the conversion: the sheet's sales and payments into the ledger, or what was done. */
 export const SalesConversion = resetOnLeave(function SalesConversion({
   batchId,
   campaigns,
   suggestedCampaignId,
+  technicians,
+  suggestedTechnicianId,
   defaultCutoffDate,
   conversion,
+  readiness,
 }: {
   batchId: string;
   campaigns: { id: string; label: string }[];
   suggestedCampaignId: string | null;
+  technicians: { id: string; name: string }[];
+  /** The technician named in the sheet's name ("Ing. Favio Añez"). */
+  suggestedTechnicianId: string | null;
   defaultCutoffDate: string;
   conversion: { campaignLabel: string; cutoffDate: string; at: Date } | null;
+  /** Customers and products of the sheet still missing; the sales wait for them (D43). */
+  readiness: SalesReadiness;
 }) {
   return (
     <section className="flex flex-col gap-3">
@@ -64,7 +73,10 @@ export const SalesConversion = resetOnLeave(function SalesConversion({
           batchId={batchId}
           campaigns={campaigns}
           suggestedCampaignId={suggestedCampaignId}
+          technicians={technicians}
+          suggestedTechnicianId={suggestedTechnicianId}
           defaultCutoffDate={defaultCutoffDate}
+          readiness={readiness}
         />
       )}
     </section>
@@ -75,19 +87,27 @@ function SalesForm({
   batchId,
   campaigns,
   suggestedCampaignId,
+  technicians,
+  suggestedTechnicianId,
   defaultCutoffDate,
+  readiness,
 }: {
   batchId: string;
   campaigns: { id: string; label: string }[];
   suggestedCampaignId: string | null;
+  technicians: { id: string; name: string }[];
+  suggestedTechnicianId: string | null;
   defaultCutoffDate: string;
+  readiness: SalesReadiness;
 }) {
+  const isReady = readiness.missingCustomers.length === 0 && readiness.missingProducts.length === 0;
   const router = useRouter();
   const [isWorking, startWorking] = useTransition();
   const form = useForm<SalesValues>({
     defaultValues: {
       campaignId: suggestedCampaignId ?? "",
       cutoffDate: defaultCutoffDate,
+      technicianId: suggestedTechnicianId ?? "",
     },
   });
   const { errors } = form.formState;
@@ -96,10 +116,8 @@ function SalesForm({
     startWorking(async () => {
       const result = await convertSalesAction({ batchId, ...values });
       if (!result.ok) return applyActionError(form, result.error);
-      const { notes, entries, skipped } = result.data;
-      toast.success(
-        `${notes} boletas y ${entries} pagos o devoluciones pasados${skipped.length ? `; ${skipped.length} filas quedaron fuera` : ""}`,
-      );
+      const { notes, entries } = result.data;
+      toast.success(`${notes} boletas y ${entries} pagos o devoluciones pasados`);
       router.push(reconciliationPath(batchId));
     }),
   );
@@ -107,11 +125,46 @@ function SalesForm({
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        Cada venta pasa como boleta confirmada marcada «de planilla», con su número; los pagos y devoluciones
-        del resumen pasan con la fecha de corte. Las ventas sin tipo de cambio quedan sin él, hasta que se
-        cobren. Antes, pasa los clientes y productos. No mueve stock: el stock inicial sale del conteo físico.
+        Cada venta pasa como boleta confirmada marcada «de planilla», con su número y el técnico de la
+        planilla; los pagos y devoluciones del resumen pasan con la fecha de corte. Las ventas sin tipo de
+        cambio quedan sin él, hasta que se cobren. No mueve stock: el stock inicial sale del conteo físico.
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      {!isReady && (
+        <div className="flex flex-col gap-1 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
+          <p className="font-medium">Antes, pasa lo que falta en los pasos de arriba:</p>
+          {readiness.missingCustomers.length > 0 && (
+            <p>
+              <span className="text-muted-foreground">Clientes:</span> {readiness.missingCustomers.join(", ")}
+            </p>
+          )}
+          {readiness.missingProducts.length > 0 && (
+            <p>
+              <span className="text-muted-foreground">Productos:</span> {readiness.missingProducts.join(", ")}
+            </p>
+          )}
+          <p className="text-muted-foreground">
+            Así ninguna fila queda fuera y la conciliación coincide con la planilla.
+          </p>
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field data-invalid={!!errors.technicianId}>
+          <FieldLabel htmlFor="technicianId">Técnico de la planilla</FieldLabel>
+          <NativeSelect
+            id="technicianId"
+            aria-invalid={!!errors.technicianId}
+            {...form.register("technicianId")}
+          >
+            <NativeSelectOption value="">El técnico de cada cliente</NativeSelectOption>
+            {technicians.map((technician) => (
+              <NativeSelectOption key={technician.id} value={technician.id}>
+                {technician.name}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <FieldDescription>Sus boletas quedan a su nombre, aunque hoy atienda otro.</FieldDescription>
+          <FieldError errors={[errors.technicianId]} />
+        </Field>
         <Field data-invalid={!!errors.campaignId}>
           <FieldLabel htmlFor="campaignId">Campaña de la planilla</FieldLabel>
           <NativeSelect id="campaignId" aria-invalid={!!errors.campaignId} {...form.register("campaignId")}>
@@ -131,13 +184,16 @@ function SalesForm({
             name="cutoffDate"
             render={({ field }) => <DateInput id="cutoffDate" invalid={!!errors.cutoffDate} {...field} />}
           />
-          <FieldDescription>La planilla no fecha los pagos del resumen.</FieldDescription>
+          <FieldDescription>
+            El día hasta el que está al día la planilla. Los pagos y devoluciones del resumen no tienen fecha
+            y quedan con esta.
+          </FieldDescription>
           <FieldError errors={[errors.cutoffDate]} />
         </Field>
       </div>
       <FieldError errors={[errors.root]} />
       <div>
-        <Button type="submit" disabled={isWorking}>
+        <Button type="submit" disabled={isWorking || !isReady}>
           {isWorking ? "Pasando…" : "Pasar ventas y pagos al sistema"}
         </Button>
       </div>

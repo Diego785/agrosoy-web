@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { campaignOn } from "@/modules/campaigns/domain/campaign";
+import { campaignOn, noteCampaigns } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { presentations } from "@/modules/catalog/infrastructure/catalog.tables";
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
@@ -13,7 +13,7 @@ export function noteLookups(executor: DbExecutor): NoteLookups {
   return {
     async customer(id) {
       const [customer] = await executor
-        .select({ isActive: customers.isActive })
+        .select({ name: customers.name, isActive: customers.isActive, technicianId: customers.technicianId })
         .from(customers)
         .where(eq(customers.id, id));
       if (!customer) return undefined;
@@ -21,12 +21,22 @@ export function noteLookups(executor: DbExecutor): NoteLookups {
         .select({ id: customerProperties.id })
         .from(customerProperties)
         .where(and(eq(customerProperties.customerId, id), eq(customerProperties.isActive, true)));
-      return { isActive: customer.isActive, propertyIds: properties.map((property) => property.id) };
+      return {
+        name: customer.name,
+        isActive: customer.isActive,
+        propertyIds: properties.map((property) => property.id),
+        technicianId: customer.technicianId,
+      };
     },
 
     async campaignOn(isoDate) {
       const campaign = campaignOn(await drizzleCampaignRepository(executor).list(), isoDate);
       return campaign ? { id: campaign.id, status: campaign.status } : undefined;
+    },
+
+    async noteCampaigns(isoDate) {
+      const choices = noteCampaigns(await drizzleCampaignRepository(executor).list(), isoDate);
+      return choices.map(({ id, status }) => ({ id, status }));
     },
 
     isActiveTechnician(id) {

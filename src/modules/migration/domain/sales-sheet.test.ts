@@ -123,6 +123,48 @@ describe("parseSalesSheet", () => {
     expect(result.issues.map((issue) => issue.code)).toContain("SHEET_TOTAL_MISMATCH");
   });
 
+  it("reads the usual variants of the headers (D43)", () => {
+    const rows: CellValue[][] = [
+      ["Fecha de venta", "Productos", "Clientes", "Cantidad", "P.U.", "Total", "T/C", "Obs.", "Nº Boleta"],
+      [day("2026-10-02"), "Fulvin 40-22(20lts.)", "Tito Cruz", 10, 9, 90, 12, "contado", 15001],
+    ];
+    const result = parseSalesSheet({ name: "Variantes", rows });
+    expect(result.lines).toHaveLength(1);
+    expect(result.lines[0]).toMatchObject({
+      customerName: "Tito Cruz",
+      noteNumber: 15001,
+      observation: "contado",
+    });
+    expect(result.lines[0]?.exchangeRate?.toDecimalString()).toBe("12.0000");
+    expect(result.issues).toEqual([]);
+  });
+
+  it("reports a missing column once instead of on every row", () => {
+    const rows: CellValue[][] = [
+      ["FECHA", "PRODUCTO", "CLIENTE", "CANT.", "PRECIO"],
+      [day("2026-10-02"), "Fulvin 40-22(20lts.)", "Tito Cruz", 10, 9],
+      [day("2026-10-03"), "Fulvin 40-22(20lts.)", "Tito Cruz", 5, 9],
+    ];
+    const result = parseSalesSheet({ name: "Sin T/C", rows });
+    expect(result.lines).toHaveLength(2);
+    expect(result.issues).toEqual([
+      { row: 1, code: "MISSING_COLUMN", details: { column: "rate" } },
+      { row: 1, code: "MISSING_COLUMN", details: { column: "note" } },
+    ]);
+  });
+
+  it("keeps reading past a customer whose name starts with «Cliente»", () => {
+    const rows: CellValue[][] = [
+      ["FECHA", "PRODUCTO", "CLIENTE", "CANT.", "PRECIO", "T/C", "BOLETA"],
+      [day("2026-10-02"), "Fulvin 40-22(20lts.)", "Clientes Unidos SRL", 10, 9, 12, 15001],
+      [day("2026-10-03"), "Fulvin 40-22(20lts.)", "Tito Cruz", 5, 9, 12, 15002],
+    ];
+    expect(parseSalesSheet({ name: "Nombres", rows }).lines.map((line) => line.customerName)).toEqual([
+      "Clientes Unidos SRL",
+      "Tito Cruz",
+    ]);
+  });
+
   it("reports a sheet without the expected headers instead of guessing", () => {
     const result = parseSalesSheet({ name: "Notas", rows: [["algo"], ["otra cosa"]] });
     expect(result.lines).toEqual([]);

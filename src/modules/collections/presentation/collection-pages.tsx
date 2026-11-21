@@ -52,8 +52,12 @@ import {
   getPayment,
   listCharges,
   listPayments,
+  nextReceiptNumber,
   officialRate,
 } from "../application/collection-use-cases";
+import { NextNumberForm } from "@/shared/presentation/next-number-form";
+import { setNextReceiptNumberAction } from "./collection-actions";
+import { followOfficialRateToday } from "./follow-official-rate";
 import type { DocumentStatus } from "../application/collection-ports";
 import { dolarApiOfficialRate } from "../infrastructure/dolarapi-official-rate";
 import { ChargeForm } from "./charge-form";
@@ -84,9 +88,14 @@ async function campaignOptions(actor: Actor) {
 export async function DailyRateCard() {
   const actor = await requireActor();
   const today = todayInBolivia();
+  const following = await followOfficialRateToday(today);
   const current = await currentRate(deps(), actor, today);
   return (
-    <DailyRateForm today={today} current={current}>
+    <DailyRateForm
+      today={today}
+      current={current}
+      following={following.following ? { officialDate: following.officialDate } : null}
+    >
       {/* It comes from outside: the page doesn't wait for it and works without it (D36). */}
       <Suspense fallback={null}>
         <OfficialRateReference actor={actor} today={today} current={current?.rate ?? null} />
@@ -141,16 +150,20 @@ export async function PaymentsTable({ searchParams }: { searchParams: SearchPara
   const actor = await requireActor();
   const text = first(params.q) ?? "";
   const status = first(params.status) ?? "";
-  const list = await listPayments(deps(), actor, {
-    text,
-    status: status || undefined,
-    page: first(params.page),
-    pages: first(params.pages),
-  });
+  const [list, nextNumber] = await Promise.all([
+    listPayments(deps(), actor, {
+      text,
+      status: status || undefined,
+      page: first(params.page),
+      pages: first(params.pages),
+    }),
+    nextReceiptNumber(deps(), actor),
+  ]);
   const { items } = list;
 
   return (
     <div className="flex flex-col gap-4">
+      <NextNumberForm nextNumber={nextNumber} noun="recibo" save={setNextReceiptNumberAction} />
       <DocumentFilters
         action={PAYMENTS_PATH}
         text={text}
@@ -284,10 +297,12 @@ export async function NewPayment({ searchParams }: { searchParams: SearchParams 
   const params = await searchParams;
   const actor = await requireActor();
   const today = todayInBolivia();
-  const [customers, campaigns, current] = await Promise.all([
+  await followOfficialRateToday(today);
+  const [customers, campaigns, current, nextNumber] = await Promise.all([
     customerOptions(customerDeps(getDb()), actor),
     campaignOptions(actor),
     currentRate(deps(), actor, today),
+    nextReceiptNumber(deps(), actor),
   ]);
   const chosen = customers.find((customer) => customer.id === first(params.customer));
 
@@ -325,6 +340,7 @@ export async function NewPayment({ searchParams }: { searchParams: SearchParams 
       campaigns={campaigns.map(({ id, label }) => ({ id, label }))}
       today={today}
       currentRate={current?.rate ?? null}
+      nextReceiptNumber={nextNumber}
     />
   );
 }

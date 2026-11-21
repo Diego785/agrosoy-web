@@ -4,7 +4,7 @@ import type { AuditTrail } from "@/shared/application/audit-trail";
 import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
-import { campaignOn, campaignRecord, overlaps, type CampaignRecord } from "../domain/campaign";
+import { campaignOn, campaignRecord, defaultDueOn, overlaps, type CampaignRecord } from "../domain/campaign";
 import type { Campaign, CampaignRepository } from "./campaign-ports";
 import { campaignSchema } from "./campaign-schemas";
 
@@ -80,7 +80,15 @@ async function validCampaign(
   input: unknown,
   exceptId?: string,
 ): Promise<CampaignRecord> {
-  const record = campaignRecord(validateInput(campaignSchema, input));
+  const data = validateInput(campaignSchema, input);
+  const dueOn = data.dueOn || defaultDueOn(data.season, data.endsOn);
+  // The season's usual date can fall before a campaign that ends late; then it has to be written.
+  if (dueOn < data.endsOn) {
+    throw new DomainError("VALIDATION_FAILED", {
+      fieldErrors: { dueOn: ["El vencimiento no puede ser antes del fin de la campaña."] },
+    });
+  }
+  const record = campaignRecord({ ...data, dueOn });
   const clash = (await campaigns.list()).find(
     (campaign) => campaign.id !== exceptId && overlaps(campaign, record),
   );

@@ -59,7 +59,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/soluti0n-tech/agrosoy-web:main
-            ghcr.io/soluti0n-tech/agrosoy-web:${{ github.sha }}
+            ghcr.io/diego785/agrosoy-web:main
+            ghcr.io/diego785/agrosoy-web:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

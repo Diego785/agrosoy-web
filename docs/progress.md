@@ -3,6 +3,159 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-20 (branch `feature/week-3`)
+
+- **Administration's audio of 20 November**, after trying staging: a winter note for the north
+  fell in summer because of its date, was voided, and its number couldn't be typed again; the
+  customer's statement showed the void as a discount. Built, to ship with week 3:
+  - the customer's statement leaves out voided documents and their reversals (D6 amended);
+  - a note can take the open campaign right before its date's, in every zone (D37 amended);
+  - a voided note's printed number can be typed again; the counter never gives it (D28 amended,
+    migration 0029).
+- **Not built**: "void and correct" (a voided note copied into a new draft), and the same number
+  rule for paper receipts. Both wait for administration to ask.
+- **Image under the repository's new owner**: CI and `deploy/compose.yaml` now name
+  `ghcr.io/diego785/agrosoy-web`, so pushing to `main` can publish it. The server's `compose.yaml`
+  takes the same line when week 3 is deployed.
+- **Week 3 to staging**: migrations 0019–0029 rehearsed on a copy of staging's database taken
+  before the deploy (`agrosoy_staging_copia`, local); `feature/week-3` merged into `main`.
+
+## 2026-11-16 to 2026-11-19 (branch `feature/week-3`)
+
+- **Built the changes from administration's audios and the customer lists** (roadmap section of
+  12–16 November): monthly interest and payments that cover interest first (D38 rewritten, D45);
+  debt and collections per technician follow the notes (D46); sheet names linked to existing
+  customers (D47); CI apart from NIT, usual payment terms, locality suggestions and changing the
+  technician of several customers at once (D48). Migrations 0026–0028.
+- **Loader for the cleaned lists**: `corepack pnpm customers:load-lists` (and
+  `load-customer-lists.mjs` in the image). Its JSON holds personal data and stays outside the
+  repository, with the test guide and the test users' temporary passwords
+  (`agrosoy/pruebas-listas/`).
+- **Local test database `agrosoy_listas`**: the 153 customers, the 8 technicians, both 2026
+  campaigns and the product list. Administration confirmed Favio Añez looks after Ramiro Durán
+  this summer.
+- **Week 3's last gaps**: a cash note's payment takes a printed receipt number; a return asks who
+  receives for Agrosoil and the carrier.
+- **Administration's request of 18 November** (D26 amended): the statement's letterhead shows the
+  legal name, and Datos de la empresa keeps the bank accounts printed at the statement's foot. The
+  real numbers are typed by administration on the settings page, never committed.
+- **Left for week 5**: the signed note's photo, with the travel allowances' file storage.
+- **Waiting on Agrosoil**: when 4.5 % applies, whether the month of payment is charged, the
+  estates' owners.
+- Nothing pushed yet.
+
+## 2026-11-12 to 2026-11-16 (branch `feature/week-3`)
+
+- **Staging moved to `agrosoil.marketia.store`** after the old domain expired (commit `ba6fd28`,
+  details and undo in `deploy/server-log.md`). Checked from outside on 13 November; signing in
+  there is still to try. The certificate renews between 11 January and 10 February 2027.
+- **Local presentation:** a production build of `f9e22fe` on a copy of the demo database
+  (`agrosoy_inversor`, all migrations); the original demo database is untouched.
+- **Administration's audios (12 and 13 November):**
+  - interest is **monthly**: December free, then 3 % for every month the debt stays unpaid,
+    simple interest. This replaces D38's once-per-due-date rule (to build in week 5);
+  - a partial payment covers **interest first**, then capital, and the statement shows the split;
+  - a customer's technician changes between campaigns, and a customer may have none (Adagro).
+    Already supported, with the portfolio history.
+- **The technicians' customer lists arrived** (16 November): eight lists, 153 customers. The
+  analysis script and a full dump live outside the repo. Findings:
+  - each row's "ZONA" is the system's locality; the footer's "ZONA: ESTE/NORTE" is the zone and
+    "ENCARGADO" the technician;
+  - the lists hold only customers who still owe: the six customers missing from Favio's sheet are
+    paid up (or only got free lines);
+  - one customer (same CI) is in two lists: one customer, with each sale kept under its technician;
+  - two rows are estates without an owner ("Suelo Rico", "Palmarito II"), asked to administration;
+  - only 3 of the 9 debtors in Favio's sales sheet are written as in his list ("Alexander Jimenez"
+    vs "ALEXANDER JIMENEZ MONTERO"), so importing the sheets today would duplicate customers;
+  - "0" means empty in one list; CI and NIT come apart, some with both; foreign CIs start "E-";
+    the same locality is written several ways ("4 Cañadas", "CUATRO CAÑADAS").
+- **The portfolio per technician follows the customer's current technician**
+  (`drizzle-statement-reader.ts`), so a customer who changes technician takes their old debt along.
+  Planned: debt and collections per technician follow the notes.
+- **Scope:** everything new is free of charge for Agrosoil and goes into version 1.1 of the scope
+  change document (`agrosoy/propuesta/`). The roadmap lists it by week. Decisions get recorded as
+  each piece is built (D38 rewritten, D20 amended, new ones for the rest).
+- **Still to do before pushing:** a full `corepack pnpm check` with free memory on `f9e22fe` and
+  `ba6fd28` (the tests timed out from low memory); the CI and `deploy/compose.yaml` image name for
+  the repository's new owner.
+- Nothing pushed yet.
+
+## 2026-11-11 (week 3, branch `feature/week-3`)
+
+- **Week 3's remaining items are built**, one commit each, every one with `corepack pnpm check`
+  green (320 tests at the end):
+  - every payment in bolivianos in the statement (D39) and legal fees as a charge concept (D24);
+  - the SIN invoice on confirmed notes, several at once, and in the statement (D40);
+  - the spreadsheet import as the main way in: header variants, missing columns, no skipped rows,
+    the customer's technician on imported notes (D43);
+  - printed receipt numbers and the system's own receipt range (D28);
+  - note search, with voided notes out of the list unless asked for;
+  - due dates, extensions and overdue debt; the home page shows "Deuda vencida" (D37);
+  - the commercial value of free lines (D41) and "Seguir el oficial" (D42);
+  - the customer's locality; opening balances per customer and campaign (D29);
+  - the company's details from a settings page, printed on every PDF (D26);
+  - late-payment interest proposed, charged or waived at `/payments/interest` (D38);
+  - returns and transfers that gather lines from several deliveries, started from the customer and
+    campaign (D25).
+- **Interest fix found while reviewing zones:** a decided interest was remembered by its day, so an
+  extension or a moved due date given after charging proposed it again. It is now remembered by the
+  due date that set it off (migration 0025).
+- **Vencimiento por zona, not built:** the contracts' dates are the same for every zone, and a
+  zone-wide due date would follow the customer's current zone backwards. If administration needs to
+  give a whole zone more time, the fit is a bulk action that creates each customer's extension.
+- **Migrations 0019–0025** are new this week. They ran only on the test database; staging gets them
+  when `main` is deployed after approval. 0019 fills the due dates of existing campaigns (checked
+  on a copy); 0024 drops `delivery_notes.original_note_id`, whose information stays in each line.
+- **Checked in the browser** on a throwaway local database: the interest page (settings, charging,
+  waiving, the home notice, the change log). The return and transfer screen was not: `next dev`
+  failed locally (Turbopack couldn't create a link under `.next/dev`, access denied), so only its
+  integration tests cover it. Look at it before the demo.
+- **Before the demo or real data:** set when interest starts at Cobros → Intereses; the campaigns'
+  due dates; the note and receipt ranges (D28).
+- **Still open:**
+  - a payment received with a cash note can't take a printed receipt number yet;
+  - returns don't ask yet who receives for Agrosoil or the carrier;
+  - the GitHub repository moved to another owner (pushes are redirected), but CI and
+    `deploy/compose.yaml` still name `ghcr.io/soluti0n-tech/agrosoy-web`, so publishing the image
+    may fail on the next push to `main`.
+- Nothing pushed yet.
+
+## 2026-11-10
+
+- **Meeting of 7 November with Agrosoil, recorded in the docs.** Transcribed from the recording;
+  the transcript and its summary live outside the repo (`agrosoy/reunion-7-nov/`). New decisions
+  D37–D44; D22, D24, D29 and D36 amended; glossary, domain model and roadmap updated. The scope
+  changes go to Agrosoil next to the proposal (`agrosoy/propuesta/`) for written approval.
+- **What Agrosoil said:**
+  - winter contracts are due on 30 November and summer ones on 31 May, sometimes 30 April, with
+    extensions for some customers (D37);
+  - interest is 3 % for everyone, after a term administration chooses (D38). The developer set it
+    once per campaign closing, not monthly;
+  - customers want their payments in bolivianos in the statement (D39), and companies the invoice
+    number (D40);
+  - gifts carry a commercial value (D41), and legal fees are charged to customers in arrears (D24);
+  - administration fills and imports its full sheets itself (D43);
+  - the zones are Norte and Este;
+  - only administration records payments, which was already the default;
+  - the keeper must keep control of what other technicians take from the warehouse (D44).
+- **Said wrong in the demo, to clear up with Agrosoil:**
+  - a printed receipt number goes in its own field (D28), not in "Referencia";
+  - a payment in bolivianos can already be recorded in Bs, and then the statement shows it;
+  - technicians can't record payments;
+  - stock arrives in week 4, and notes from before the cut-off never move it;
+  - the official rate isn't followed by itself until D42;
+  - the system's note numbers must start above the pads, for example 100001 (D28), not at 1000.
+- **Before loading real data on staging:**
+  - set the number ranges (D28), the zones and the campaigns' due dates;
+  - decide whether to start from an empty database: the 31 notes voided by undoing on 7 November
+    still show in the list.
+- **Waiting on Agrosoil:**
+  - the technicians' customer lists, due Monday 9 November at noon;
+  - the manager's answer on who may take product from a warehouse (D44);
+  - any missing role.
+
+  Agrosoil's sales sheets don't come to us: administration imports them itself (D43).
+
 ## 2026-11-07
 
 - **Change log and permissions speak Spanish everywhere:** passing and undoing a sheet's sales,

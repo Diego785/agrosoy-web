@@ -15,7 +15,12 @@ import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import { parseProductLabel } from "../domain/product-label";
-import type { CampaignLookup, CustomerRegistry, ProductRegistry } from "./conversion-ports";
+import type {
+  CampaignLookup,
+  CustomerRegistry,
+  ProductRegistry,
+  TechnicianOptions,
+} from "./conversion-ports";
 import { findBatch } from "./import-use-cases";
 import type { ImportBatch, ImportRepository, StoredLine } from "./ports";
 import { sheetTotalsFor } from "./statement-preview";
@@ -25,6 +30,8 @@ export type SalesConversionDeps = {
   customers: Pick<CustomerRegistry, "findByKeys">;
   products: Pick<ProductRegistry, "findByKeys">;
   campaigns: CampaignLookup;
+  /** The sheet's technician, chosen when its sales are passed (D47). */
+  technicians: TechnicianOptions;
   notes: NoteRepository;
   ledger: LedgerRepository;
   /** What the conversion recorded per customer, for the reconciliation. */
@@ -41,6 +48,8 @@ const convertSalesSchema = z.object({
   batchId: z.uuid(),
   campaignId: z.uuid({ error: "Elige la campaña de la planilla." }),
   cutoffDate: z.iso.date({ error: "Escribe la fecha de corte como dd/mm/aaaa." }),
+  /** Whose sheet it is: its notes take this technician; empty keeps each customer's (D47). */
+  technicianId: z.union([z.literal(""), z.uuid()]).default(""),
 });
 
 const undoSchema = z.object({
@@ -55,17 +64,41 @@ type Plan = {
   skipped: SkippedRow[];
 };
 
+/** What still has to be registered before the sheet's sales can be passed (D43). */
+export type SalesReadiness = { missingCustomers: string[]; missingProducts: string[] };
+
+/** The customers and products of the sheet that aren't in the system yet, as the sheet writes them. */
+export async function salesReadiness(
+  deps: Pick<SalesConversionDeps, "imports" | "customers" | "products">,
+  actor: Actor,
+  batchId: unknown,
+): Promise<SalesReadiness> {
+  assertCan(actor, "imports.manage");
+  const batch = await findBatch(deps.imports, batchId);
+  const { skipped } = await planSales(deps, batch, batch.salesConversion?.cutoffDate ?? "2000-01-01");
+  return readinessOf(skipped);
+}
+
+function readinessOf(skipped: readonly SkippedRow[]): SalesReadiness {
+  const labels = (reason: SkippedRow["reason"]) =>
+    [...new Set(skipped.filter((row) => row.reason === reason).map((row) => row.label))].toSorted((a, b) =>
+      a.localeCompare(b, "es"),
+    );
+  return { missingCustomers: labels("customer_missing"), missingProducts: labels("product_missing") };
+}
+
 /**
  * Turns the sheet's sales into confirmed notes marked as imported (keeping the sheet's numbers),
- * and its returns and payments into ledger entries, all in the chosen campaign (D22). Customers
- * and products must have been converted first; rows that still miss them are reported, not
- * guessed. Imported notes take no stock: stock starts from a physical count.
+ * and its returns and payments into ledger entries, all in the chosen campaign (D22). Every customer
+ * and product of the sheet must be in the system first: nothing is guessed and no row is left out,
+ * so the conversion reconciles with the sheet (D43). Each note takes its customer's technician.
+ * Imported notes take no stock: stock starts from a physical count.
  */
 export async function convertSales(
   deps: SalesConversionDeps,
   actor: Actor,
   input: unknown,
-): Promise<{ notes: number; entries: number; skipped: SkippedRow[] }> {
+): Promise<{ notes: number; entries: number }> {
   assertCan(actor, "imports.manage");
   const data = validateInput(convertSalesSchema, input);
   const batch = await findBatch(deps.imports, data.batchId);
@@ -74,7 +107,20 @@ export async function convertSales(
   if (!campaign)
     throw new DomainError("VALIDATION_FAILED", { fieldErrors: { campaignId: ["Elige una campaña."] } });
 
-  const plan = await planSales(deps, batch, data.cutoffDate);
+  if (data.technicianId) {
+    const active = await deps.technicians.listActive();
+    if (!active.some((technician) => technician.id === data.technicianId)) {
+      throw new DomainError("VALIDATION_FAILED", {
+        fieldErrors: { technicianId: ["Elige un técnico de venta activo."] },
+      });
+    }
+  }
+  const plan = await planSales(deps, batch, data.cutoffDate, data.technicianId || null);
+  if (plan.skipped.length > 0) {
+    throw new DomainError("VALIDATION_FAILED", {
+      fieldErrors: { root: [missingMessage(readinessOf(plan.skipped))] },
+    });
+  }
   for (const note of plan.notes) {
     await recordImportedNote(deps, { ...note, importBatchId: batch.id, campaignId: campaign.id }, actor.id);
   }
@@ -103,10 +149,20 @@ export async function convertSales(
       sheetName: batch.sheetName,
       notes: plan.notes.length,
       entries: postings.length,
-      skipped: plan.skipped.length,
     },
   });
-  return { notes: plan.notes.length, entries: postings.length, skipped: plan.skipped };
+  return { notes: plan.notes.length, entries: postings.length };
+}
+
+/** "Faltan 2 clientes (…) y 1 producto (…)": what to register in the steps above first. */
+function missingMessage({ missingCustomers, missingProducts }: SalesReadiness): string {
+  const part = (items: string[], one: string, many: string) =>
+    items.length === 0 ? null : `${items.length} ${items.length === 1 ? one : many} (${items.join(", ")})`;
+  const parts = [
+    part(missingCustomers, "cliente", "clientes"),
+    part(missingProducts, "producto", "productos"),
+  ].filter(Boolean);
+  return `Faltan ${parts.join(" y ")} de la planilla. Pásalos en los pasos de arriba antes de pasar las ventas.`;
 }
 
 /** Voids the imported notes and reverses the sheet's entries, so the sheet can be fixed and converted again. */
@@ -146,13 +202,14 @@ export type ReconciliationRow = {
 
 /**
  * Each customer's debt as the sheet computes it (lines recomputed, payments from the summary) next
- * to what the conversion recorded, with the rows that were left out (domain model, M12).
+ * to what the conversion recorded (domain model, M12). No row is left out of a conversion (D43), so
+ * a difference comes from what changed since, such as a customer renamed in the system.
  */
 export async function salesReconciliation(
   deps: SalesConversionDeps,
   actor: Actor,
   batchId: unknown,
-): Promise<{ batch: ImportBatch; rows: ReconciliationRow[]; skipped: SkippedRow[] }> {
+): Promise<{ batch: ImportBatch; rows: ReconciliationRow[] }> {
   assertCan(actor, "imports.manage");
   const batch = await findBatch(deps.imports, batchId);
   if (!batch.salesConversion) throw new DomainError("INVALID_STATE", { reason: "not_converted" });
@@ -183,16 +240,14 @@ export async function salesReconciliation(
       };
     })
     .toSorted((a, b) => a.customerName.localeCompare(b.customerName, "es"));
-
-  // The skipped rows are worked out again the same way the conversion did.
-  const { skipped } = await planSales(deps, batch, batch.salesConversion.cutoffDate);
-  return { batch, rows, skipped };
+  return { batch, rows };
 }
 
 async function planSales(
   deps: Pick<SalesConversionDeps, "imports" | "customers" | "products">,
   batch: ImportBatch,
   cutoffDate: string,
+  sheetTechnicianId: string | null = null,
 ): Promise<Plan> {
   const [lines, summary] = await Promise.all([deps.imports.lines(batch.id), deps.imports.summary(batch.id)]);
   const customers = await deps.customers.findByKeys([
@@ -233,6 +288,8 @@ async function planSales(
       sheetNumber: first.noteNumber,
       noteDate: first.date ?? cutoffDate,
       customerId: customer.id,
+      // A sheet is one technician's sales: its notes are theirs, whoever looks after the customer now.
+      technicianId: sheetTechnicianId ?? customer.technicianId,
       exchangeRate: rate ? ExchangeRate.parse(rate) : null,
       receiverName: customer.name,
       observations: observations || null,

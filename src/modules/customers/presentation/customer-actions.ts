@@ -9,6 +9,7 @@ import type { CustomerInput, PropertyInput, ReceiverInput, ZoneInput } from "../
 import {
   addAuthorizedReceiver,
   addCustomerProperty,
+  assignTechnicianToCustomers,
   createZone,
   registerCustomer,
   removeAuthorizedReceiver,
@@ -16,6 +17,7 @@ import {
   renameZone,
   setCustomerActive,
   setZoneActive,
+  unlinkCustomerName,
   updateCustomer,
 } from "../application/customer-use-cases";
 import { customerDeps } from "./customer-deps";
@@ -131,6 +133,27 @@ export async function removeReceiverAction(
   return runAction(async () => {
     const actor = await requireActor();
     await withTransaction((tx) => removeAuthorizedReceiver(customerDeps(tx), actor, customerId, receiverId));
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return null;
+  });
+}
+
+export async function assignTechnicianToCustomersAction(input: {
+  customerIds: string[];
+  technicianId: string;
+}): Promise<ActionResult<{ changed: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => assignTechnicianToCustomers(customerDeps(tx), actor, input));
+    revalidatePath(CUSTOMERS_PATH, "layout");
+    return result;
+  });
+}
+
+export async function unlinkNameAction(customerId: string, aliasId: string): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => unlinkCustomerName(customerDeps(tx), actor, customerId, aliasId));
     revalidatePath(CUSTOMERS_PATH, "layout");
     return null;
   });

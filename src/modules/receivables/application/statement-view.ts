@@ -31,7 +31,14 @@ export type AgingView = Record<AgingBucket, string>;
 
 export type PortfolioStatementView = {
   source: StatementSource;
-  customers: { key: string; name: string; totals: StatementTotalsView; over90: string | null }[];
+  customers: {
+    key: string;
+    name: string;
+    totals: StatementTotalsView;
+    over90: string | null;
+    /** Owed in campaigns past their due date (D37); null when nothing is, and in previews. */
+    overdue: string | null;
+  }[];
   totals: StatementTotalsView;
   /** Tenths of a percent of net sales collected (67 = 6.7 %). */
   collectedPerMille: number | null;
@@ -55,15 +62,26 @@ export type StatementLineView = {
   amount: string;
   exchangeRate: string | null;
   observation: string | null;
-  receipt: { number: number; method: PaymentMethod; currency: Currency; amount: string } | null;
-  /** The entry a void wrote to cancel a document. */
-  isReversal: boolean;
+  /** The SIN invoice of a delivery, on its first line (D40). */
+  invoiceNumber: string | null;
+  /** The payment behind a line: what was received, in its currency, and the whole of it in dollars. */
+  receipt: {
+    number: number;
+    method: PaymentMethod;
+    currency: Currency;
+    amount: string;
+    usdAmount: string;
+  } | null;
+  /** What of a payment covered interest owed at the time; the rest went to capital (D45). */
+  interestPart?: string | null;
   /** Campaign transfers: the credit in the old campaign ("out") or the charge in the new one ("in"). */
   transfer: "out" | "in" | null;
   /** Payments and returns brought in from a spreadsheet, which have no document of their own. */
   fromSheet: boolean;
   /** What a charge is for (D24). */
   chargeConcept?: ChargeConcept | null;
+  /** Debt carried in at go-live, with administration's note (D29). */
+  opening?: { note: string | null } | null;
   document: { type: "note" | "payment" | "charge"; id: string } | null;
 };
 
@@ -72,6 +90,14 @@ export type CampaignTotalsView = {
   season: Season;
   year: number;
   totals: StatementTotalsView;
+  /** When the customer's debt in it falls due: their extension, or the campaign's date (D37). */
+  dueOn: string;
+  campaignDueOn: string;
+  extension: { dueOn: string; reason: string } | null;
+  /** The balance, once the due date has passed and something is owed; "0.00" otherwise. */
+  overdue: string;
+  /** The part of the balance that is interest still owed (D45); "0.00" when none. */
+  interestOwed: string;
 };
 
 export type CustomerStatementView = {
@@ -82,6 +108,8 @@ export type CustomerStatementView = {
   /** Ledger statements only. */
   byCampaign?: CampaignTotalsView[];
   aging?: AgingView;
+  /** Ledger statements only: what is owed past the due dates (D37). */
+  overdue?: string;
 };
 
 export function totalsView(totals: StatementTotals): StatementTotalsView {
@@ -116,8 +144,8 @@ export function plainLine(
     freeOfCharge: null,
     exchangeRate: null,
     observation: null,
+    invoiceNumber: null,
     receipt: null,
-    isReversal: false,
     transfer: null,
     fromSheet: false,
     document: null,

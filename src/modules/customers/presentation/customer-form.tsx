@@ -23,6 +23,8 @@ import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 type Props = {
   zones: (Zone & { isActive: boolean })[];
   technicians: Technician[];
+  /** Localities already used, suggested while typing. */
+  localities: string[];
   /** Present when editing an existing customer. */
   customer?: CustomerFormData;
 };
@@ -31,7 +33,12 @@ const DUPLICATE_MESSAGES = {
   name: "Ya hay un cliente con ese nombre. Si es otra persona, agrega algo que los distinga, como la localidad.",
 };
 
-export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technicians, customer }: Props) {
+export const CustomerForm = resetOnLeave(function CustomerForm({
+  zones,
+  technicians,
+  localities,
+  customer,
+}: Props) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
   const form = useForm({ resolver: zodResolver(customerSchema), defaultValues: initialValues(customer) });
@@ -66,10 +73,20 @@ export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technici
           <Input id="name" autoFocus={!customer} aria-invalid={!!errors.name} {...form.register("name")} />
           <FieldError errors={[errors.name]} />
         </Field>
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-3">
+          <Field data-invalid={!!errors.identityCard}>
+            <FieldLabel htmlFor="identityCard">CI (opcional)</FieldLabel>
+            <Input
+              id="identityCard"
+              aria-invalid={!!errors.identityCard}
+              {...form.register("identityCard")}
+            />
+            <FieldDescription>De un extranjero, con su «E-».</FieldDescription>
+            <FieldError errors={[errors.identityCard]} />
+          </Field>
           <Field data-invalid={!!errors.taxId}>
-            <FieldLabel htmlFor="taxId">NIT o CI (opcional)</FieldLabel>
-            <Input id="taxId" aria-invalid={!!errors.taxId} {...form.register("taxId")} />
+            <FieldLabel htmlFor="taxId">NIT (opcional)</FieldLabel>
+            <Input id="taxId" inputMode="numeric" aria-invalid={!!errors.taxId} {...form.register("taxId")} />
             <FieldError errors={[errors.taxId]} />
           </Field>
           <Field data-invalid={!!errors.phone}>
@@ -110,10 +127,39 @@ export const CustomerForm = resetOnLeave(function CustomerForm({ zones, technici
             </NativeSelect>
             <FieldError errors={[errors.technicianId]} />
           </Field>
+          <Field data-invalid={!!errors.locality}>
+            <FieldLabel htmlFor="locality">Localidad (opcional)</FieldLabel>
+            <Input
+              id="locality"
+              list="customer-localities"
+              autoComplete="off"
+              aria-invalid={!!errors.locality}
+              {...form.register("locality")}
+            />
+            <datalist id="customer-localities">
+              {localities.map((locality) => (
+                <option key={locality} value={locality} />
+              ))}
+            </datalist>
+            <FieldDescription>El lugar dentro de la zona, como lo ubica el técnico.</FieldDescription>
+            <FieldError errors={[errors.locality]} />
+          </Field>
         </div>
       </FormSection>
 
-      <FormSection title="Tipo de cambio">
+      <FormSection title="Venta y tipo de cambio">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field data-invalid={!!errors.usualPaymentTerms}>
+            <FieldLabel htmlFor="usualPaymentTerms">Le vendemos</FieldLabel>
+            <NativeSelect id="usualPaymentTerms" {...form.register("usualPaymentTerms")}>
+              <NativeSelectOption value="">Según cada boleta</NativeSelectOption>
+              <NativeSelectOption value="credit">A crédito</NativeSelectOption>
+              <NativeSelectOption value="cash">Al contado</NativeSelectOption>
+            </NativeSelect>
+            <FieldDescription>Se sugiere al hacer una boleta, y ahí se puede cambiar.</FieldDescription>
+            <FieldError errors={[errors.usualPaymentTerms]} />
+          </Field>
+        </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field data-invalid={!!errors.exchangeRateKind}>
             <FieldLabel htmlFor="exchangeRateKind">Tipo de cambio acordado</FieldLabel>
@@ -180,9 +226,12 @@ function initialValues(customer: CustomerFormData | undefined): CustomerInput {
   return {
     name: customer?.name ?? "",
     taxId: customer?.taxId ?? "",
+    identityCard: customer?.identityCard ?? "",
     phone: customer?.phone ?? "",
     zoneId: customer?.zoneId ?? "",
+    locality: customer?.locality ?? "",
     technicianId: customer?.technicianId ?? "",
+    usualPaymentTerms: customer?.usualPaymentTerms ?? "",
     exchangeRateKind: customer?.exchangeRateKind ?? "daily",
     // "6.9600" from the database reads better as "6.96".
     fixedExchangeRate: customer?.fixedExchangeRate ? trimDecimalZeros(customer.fixedExchangeRate) : "",

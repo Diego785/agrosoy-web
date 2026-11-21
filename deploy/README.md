@@ -8,8 +8,9 @@ Two environments, same image: **staging** for the weekly demos and, later, **pro
 real use. "staging" is only the environment's internal name (folder and containers); people never
 see it in the address.
 
-Staging is live at **`https://agrosoil.market-ia.shop`**. It went through two phases, kept here
-because production and any move to another domain repeat them:
+Staging is live at **`https://agrosoil.marketia.store`** (since 12 November 2026; before that at
+`agrosoil.market-ia.shop`, whose domain expired). It went through two phases, kept here because
+production and any move to another domain repeat them:
 
 - **Phase A, done:** reached by IP and port, `http://38.242.145.246:3100`, with nginx prepared for
   the domain (step A6).
@@ -31,7 +32,7 @@ because production and any move to another domain repeat them:
 ## How it fits together
 
 ```
-GitHub (push to main) ──CI──▶ check + build ──▶ image ghcr.io/soluti0n-tech/agrosoy-web:<sha> and :main
+GitHub (push to main) ──CI──▶ check + build ──▶ image ghcr.io/diego785/agrosoy-web:<sha> and :main
                                                      │
 Server  /home/apps/www/solution/agrosoy/staging      │
         ├─ compose.yaml + compose.ip.yaml            │
@@ -41,7 +42,7 @@ Server  /home/apps/www/solution/agrosoy/staging      │
                              │ phase A        │ phase B: server-network
                     http://IP:3100            │
         /home/apps/nginx-certbot-docker   shared nginx, ports 80/443
-        └─ conf/agrosoy-staging.conf      https://agrosoil.market-ia.shop ──▶ http://agrosoy-staging:3000
+        └─ conf/agrosoy-staging.conf      https://agrosoil.marketia.store ──▶ http://agrosoy-staging:3000
 ```
 
 - The container applies pending migrations, then starts the server (`Dockerfile`, last line).
@@ -66,9 +67,10 @@ Each step says how to check it and how to undo it.
 
 ### A1 · Registry access (once per server)
 
-The image is private. Create a GitHub **classic** token with only the `read:packages` scope and an
-expiry date (GitHub → Settings → Developer settings → Personal access tokens); if the
-SOLUTI0N-TECH organization asks to approve it, approve it. On the server:
+The image is private and lives under the repository's owner, `Diego785` (it moved there from the
+SOLUTI0N-TECH organization on 20 November 2026). Create a GitHub **classic** token on that account
+with only the `read:packages` scope and an expiry date (GitHub → Settings → Developer settings →
+Personal access tokens). On the server:
 
 ```bash
 docker login ghcr.io -u <github-user>      # password: paste the token
@@ -154,7 +156,7 @@ then on the server:
 docker exec nginx curl -s http://agrosoy-staging:3000/api/health     # nginx reaches the app
 docker exec nginx nginx -t                                           # must pass…
 docker exec nginx nginx -s reload                                    # …before this
-curl -sI -H "Host: agrosoil.market-ia.shop" http://127.0.0.1/
+curl -sI -H "Host: agrosoil.marketia.store" http://127.0.0.1/
 ```
 
 - **Check:** the last `curl` answers from our app (a redirect to `/login` or a 200), not another
@@ -173,21 +175,24 @@ curl -sI -H "Host: agrosoil.market-ia.shop" http://127.0.0.1/
 
 ## Phase B · Domain and HTTPS
 
-Starts when the DNS record exists. Domain: `agrosoil.market-ia.shop`, given by the developer on
-2 November 2026. If production later takes this name, staging moves to another one (e.g.
-`demo-agrosoil.market-ia.shop`) by replacing the name in both `nginx/` files and repeating A6 and
+Starts when the DNS record exists. Domain: `agrosoil.marketia.store`, given by the developer on
+12 November 2026 (the first one, `agrosoil.market-ia.shop`, went down when `market-ia.shop` expired on
+9 November). If production later takes this name, staging moves to another one (e.g.
+`demo-agrosoil.marketia.store`) by replacing the name in both `nginx/` files and repeating A6 and
 phase B.
+
+The domain is renewed yearly by whoever holds its registrar account, not on this server: an expired
+domain takes the site down even though the server is fine.
 
 ### B1 · DNS
 
-`agrosoil.market-ia.shop` is an alias (CNAME) of `market-ia.shop`, which points to
-`38.242.145.246`. The HTTP file loaded in A6 named the domain planned before, so load it again
-with the new name: from your computer
+`agrosoil.marketia.store` is an A record pointing to `38.242.145.246`. The HTTP file loaded in A6
+named the domain planned before, so load it again with the new name: from your computer
 `scp deploy/nginx/agrosoy-staging.http.conf root@38.242.145.246:/home/apps/nginx-certbot-docker/conf/agrosoy-staging.conf`,
 then on the server `docker exec nginx nginx -t && docker exec nginx nginx -s reload`.
 
-- **Check:** `nslookup agrosoil.market-ia.shop 1.1.1.1` returns `38.242.145.246`, and
-  `curl -sI http://agrosoil.market-ia.shop/` answers from our app (a redirect to `/login` or a
+- **Check:** `nslookup agrosoil.marketia.store 1.1.1.1` returns `38.242.145.246`, and
+  `curl -sI http://agrosoil.marketia.store/` answers from our app (a redirect to `/login` or a
   200), not another site on the server.
 - **Undo:** copy the previous file back, `nginx -t`, reload.
 
@@ -196,12 +201,12 @@ then on the server `docker exec nginx nginx -t && docker exec nginx nginx -s rel
 From `/home/apps/nginx-certbot-docker`, rehearsal first:
 
 ```bash
-docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoil.market-ia.shop --dry-run
-docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoil.market-ia.shop
+docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoil.marketia.store --dry-run
+docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d agrosoil.marketia.store
 ```
 
 - **Check:** `Successfully received certificate`.
-- **Undo:** `docker compose run --rm certbot delete --cert-name agrosoil.market-ia.shop` (after removing the
+- **Undo:** `docker compose run --rm certbot delete --cert-name agrosoil.marketia.store` (after removing the
   HTTPS file that uses it).
 
 ### B3 · nginx, HTTPS
@@ -212,37 +217,37 @@ cp conf/agrosoy-staging.conf ~/agrosoy-staging.http.conf.bak     # outside conf/
 docker exec nginx nginx -t && docker exec nginx nginx -s reload
 ```
 
-- **Check:** `https://agrosoil.market-ia.shop` opens with the padlock; `http://` redirects to it.
+- **Check:** `https://agrosoil.marketia.store` opens with the padlock; `http://` redirects to it.
 - **Undo:** copy the backup back, test, reload.
 
 ### B4 · Switch the app to the domain and close the port
 
 In `.env`: remove the `COMPOSE_FILE` and `PUBLIC_PORT` lines, and set
-`BETTER_AUTH_URL=https://agrosoil.market-ia.shop`. Then:
+`BETTER_AUTH_URL=https://agrosoil.marketia.store`. Then:
 
 ```bash
 docker compose up -d                    # recreates the app without the public port
 docker compose ps                       # no 0.0.0.0:3100 anymore
 ```
 
-- **Check:** sign-in works at `https://agrosoil.market-ia.shop`; `http://38.242.145.246:3100` no longer answers.
+- **Check:** sign-in works at `https://agrosoil.marketia.store`; `http://38.242.145.246:3100` no longer answers.
 - **Undo:** put the lines back, `docker compose up -d`.
 
 ### B5 · Renewal
 
-Let's Encrypt certificates last 90 days. This one **expires on 31 January 2027** and can be renewed
-from about 1 January. The inventory of 29 October found no scheduled renewal on the server.
+Let's Encrypt certificates last 90 days. This one **expires on 10 February 2027** and can be renewed
+from about 11 January. The inventory of 29 October found no scheduled renewal on the server.
 
 To renew only ours, from `/home/apps/nginx-certbot-docker`:
 
 ```bash
-docker compose run --rm certbot renew --cert-name agrosoil.market-ia.shop --dry-run
-docker compose run --rm certbot renew --cert-name agrosoil.market-ia.shop
+docker compose run --rm certbot renew --cert-name agrosoil.marketia.store --dry-run
+docker compose run --rm certbot renew --cert-name agrosoil.marketia.store
 docker exec nginx nginx -t && docker exec nginx nginx -s reload
 ```
 
 - **Check:** the expiry date moves forward:
-  `echo | openssl s_client -connect agrosoil.market-ia.shop:443 -servername agrosoil.market-ia.shop 2>/dev/null | openssl x509 -noout -enddate`.
+  `echo | openssl s_client -connect agrosoil.marketia.store:443 -servername agrosoil.marketia.store 2>/dev/null | openssl x509 -noout -enddate`.
 - Without `--cert-name`, `renew` also renews every other site's certificate that is due, so a
   server-wide schedule is for the server's admin to agree on.
 

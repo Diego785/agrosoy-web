@@ -7,8 +7,9 @@ export const NOTE_TYPES = ["delivery", "return", "campaign_transfer"] as const;
 export type NoteType = (typeof NOTE_TYPES)[number];
 
 /**
- * Returns and campaign transfers act on the lines of a confirmed delivery note (domain model, M5).
- * Each original line can be returned or moved to another campaign only up to what is left of it.
+ * Returns and campaign transfers act on lines a customer received in one campaign, from any of its
+ * confirmed deliveries or transfers into it (D25). Each line can be returned or moved to another
+ * campaign only up to what is left of it, at its own price.
  */
 export type OriginalLine = {
   id: string;
@@ -47,7 +48,7 @@ function chosenLines(original: readonly OriginalLine[], requested: readonly Requ
   requested.forEach((request, index) => {
     const line = byId.get(request.originalLineId);
     if (!line) {
-      fieldErrors[`lines.${index}.quantity`] = ["not_in_note"];
+      fieldErrors[`lines.${index}.quantity`] = ["not_consigned"];
       return;
     }
     if (request.quantity.isZero()) return;
@@ -111,12 +112,17 @@ export function transferLines(
 }
 
 /**
- * A return or a campaign transfer, saved already confirmed. It keeps the original's customer,
- * property and technician; a return stays in the original's campaign, a transfer moves to the
- * campaign of its own date.
+ * A return or a campaign transfer, saved already confirmed. A return stays in the campaign its lines
+ * come from; a transfer moves to the campaign of its own date. Its lines say which deliveries it
+ * draws from (D25).
  */
 export type FollowUpNote = Omit<DraftNote, "lines" | "taxInvoiceNumber"> & {
   type: Exclude<NoteType, "delivery">;
-  originalNoteId: string;
   lines: FollowUpLine[];
 };
+
+/** What the sources of a follow-up share, so its header can say it once; null when they differ. */
+export function shared<T>(values: readonly T[]): T | null {
+  const [first] = values;
+  return first !== undefined && values.every((value) => value === first) ? first : null;
+}

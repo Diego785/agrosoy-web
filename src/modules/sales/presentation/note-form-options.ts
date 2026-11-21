@@ -3,6 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
 import { currentRate } from "@/modules/collections/application/collection-use-cases";
 import { drizzleDailyRateRepository } from "@/modules/collections/infrastructure/drizzle-collection-repositories";
+import { followOfficialRateToday } from "@/modules/collections/presentation/follow-official-rate";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { listProducts, priceSheet } from "@/modules/catalog/application/catalog-use-cases";
 import { catalogDeps } from "@/modules/catalog/presentation/catalog-deps";
@@ -17,7 +18,7 @@ import { identityTechnicianLookup } from "@/modules/customers/infrastructure/ide
 import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import type { Actor } from "@/shared/application/actor";
 import { assertCan } from "@/shared/application/permissions";
-import { getDb } from "@/shared/infrastructure/db/client";
+import { getDb, type DbExecutor } from "@/shared/infrastructure/db/client";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 
 export type NoteFormOptions = Awaited<ReturnType<typeof loadNoteFormOptions>>;
@@ -37,6 +38,8 @@ export async function loadNoteFormOptions(actor: Actor) {
           code: customers.code,
           name: customers.name,
           taxId: customers.taxId,
+          identityCard: customers.identityCard,
+          usualPaymentTerms: customers.usualPaymentTerms,
           zoneId: customers.zoneId,
           technicianId: customers.technicianId,
           fixedExchangeRate: customers.fixedExchangeRate,
@@ -92,12 +95,26 @@ export async function loadNoteFormOptions(actor: Actor) {
       product.presentations.map((presentation) => ({ ...presentation, productName: product.name })),
     ),
     campaigns: openCampaigns,
+    /** Closed ones too: a note can take the campaign before its date's only while that one is open (D37). */
+    allCampaigns: campaigns.map(({ id, season, year, startsOn, endsOn, status }) => ({
+      id,
+      season,
+      year,
+      startsOn,
+      endsOn,
+      status,
+    })),
     technicians,
     /** Who can hand the product over: any active user, shown with their position. */
     staff: users.filter((user) => user.active).map(({ id, name, position }) => ({ id, name, position })),
     prices,
-    /** Suggested for customers without their own rate. */
-    currentRate:
-      (await currentRate({ rates: drizzleDailyRateRepository(db) }, actor, todayInBolivia()))?.rate ?? null,
+    /** Suggested for customers without their own rate; the official one first, if it is followed (D42). */
+    currentRate: await rateInForce(actor, db),
   };
+}
+
+async function rateInForce(actor: Actor, db: DbExecutor): Promise<string | null> {
+  const today = todayInBolivia();
+  await followOfficialRateToday(today);
+  return (await currentRate({ rates: drizzleDailyRateRepository(db) }, actor, today))?.rate ?? null;
 }

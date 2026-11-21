@@ -48,8 +48,11 @@ const ACTION_LABELS: Record<string, string> = {
   "migration.convert_products": "Pasó al sistema los productos de la hoja",
   "migration.convert_sales": "Pasó al sistema las ventas y pagos de la hoja",
   "migration.undo_sales": "Deshizo el paso de ventas y pagos de la hoja",
+  "settings.update_company": "Actualizó los datos de la empresa",
   "campaigns.create": "Creó la campaña",
   "campaigns.update": "Editó la campaña",
+  "campaigns.extend_due_date": "Dio más plazo de pago a",
+  "campaigns.remove_extension": "Quitó el plazo extra de",
   "catalog.create_product": "Creó el producto",
   "catalog.update_product": "Editó el producto",
   "catalog.add_presentation": "Agregó una presentación a",
@@ -67,11 +70,22 @@ const ACTION_LABELS: Record<string, string> = {
   "sales.set_next_number": "Fijó la numeración de boletas desde el N.º",
   "sales.register_return": "Registró la devolución N.º",
   "sales.register_transfer": "Registró el traspaso N.º",
+  "sales.set_invoice": "Anotó la factura de la boleta N.º",
+  "sales.clear_invoice": "Quitó la factura de la boleta N.º",
   "collections.record_payment": "Registró el recibo N.º",
   "collections.void_payment": "Anuló el recibo N.º",
   "collections.record_charge": "Registró un cargo a",
   "collections.void_charge": "Anuló un cargo de",
+  "collections.record_opening_balance": "Registró el saldo inicial de",
+  "collections.void_opening_balance": "Anuló el saldo inicial de",
   "collections.set_daily_rate": "Registró el tipo de cambio del día",
+  "collections.set_next_receipt_number": "Fijó la numeración de recibos desde el N.º",
+  "collections.follow_official_rate": "Activó «Seguir el oficial» en el tipo de cambio",
+  "collections.stop_official_rate": "Desactivó «Seguir el oficial» en el tipo de cambio",
+  "collections.adopt_official_rate": "Tomó el tipo de cambio oficial del",
+  "collections.set_interest": "Configuró el interés por mora:",
+  "collections.charge_interest": "Cargó interés por mora a",
+  "collections.waive_interest": "Descartó el interés por mora de",
 };
 
 export async function AuditLogTable({
@@ -189,6 +203,7 @@ const AREA_LABELS: Record<string, string> = {
   sales: "Boletas",
   collections: "Cobros",
   migration: "Importación",
+  settings: "Empresa",
 };
 
 function AreaBadge({ action }: { action: string }) {
@@ -196,11 +211,15 @@ function AreaBadge({ action }: { action: string }) {
   return <Badge variant="neutral">{AREA_LABELS[area] ?? area}</Badge>;
 }
 
+/** What the system does by itself, with no user behind it (D42). */
+const SYSTEM_ACTIONS = new Set(["collections.adopt_official_rate"]);
+
 function ActorName({ entry }: { entry: AuditLogEntry }) {
-  return entry.actorName ? (
-    <span className="font-medium">{entry.actorName}</span>
-  ) : (
-    <span className="text-muted-foreground">Instalación</span>
+  if (entry.actorName) return <span className="font-medium">{entry.actorName}</span>;
+  return (
+    <span className="text-muted-foreground">
+      {SYSTEM_ACTIONS.has(entry.action) ? "Sistema" : "Instalación"}
+    </span>
   );
 }
 

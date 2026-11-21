@@ -6,6 +6,10 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
     description: "Crear usuarios, restablecer contraseñas y ajustar permisos.",
   },
   "audit.view": { label: "Registro de cambios", description: "Ver quién hizo cada cambio y cuándo." },
+  "company.manage": {
+    label: "Datos de la empresa",
+    description: "Nombre, NIT, teléfonos y demás datos que salen en boletas, recibos y estados de cuenta.",
+  },
   "customers.view": { label: "Ver clientes", description: "Buscar clientes y ver sus datos." },
   "customers.manage": { label: "Editar clientes", description: "Registrar y editar clientes y zonas." },
   "statements.view": { label: "Estados de cuenta", description: "Ver la deuda de cualquier cliente." },
@@ -22,6 +26,10 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
   "notes.void": {
     label: "Anular boletas",
     description: "Anular boletas confirmadas y fijar desde qué número sigue la numeración.",
+  },
+  "notes.invoice": {
+    label: "Anotar facturas",
+    description: "Anotar el número de factura del SIN en boletas ya confirmadas.",
   },
   "payments.manage": {
     label: "Cobranzas",

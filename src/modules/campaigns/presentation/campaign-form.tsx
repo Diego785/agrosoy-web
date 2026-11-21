@@ -3,19 +3,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useEffect, useTransition } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { DateInput } from "@/shared/presentation/date-input";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { resetOnLeave } from "@/shared/presentation/reset-on-leave";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/shared/presentation/ui/native-select";
 import type { Campaign } from "../application/campaign-ports";
 import { campaignSchema, type CampaignInput } from "../application/campaign-schemas";
-import { SEASONS } from "../domain/campaign";
+import { SEASONS, defaultDueOn } from "../domain/campaign";
 import { createCampaignAction, updateCampaignAction } from "./campaign-actions";
 import { SEASON_LABELS } from "./campaign-labels";
 import { CAMPAIGNS_PATH } from "./campaign-routes";
@@ -30,9 +30,17 @@ export const CampaignForm = resetOnLeave(function CampaignForm({ campaign }: { c
       year: campaign?.year ?? new Date().getFullYear(),
       startsOn: campaign?.startsOn ?? "",
       endsOn: campaign?.endsOn ?? "",
+      dueOn: campaign?.dueOn ?? "",
     } satisfies CampaignInput,
   });
   const { errors } = form.formState;
+  const [season, endsOn] = useWatch({ control: form.control, name: ["season", "endsOn"] });
+
+  // A new campaign's due date follows its season and end until someone writes another (D37).
+  useEffect(() => {
+    if (campaign || form.getFieldState("dueOn").isDirty) return;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endsOn)) form.setValue("dueOn", defaultDueOn(season, endsOn));
+  }, [campaign, form, season, endsOn]);
 
   const submit = form.handleSubmit((values) =>
     startSaving(async () => {
@@ -103,6 +111,25 @@ export const CampaignForm = resetOnLeave(function CampaignForm({ campaign }: { c
             <FieldError errors={[errors.endsOn]} />
           </Field>
         </div>
+        <FieldDescription>Las ventas con fecha en este período son de esta campaña.</FieldDescription>
+      </FieldGroup>
+      <FieldGroup className="gap-4 p-5">
+        <h3 className="text-sm font-semibold">Cobro</h3>
+        <Field data-invalid={!!errors.dueOn} className="sm:max-w-[calc(50%-0.625rem)]">
+          <FieldLabel htmlFor="dueOn">Vence la deuda el</FieldLabel>
+          <Controller
+            control={form.control}
+            name="dueOn"
+            render={({ field }) => (
+              <DateInput id="dueOn" invalid={!!errors.dueOn} {...field} value={field.value ?? ""} />
+            )}
+          />
+          <FieldDescription>
+            Invierno: 30 de noviembre; verano: 31 de mayo del año siguiente. Después, lo que se deba queda
+            como vencido. A un cliente se le puede dar más plazo desde su estado de cuenta.
+          </FieldDescription>
+          <FieldError errors={[errors.dueOn]} />
+        </Field>
       </FieldGroup>
       <div className="flex flex-col gap-3 bg-muted/30 px-5 py-4">
         <FieldError errors={[errors.root]} />

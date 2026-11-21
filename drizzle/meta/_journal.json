@@ -134,6 +134,83 @@
       "when": 1794018541349,
       "tag": "0018_optional_note_exchange_rate",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794406107210,
+      "tag": "0019_campaign_due_dates",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794408238945,
+      "tag": "0020_app_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794408791403,
+      "tag": "0021_customer_locality",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794409638843,
+      "tag": "0022_opening_balances",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794412028087,
+      "tag": "0023_late_interest",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794414647005,
+      "tag": "0024_follow_ups_from_several_deliveries",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794420504026,
+      "tag": "0025_interest_by_due_date",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794885159869,
+      "tag": "0026_late_interest_month",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794885238683,
+      "tag": "0027_late_interest_by_month",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794886960947,
+      "tag": "0028_customer_lists",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1795188936230,
+      "tag": "0029_note_number_free_once_voided",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,7 @@ import { DomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
-import { optionalText } from "@/shared/domain/text";
+import { normalizeForComparison, optionalText } from "@/shared/domain/text";
 import { draftNote, noteLine, type DraftNote } from "../domain/delivery-note";
 import type { NoteListItem, NoteLookups, NoteRepository, NoteView } from "./note-ports";
 import { draftNoteSchema, noteSearchSchema } from "./note-schemas";
@@ -83,12 +83,19 @@ export async function listNotes(
   input: unknown,
 ): Promise<Paged<NoteListItem>> {
   assertCan(actor, "notes.view");
-  const { status, customerId, page, pages } = validateInput(noteSearchSchema, input);
-  const result = await deps.notes.list({ status, customerId, ...pageWindow({ page, pages }) });
+  const { text, status, customerId, from, to, page, pages } = validateInput(noteSearchSchema, input);
+  const result = await deps.notes.list({
+    text: normalizeForComparison(text),
+    status,
+    customerId,
+    from,
+    to,
+    ...pageWindow({ page, pages }),
+  });
   return paged({ page, pages }, result);
 }
 
-/** Validates the form data and the facts it points at; the campaign comes from the date. */
+/** Validates the form data and the facts it points at; the campaign comes from the date (D37). */
 async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNote> {
   const data = validateInput(draftNoteSchema, input);
   const fieldErrors: Record<string, string[]> = {};
@@ -99,8 +106,11 @@ async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNot
   if (data.propertyId && !customer?.propertyIds.includes(data.propertyId)) {
     fail("propertyId", "La propiedad no es de este cliente.");
   }
-  const campaign = await lookups.campaignOn(data.noteDate);
-  if (!campaign) fail("noteDate", "La fecha no cae en ninguna campaña.");
+  // The date's campaign unless the one before it was chosen, while that one is still open.
+  const choices = await lookups.noteCampaigns(data.noteDate);
+  const campaign = data.campaignId ? choices.find((choice) => choice.id === data.campaignId) : choices[0];
+  if (choices.length === 0) fail("noteDate", "La fecha no cae en ninguna campaña.");
+  else if (!campaign) fail("campaignId", "Elige la campaña de la fecha o la anterior.");
   else if (campaign.status === "closed") fail("noteDate", "La campaña de esa fecha ya está cerrada.");
   if (data.technicianId && !(await lookups.isActiveTechnician(data.technicianId))) {
     fail("technicianId", "Elige un técnico de venta activo.");

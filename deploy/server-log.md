@@ -20,6 +20,55 @@ How to operate the deployment itself is in [README.md](README.md).
 
 ---
 
+## 2026-11-12 · Staging moved to `agrosoil.marketia.store`
+
+`market-ia.shop` expired on 2026-11-09 and was not renewed; from 2026-11-10 its DNS pointed to a
+parking page, so `agrosoil.market-ia.shop` stopped reaching this server (the server and the app
+were fine: `/api/health` answered through the IP). The developer gave a new domain,
+`marketia.store`, and staging moved to `agrosoil.marketia.store` by repeating A6 and phase B of
+[README.md](README.md).
+
+### Summary
+
+| Type                       | What                                                                                                                                                                             |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Added                      | DNS A record `agrosoil.marketia.store` → `38.242.145.246` (outside the server, in the domain's registrar)                                                                        |
+| Added to shared components | Let's Encrypt certificate `agrosoil.marketia.store` in the proxy's `certbot/conf`                                                                                                |
+| Changed, shared components | `conf/agrosoy-staging.conf`: HTTP file with the new name, then the HTTPS file with the new name. nginx reloaded after `nginx -t` each time. No restart                           |
+| Changed, our folder        | `.env`: `BETTER_AUTH_URL=https://agrosoil.marketia.store`; app recreated with `docker compose up -d`                                                                             |
+| Left on the server         | Copies in root's home: `agrosoy-staging.conf.market-ia.bak`, `agrosoy-staging.http.conf`, `agrosoy-staging.https.conf`; `.env.antes-marketia` in our folder; the old certificate |
+| Not touched                | Every other project's folder, containers, volumes, images and `.conf` file; the proxy's compose file; firewall; SSH settings                                                     |
+
+### Verification (from outside the server, 2026-11-13)
+
+| Check                                        | Result                                                                        |
+| -------------------------------------------- | ----------------------------------------------------------------------------- |
+| `nslookup agrosoil.marketia.store 1.1.1.1`   | `38.242.145.246`                                                              |
+| `https://agrosoil.marketia.store/`           | `307` to `/login`, with `Strict-Transport-Security`                           |
+| `https://agrosoil.marketia.store/api/health` | `{"status":"ok","database":true}`                                             |
+| `http://agrosoil.marketia.store/`            | `301` to HTTPS                                                                |
+| Certificate served                           | Let's Encrypt, `CN=agrosoil.marketia.store`, valid until 2027-02-10 13:31 UTC |
+| `https://marketia.store/`                    | `200`: the other site on this domain is unaffected                            |
+| `http://38.242.145.246:3100/`                | Connection refused: the port stays closed                                     |
+
+### Pending
+
+1. **Certificate renewal:** renewable from about 2027-01-11, expires 2027-02-10 (README, B5, with
+   `--cert-name agrosoil.marketia.store`).
+2. **Domain renewal:** `marketia.store` was registered on 2026-11-09 for one year. It is renewed in
+   the registrar account, not here; auto-renewal should be on.
+3. **Cleanup, once staging is confirmed working:** the copies listed above, and the old certificate
+   (`docker compose run --rm certbot delete --cert-name agrosoil.market-ia.shop` in the proxy's
+   folder; nothing uses it any more).
+
+### Undo
+
+Copy `~/agrosoy-staging.conf.market-ia.bak` back to `conf/agrosoy-staging.conf`, `nginx -t`,
+reload; then `cp .env.antes-marketia .env && docker compose up -d` in our folder. That only helps
+if `market-ia.shop` is renewed.
+
+---
+
 ## 2026-11-02/03 · Staging moved to its domain, with HTTPS
 
 Phase B of [README.md](README.md), with the domain `agrosoil.market-ia.shop` instead of the one

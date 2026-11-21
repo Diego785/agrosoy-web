@@ -6,9 +6,18 @@ import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-t
 import { withTransaction, type DbExecutor } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
-import type { CampaignInput } from "../application/campaign-schemas";
+import type { CampaignInput, DueDateExtensionInput } from "../application/campaign-schemas";
 import { createCampaign, updateCampaign, type CampaignDeps } from "../application/campaign-use-cases";
-import { drizzleCampaignRepository } from "../infrastructure/drizzle-campaign-repository";
+import {
+  removeDueDateExtension,
+  setDueDateExtension,
+  type DueDateExtensionDeps,
+} from "../application/due-date-extensions";
+import {
+  customerExistence,
+  drizzleCampaignRepository,
+  drizzleDueDateExtensionRepository,
+} from "../infrastructure/drizzle-campaign-repository";
 import { CAMPAIGNS_PATH } from "./campaign-routes";
 
 function deps(executor: DbExecutor): CampaignDeps {
@@ -31,7 +40,38 @@ export async function updateCampaignAction(
   return runAction(async () => {
     const actor = await requireActor();
     await withTransaction((tx) => updateCampaign(deps(tx), actor, campaignId, input));
-    revalidatePath(CAMPAIGNS_PATH);
+    // The due date decides what statements show as overdue.
+    revalidatePath("/", "layout");
+    return null;
+  });
+}
+
+function extensionDeps(executor: DbExecutor): DueDateExtensionDeps {
+  return {
+    campaigns: drizzleCampaignRepository(executor),
+    extensions: drizzleDueDateExtensionRepository(executor),
+    customers: customerExistence(executor),
+    audit: drizzleAuditTrail(executor),
+  };
+}
+
+export async function setDueDateExtensionAction(input: DueDateExtensionInput): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setDueDateExtension(extensionDeps(tx), actor, input));
+    revalidatePath("/", "layout");
+    return null;
+  });
+}
+
+export async function removeDueDateExtensionAction(input: {
+  customerId: string;
+  campaignId: string;
+}): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => removeDueDateExtension(extensionDeps(tx), actor, input));
+    revalidatePath("/", "layout");
     return null;
   });
 }

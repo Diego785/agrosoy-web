@@ -11,7 +11,7 @@ import {
 } from "@react-pdf/renderer";
 import type { ReactElement, ReactNode } from "react";
 import { AGROSOIL_LOGO_PNG } from "./brand/agrosoil-logo-data";
-import { COMPANY } from "./company-profile";
+import type { CompanyProfile } from "@/shared/domain/company-profile";
 import { formatDateTime } from "./format";
 
 // Building blocks for the documents Agrosoil prints or shares (notes, receipts, statements; D12, D26).
@@ -97,16 +97,18 @@ export function PdfPage({
   title,
   subtitle,
   stamp,
+  company,
   children,
 }: {
   title: string;
   subtitle?: string;
   /** Shown in red under the title, e.g. "ANULADA" or "BORRADOR". */
   stamp?: string | null;
+  company: CompanyProfile;
   children: ReactNode;
 }) {
   return (
-    <Document title={title} author={COMPANY.brand} creator={COMPANY.brand}>
+    <Document title={title} author={company.brand} creator={company.brand}>
       <Page size="LETTER" style={pdfStyles.page}>
         <View style={pdfStyles.header}>
           <View style={pdfStyles.brand}>
@@ -114,12 +116,15 @@ export function PdfPage({
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image src={AGROSOIL_LOGO_PNG} style={pdfStyles.logo} />
             <View>
-              <Text style={pdfStyles.companyName}>{COMPANY.brand}</Text>
+              {/* A statement asks for payment, so it names the company by its legal name. */}
+              <Text style={pdfStyles.companyName}>{company.legalName}</Text>
               <Text style={pdfStyles.company}>
-                NIT {COMPANY.taxId} · Telf. {COMPANY.phone}
+                {[company.taxId && `NIT ${company.taxId}`, company.phone && `Telf. ${company.phone}`]
+                  .filter(Boolean)
+                  .join(" · ")}
               </Text>
               <Text style={pdfStyles.company}>
-                {COMPANY.email} · {COMPANY.city} - {COMPANY.country}
+                {[company.email, `${company.city} - ${company.country}`].filter(Boolean).join(" · ")}
               </Text>
             </View>
           </View>
@@ -140,15 +145,17 @@ export function PdfPage({
 export function PdfFormPage({
   title,
   watermark,
+  company,
   children,
 }: {
   title: string;
   /** Printed across the form when it has no value: "ANULADA", "BORRADOR". */
   watermark?: string | null;
+  company: CompanyProfile;
   children: ReactNode;
 }) {
   return (
-    <Document title={title} author={COMPANY.brand} creator={COMPANY.brand}>
+    <Document title={title} author={company.brand} creator={company.brand}>
       <Page size="LETTER" style={pdfStyles.page}>
         {children}
         {watermark && (

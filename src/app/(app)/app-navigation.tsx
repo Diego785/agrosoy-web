@@ -1,4 +1,5 @@
 import {
+  Building2Icon,
   ClipboardListIcon,
   FileSpreadsheetIcon,
   HistoryIcon,
@@ -62,6 +63,12 @@ const NAVIGATION: readonly { title?: string; items: readonly NavigationItem[] }[
     title: "Administración",
     items: [
       { label: "Usuarios", href: "/users", icon: UserCogIcon, permission: "users.manage" },
+      {
+        label: "Datos de la empresa",
+        href: "/settings/company",
+        icon: Building2Icon,
+        permission: "company.manage",
+      },
       { label: "Registro de cambios", href: "/audit", icon: HistoryIcon, permission: "audit.view" },
     ],
   },

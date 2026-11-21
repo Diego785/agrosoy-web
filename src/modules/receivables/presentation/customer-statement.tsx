@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
+import { ExtensionButton } from "@/modules/campaigns/presentation/extension-button";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { paymentPath } from "@/modules/collections/presentation/collection-routes";
 import { notePath } from "@/modules/sales/presentation/note-routes";
 import { Money } from "@/shared/domain/money";
@@ -29,13 +31,29 @@ import {
   SourceNoticeSkeleton,
   StatusBadge,
 } from "./statement-parts";
-import { CREDIT_KINDS, describeLine, documentLabel, withRunningBalance } from "./statement-text";
+import {
+  CREDIT_KINDS,
+  describeLine,
+  documentLabel,
+  invoiceLabel,
+  withRunningBalance,
+} from "./statement-text";
 
-/** One customer's movements with a running balance: deliveries and charges add, payments and returns subtract. */
-export function CustomerStatement({ statement }: { statement: CustomerStatementView }) {
+/**
+ * One customer's movements with a running balance: deliveries and charges add, payments and
+ * returns subtract. `extendFor` lets administration give the customer more time per campaign (D37).
+ */
+export function CustomerStatement({
+  statement,
+  extendFor,
+}: {
+  statement: CustomerStatementView;
+  extendFor?: { customerId: string };
+}) {
   const { totals } = statement;
   const rows = withRunningBalance(statement.lines);
   const hasOther = !Money.parse(totals.other).isZero();
+  const overdue = statement.overdue && Money.parse(statement.overdue).isPositive() ? statement.overdue : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,11 +64,12 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
         <Figure label="Devoluciones" value={formatUsd(totals.returned)} />
         {hasOther && <Figure label="Cargos y otros" value={formatUsd(totals.other)} />}
         <Figure label="Deuda" value={formatUsd(totals.balance)} emphasis={totals.status === "owing"} />
+        {overdue && <Figure label="Vencida" value={formatUsd(overdue)} emphasis />}
       </Figures>
 
       {statement.aging && totals.status === "owing" && <AgingFigures aging={statement.aging} />}
-      {statement.byCampaign && statement.byCampaign.length > 1 && (
-        <CampaignBreakdown campaigns={statement.byCampaign} />
+      {statement.byCampaign && statement.byCampaign.length > 0 && (
+        <CampaignBreakdown campaigns={statement.byCampaign} extendFor={extendFor} />
       )}
 
       {rows.length === 0 ? (
@@ -74,10 +93,13 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
               </TableHeader>
               <TableBody>
                 {rows.map(({ line, balance: running }, index) => (
-                  <TableRow key={index} className={line.isReversal ? "text-muted-foreground" : ""}>
+                  <TableRow key={index}>
                     <TableCell className="tabular-nums">{line.date ? formatDate(line.date) : "—"}</TableCell>
                     <TableCell className="tabular-nums">
                       <DocumentCell line={line} />
+                      {invoiceLabel(line) && (
+                        <span className="block text-xs text-muted-foreground">{invoiceLabel(line)}</span>
+                      )}
                     </TableCell>
                     <TableCell className="whitespace-normal">
                       <Detail line={line} />
@@ -126,7 +148,7 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
           </WideOnly>
           <CardList label="Movimientos">
             {rows.map(({ line, balance: running }, index) => (
-              <CardListItem key={index} className={line.isReversal ? "text-muted-foreground" : ""}>
+              <CardListItem key={index}>
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {line.date ? formatDate(line.date) : "Sin fecha"}
                   {documentLabel(line) && (
@@ -135,9 +157,10 @@ export function CustomerStatement({ statement }: { statement: CustomerStatementV
                       <DocumentCell line={line} />
                     </>
                   )}
+                  {invoiceLabel(line) && ` · ${invoiceLabel(line)}`}
                 </span>
                 <span>
-                  <Detail line={line} />
+                  <Detail line={line} withRate />
                 </span>
                 {line.quantity && line.unitPrice && (
                   <span className="text-xs text-muted-foreground tabular-nums">
@@ -220,8 +243,9 @@ function DocumentCell({ line }: { line: StatementLineView }) {
   return <>{label}</>;
 }
 
-function Detail({ line }: { line: StatementLineView }) {
-  const { text, note } = describeLine(line);
+/** The wide table has a "T/C" column; cards show a payment's rate in its text. */
+function Detail({ line, withRate = false }: { line: StatementLineView; withRate?: boolean }) {
+  const { text, note } = describeLine(line, { withRate });
   return (
     <>
       {text}
@@ -244,7 +268,45 @@ function AgingFigures({ aging }: { aging: AgingView }) {
   );
 }
 
-function CampaignBreakdown({ campaigns }: { campaigns: CampaignTotalsView[] }) {
+/** "30/11/2026", and whether it is the customer's extra time. */
+function DueDate({ campaign }: { campaign: CampaignTotalsView }) {
+  return (
+    <>
+      <span className="tabular-nums">{formatDate(campaign.dueOn)}</span>
+      {campaign.extension && (
+        <span className="block text-xs text-muted-foreground" title={campaign.extension.reason}>
+          Con más plazo
+        </span>
+      )}
+    </>
+  );
+}
+
+function CampaignBreakdown({
+  campaigns,
+  extendFor,
+}: {
+  campaigns: CampaignTotalsView[];
+  extendFor?: { customerId: string };
+}) {
+  const extension = (campaign: CampaignTotalsView) =>
+    extendFor && (
+      <ExtensionButton
+        customerId={extendFor.customerId}
+        campaignId={campaign.campaignId}
+        campaignLabel={campaignLabel(campaign)}
+        campaignDueOn={campaign.campaignDueOn}
+        current={campaign.extension}
+      />
+    );
+  const isOverdue = (campaign: CampaignTotalsView) => Money.parse(campaign.overdue).isPositive();
+  // Part of the balance is interest when payments haven't covered it yet (D45).
+  const interestNote = (campaign: CampaignTotalsView) =>
+    Money.parse(campaign.interestOwed).isPositive() && (
+      <span className="block text-xs font-normal text-muted-foreground">
+        con {formatMoney(campaign.interestOwed)} de interés
+      </span>
+    );
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-sm font-medium">Por campaña</h3>
@@ -258,7 +320,13 @@ function CampaignBreakdown({ campaigns }: { campaigns: CampaignTotalsView[] }) {
               <TableHead className="text-right">Dev.</TableHead>
               <TableHead className="text-right">Otros</TableHead>
               <TableHead className="text-right">Saldo</TableHead>
+              <TableHead>Vence</TableHead>
               <TableHead>Estado</TableHead>
+              {extendFor && (
+                <TableHead className="print:hidden">
+                  <span className="sr-only">Plazo</span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -277,10 +345,19 @@ function CampaignBreakdown({ campaigns }: { campaigns: CampaignTotalsView[] }) {
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
                   {formatMoney(campaign.totals.balance)}
+                  {interestNote(campaign)}
                 </TableCell>
                 <TableCell>
-                  <StatusBadge status={campaign.totals.status} />
+                  <DueDate campaign={campaign} />
                 </TableCell>
+                <TableCell>
+                  {isOverdue(campaign) ? (
+                    <Badge variant="destructive">Vencida</Badge>
+                  ) : (
+                    <StatusBadge status={campaign.totals.status} />
+                  )}
+                </TableCell>
+                {extendFor && <TableCell className="print:hidden">{extension(campaign)}</TableCell>}
               </TableRow>
             ))}
           </TableBody>
@@ -291,7 +368,11 @@ function CampaignBreakdown({ campaigns }: { campaigns: CampaignTotalsView[] }) {
           <CardListItem key={campaign.campaignId}>
             <div className="flex items-center justify-between gap-3">
               <span className="font-medium">{campaignLabel(campaign)}</span>
-              <StatusBadge status={campaign.totals.status} />
+              {isOverdue(campaign) ? (
+                <Badge variant="destructive">Vencida</Badge>
+              ) : (
+                <StatusBadge status={campaign.totals.status} />
+              )}
             </div>
             <CardField label="Entrega">{formatMoney(campaign.totals.delivered)}</CardField>
             <CardField label="Pago">{formatMoney(campaign.totals.paid)}</CardField>
@@ -299,7 +380,12 @@ function CampaignBreakdown({ campaigns }: { campaigns: CampaignTotalsView[] }) {
             <CardField label="Otros">{formatMoney(campaign.totals.other)}</CardField>
             <CardField label="Saldo">
               <span className="font-medium">{formatMoney(campaign.totals.balance)}</span>
+              {interestNote(campaign)}
             </CardField>
+            <CardField label="Vence">
+              <DueDate campaign={campaign} />
+            </CardField>
+            {extendFor && <div className="print:hidden">{extension(campaign)}</div>}
           </CardListItem>
         ))}
       </CardList>

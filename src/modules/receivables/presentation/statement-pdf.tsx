@@ -1,7 +1,10 @@
 import "server-only";
 import { Text, View } from "@react-pdf/renderer";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
+import type { CompanyProfile } from "@/shared/domain/company-profile";
 import { Money } from "@/shared/domain/money";
+import { bankAccountLines, bankAccountsHeading } from "@/shared/presentation/bank-accounts";
+import { loadCompanyProfile } from "@/shared/presentation/company-profile";
 import { formatDate, formatMoney, formatQuantity } from "@/shared/presentation/format";
 import { PdfFields, PdfPage, PdfTable, pdfResponse, pdfStyles } from "@/shared/presentation/pdf";
 import { requireActor } from "@/modules/identity/presentation/current-user";
@@ -10,7 +13,13 @@ import { notFoundAsNull } from "@/shared/presentation/not-found";
 import { customerStatement } from "../application/statement-use-cases";
 import type { CustomerStatementView } from "../application/statement-view";
 import { statementDeps } from "./statement-deps";
-import { CREDIT_KINDS, describeLine, documentLabel, withRunningBalance } from "./statement-text";
+import {
+  CREDIT_KINDS,
+  describeLine,
+  documentLabel,
+  invoiceLabel,
+  withRunningBalance,
+} from "./statement-text";
 
 const STATUS_LABELS = { owing: "Debe", settled: "Cancelado" } as const;
 
@@ -19,19 +28,23 @@ export function StatementPdf({
   statement,
   scope,
   asOf,
+  company,
 }: {
   statement: CustomerStatementView;
   /** "Todas las campañas" or "Campaña Verano 2026". */
   scope: string;
   asOf: string;
+  company: CompanyProfile;
 }) {
   const { totals } = statement;
   const hasOther = !Money.parse(totals.other).isZero();
+  const accounts = bankAccountLines(company.bankAccounts);
 
   return (
     <PdfPage
       title="ESTADO DE CUENTA"
       subtitle={`${statement.customerName} · ${scope} · al ${formatDate(asOf)}`}
+      company={company}
     >
       <PdfFields
         items={[
@@ -40,6 +53,9 @@ export function StatementPdf({
           ["Devoluciones", `US$ ${formatMoney(totals.returned)}`],
           ...(hasOther ? [["Cargos y otros", `US$ ${formatMoney(totals.other)}`] as [string, string]] : []),
           ["Deuda", `US$ ${formatMoney(totals.balance)} · ${STATUS_LABELS[totals.status]}`],
+          ...(statement.overdue && Money.parse(statement.overdue).isPositive()
+            ? [["Vencida", `US$ ${formatMoney(statement.overdue)}`] as [string, string]]
+            : []),
         ]}
       />
 
@@ -54,15 +70,16 @@ export function StatementPdf({
         />
       )}
 
-      {statement.byCampaign && statement.byCampaign.length > 1 && (
+      {statement.byCampaign && statement.byCampaign.length > 0 && (
         <PdfTable
           columns={[
-            { header: "Campaña", width: "25%" },
-            { header: "Entrega", width: "15%", align: "right" },
-            { header: "Pago", width: "15%", align: "right" },
-            { header: "Dev.", width: "15%", align: "right" },
-            { header: "Otros", width: "15%", align: "right" },
-            { header: "Saldo", width: "15%", align: "right" },
+            { header: "Campaña", width: "20%" },
+            { header: "Entrega", width: "13%", align: "right" },
+            { header: "Pago", width: "13%", align: "right" },
+            { header: "Dev.", width: "12%", align: "right" },
+            { header: "Otros", width: "12%", align: "right" },
+            { header: "Saldo", width: "14%", align: "right" },
+            { header: "Vence", width: "16%" },
           ]}
           rows={statement.byCampaign.map((campaign) => [
             campaignLabel(campaign),
@@ -70,7 +87,12 @@ export function StatementPdf({
             formatMoney(campaign.totals.paid),
             formatMoney(campaign.totals.returned),
             formatMoney(campaign.totals.other),
-            formatMoney(campaign.totals.balance),
+            Money.parse(campaign.interestOwed).isPositive()
+              ? `${formatMoney(campaign.totals.balance)} (int. ${formatMoney(campaign.interestOwed)})`
+              : formatMoney(campaign.totals.balance),
+            Money.parse(campaign.overdue).isPositive()
+              ? `${formatDate(campaign.dueOn)} (vencida)`
+              : formatDate(campaign.dueOn),
           ])}
         />
       )}
@@ -89,11 +111,13 @@ export function StatementPdf({
             { header: "Saldo", width: "10%", align: "right" },
           ]}
           rows={withRunningBalance(statement.lines).map(({ line, balance }) => {
-            const { text, note } = describeLine(line);
+            // The PDF has no "T/C" column, so a payment carries its rate in its text (D39).
+            const { text, note } = describeLine(line, { withRate: true });
             const isCredit = CREDIT_KINDS.has(line.kind);
+            const invoice = invoiceLabel(line);
             return [
               line.date ? formatDate(line.date) : "—",
-              documentLabel(line),
+              invoice ? `${documentLabel(line)}\n${invoice}` : documentLabel(line),
               note ? `${text}\n${note}` : text,
               line.quantity ? formatQuantity(line.quantity) : "",
               line.unitPrice ? formatMoney(line.unitPrice) : "",
@@ -114,6 +138,18 @@ export function StatementPdf({
           ]}
         />
       </View>
+
+      {accounts.length > 0 && (
+        <View wrap={false} style={{ borderTopWidth: 0.5, borderColor: "#999", paddingTop: 6 }}>
+          <Text style={[pdfStyles.label, { marginBottom: 3 }]}>Cuentas para pagar</Text>
+          <Text style={{ marginBottom: 2 }}>{bankAccountsHeading(company)}</Text>
+          {accounts.map((line) => (
+            <Text key={line} style={[pdfStyles.bold, { lineHeight: 1.5 }]}>
+              {line}
+            </Text>
+          ))}
+        </View>
+      )}
     </PdfPage>
   );
 }
@@ -129,7 +165,7 @@ export async function statementPdfResponse(customerId: string, campaignId: strin
   const scope = campaign ? `Campaña ${campaignLabel(campaign)}` : "Todas las campañas";
   const today = todayInBolivia();
   return pdfResponse(
-    <StatementPdf statement={statement} scope={scope} asOf={today} />,
+    <StatementPdf statement={statement} scope={scope} asOf={today} company={await loadCompanyProfile()} />,
     `estado-de-cuenta-${fileSlug(statement.customerName)}-${today}.pdf`,
   );
 }

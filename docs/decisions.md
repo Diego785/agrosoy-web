@@ -65,6 +65,12 @@ documents are never edited or deleted; voiding writes the opposite entries with 
 **Why:** the proposal promises that nothing is deleted and every change is traceable. It also
 makes the statement and the kardex reproducible at any past date.
 
+**Amended on 20 November 2026, at administration's request:** the statement a customer gets leaves
+out a voided document together with the reversal that cancels it. The two add up to nothing, and a
+customer reading "Anulación de la boleta" asks what that discount is. The ledger keeps both; the
+voided notes list and the change log show what was voided and why. The technician's statement (D46)
+and aging already left them out.
+
 ## D7 · Stock can never go negative, enforced by the database
 
 **Decision:** a `stock_balances` projection (warehouse × lot) is updated in the same transaction
@@ -235,6 +241,9 @@ payment methods or receipt numbers would put false facts in the ledger; a dated 
 honest and still reconciles to the cent. Undo keeps the ledger append-only (D6) while letting
 administration fix a sheet and convert it again before go-live.
 
+**Amended by D43:** the cut-off date is the day the sheet was last updated, and imported notes take
+their customer's technician.
+
 ## D23 · Product codes belong to presentations and keep Agrosoil's numbers
 
 **Decision:** a code identifies a presentation (a product in one container), as in Agrosoil's
@@ -270,6 +279,10 @@ never deleted.
 **Why:** it answers the open question on interest (they charge it). The list mixes these concepts
 with products because the spreadsheets bill them as rows, but in this system a product takes stock.
 
+**Added on 10 November 2026:** legal fees (`legal_fees`), a debit concept Agrosoil charges when a
+customer falls into arrears (meeting of 7 November). Interest charges can also come from the
+proposals of D38.
+
 ## D25 · Returns and campaign transfers gather lines from several deliveries
 
 **Decision:** a return or campaign-transfer note lists lines from any confirmed delivery notes of
@@ -280,8 +293,21 @@ points to a single original note; its PDF lists the deliveries it draws from.
 **Why:** the paper form has no "original note" field, and one return slip can bring back product
 from several deliveries. With one printed number it has to be one note.
 
-Until this is built, a confirmed note offers no return or transfer: the single-note version remains
-at its address only, so nobody learns a flow that is about to change.
+**Built on 11 November 2026:**
+
+- The form starts from the customer and the campaign the product is from, not from a note: "Boletas"
+  offers "Devolución" and "Traspaso", and a confirmed note offers both already set to its customer
+  and campaign. It lists every line still held, grouped by the note it came on.
+- Product reaches a campaign by delivery or by a campaign transfer into it, and both can come back
+  or move on: a transfer's lines are sources too, at the new price, in the new campaign.
+- The note's header takes what its sources share: the property, the technician (otherwise the
+  customer's current one), and for a return the exchange rate and cash terms when every source
+  has them. A transfer is on credit, at the rate typed.
+- Its page and PDF name the notes it draws from ("De las boletas N.º 001250 y N.º 001263"), and
+  each line says which one it came on when there are several. A note with returns or transfers
+  taken from it is still voided only after them.
+- The single `original_note_id` column is gone (migration 0024); each line's link to its source
+  line is the record of where it came from, also for the follow-ups saved before.
 
 ## D26 · Notes and receipts print like Agrosoil's paper forms
 
@@ -301,8 +327,21 @@ Notes get optional carrier fields and a "handed over by" person: the technician 
 warehouse keeper once inventory exists); on a return the customer's person hands over and
 Agrosoil's receives. Users get an optional position ("Ejecutivo de ventas") and CI to print them.
 The company's name, logo and contact details come from a settings page; the documents carry the
-brand printed on the forms, **Agrosoil Bolivia**. Until that page exists they live in
-`shared/presentation/company-profile.ts`.
+brand printed on the forms, **Agrosoil Bolivia**.
+
+**Built on 11 November 2026:** Administración → Datos de la empresa (permission `company.manage`,
+administration and management by default) edits the brand, legal name, NIT, city, country, phones,
+email, website and Facebook, stored in `app_settings`; every PDF reads them when it is printed, and
+an unreadable field falls back to the details Agrosoil gave us. The logo stays the one bundled with
+the application.
+
+**Amended on 19 November 2026, at administration's request:** the statement's letterhead names the
+company by its legal name (AGROSOILBOLIVIA S.R.L.), since it asks the customer to pay; the brand
+field, now "Nombre comercial", only names the PDF file's author. The same page keeps the bank
+accounts customers pay into (bank, checking or savings, Bs or US$, number; up to 10, in order).
+They print at the foot of the statement, PDF and screen, under one line with the legal name and
+NIT, grouped per bank and kind of account. No account ships with the code: administration types
+them, so the numbers stay out of the public repository.
 
 **Why:** customers and staff already know and sign these forms; the printed copy stays the
 physical record, so it must look like the one they trust.
@@ -326,6 +365,11 @@ its origin. Completes D19: the counter is the same, it only starts elsewhere.
 **Why:** technicians keep using pads in the field, often without signal, while the system issues
 documents. A counter that continued the pad would collide with its next sheet.
 
+**Amended on 20 November 2026, at administration's request:** a number is unique among notes that
+aren't voided (migration 0029). A note voided to be entered again (wrong campaign, wrong customer)
+keeps its number, and the new one is confirmed as a paper note with the same printed number. The
+counter still never gives out a number any note has had, so a printed system number never repeats.
+
 ## D29 · Agrosoil enters its own opening debts; spreadsheets are optional
 
 **Decision:** going live doesn't depend on Agrosoil sharing its sales spreadsheets. Administration
@@ -344,6 +388,16 @@ that Agrosoil can run on its own sheets.
 **Why:** Agrosoil can't share the full sales spreadsheets; the sample it sent shows the format, not
 the data. Entered inside their own system, the data stays theirs. Typing every old note would be
 too much work; only consigned product needs its lines.
+
+**Amended by D43 (10 November 2026):** Agrosoil will fill and import its full spreadsheets after
+all; opening balances and historical notes cover the debt that has no sheet.
+
+**Opening balances as built (11 November 2026):** Cobros → Saldos iniciales, for administration. One
+in force per customer and campaign, closed campaigns included; it can start in the customer's favor;
+a mistake is voided (its entry reversed the day of the void) and entered again. The statement shows
+it as "Saldo inicial" with its note, in the "others" column, and it falls due with its campaign (D37).
+Historical notes are typed as paper notes with their printed number; historical payments as paper
+receipts with theirs (D28).
 
 ## D30 · Travel allowances follow Agrosoil's weekly expense report
 
@@ -466,3 +520,276 @@ the date has to be visible. Whether Agrosoil follows the official rate is still 
 **Replaces** the proposal's "administration records the day's rate" (M6): a day without a record now
 keeps the last rate instead of leaving the field empty. A stale rate is the risk, which is why the
 date it was recorded is on screen.
+
+**Completed by D42:** shown the official rate on 7 November 2026, Agrosoil raised no objection, and
+the rate in force can now follow it each day.
+
+## D37 · A campaign has a due date apart from its sales period
+
+**Decision:** a campaign keeps its sales period (start and end dates, never overlapping), and a
+note, payment or charge still belongs to the campaign its date falls in. Each campaign also gets a
+**due date** for its debt: 30 November for winter and 31 May of the next year for summer by
+default. Administration can move it (Agrosoil sometimes closes summer on 30 April, after telling
+its customers) and can give one customer a later date for one campaign (an **extension**, with a
+reason). A campaign's debt is **overdue** once its due date, or the customer's extension, has
+passed. The statement, the portfolio and the home page show the overdue amount next to the total;
+aging still counts from each document's date. The notification about old debt warns about overdue
+debt instead.
+
+The campaign form proposes the due date from the season and the year its sales end, and a campaign
+created without one takes it. Administration (permission `payments.manage`) gives, changes or takes
+back an extension from the customer's statement, per campaign; each one is in the change log. The
+home page's "Con más de 90 días" became "Deuda vencida".
+
+Sales from the summer start date belong to summer in every zone, even where winter debt is still
+being collected until its due date.
+
+**Why:** Agrosoil's administration (meeting of 7 November 2026): winter contracts are due on 30
+November and summer ones on 31 May; the east zone starts summer while the north is still
+harvesting, and some customers get more time. What differs between zones is when customers pay, not
+when they buy. Stretching winter to 30 November would put the east's summer sales of October and
+November in winter, and overlapping campaigns would make someone pick the campaign on every note.
+Aging by document date showed winter debt as more than 90 days old while it wasn't due yet.
+
+**Amended on 20 November 2026, at administration's request:** a note can belong to the campaign
+right before its date's while that one is open. The form proposes the date's campaign and, when
+there is an open one before it, offers it next to the date; changing it moves the lines still at
+the suggested price to the other campaign's price. The north still delivers winter product when
+the east has started summer, and a winter note had to be voided because its date put it in summer.
+It works the same in every zone: a customer's zone is optional, and the note and its PDF show the
+campaign. Campaigns still don't overlap, payments are still applied as D20 says, returns go back to
+the campaign the product came from, and a transfer still moves it on (D25).
+
+## D38 · Late-payment interest is proposed month by month
+
+**Decision:** administration sets the interest rate (3 %, the same for every customer) and how many
+days after a due date it starts (0 by default; 15, 30 or 60 are the usual choices). Each time a
+campaign's due date plus those days passes, the system proposes one interest charge for each
+customer who still owes in that campaign or an earlier one: the rate times that campaign's unpaid
+balance at that moment, with earlier interest left out of the base. A customer whose extension
+(D37) hasn't passed is left out until it does. Administration reviews the list and confirms all or
+some of the charges; each confirmed one is a D24 interest charge in the campaign owed, with the
+base, the rate and the date in its reason. Interest can still be entered by hand.
+
+**Why:** Agrosoil (7 November 2026) charges a fixed 3 % to everyone and wants it generated by
+itself once the debt passes a term administration chooses. The developer set the frequency: once
+each time a campaign closes, not monthly. Proposing instead of posting avoids charges that would
+have to be voided for customers who were given more time; leaving interest out of the base avoids
+charging interest on interest.
+
+**Added on 11 November 2026, when it was built:**
+
+- Administration also sets **from which day** interest applies, and nothing is proposed until it
+  does. The page suggests the next due date. Spreadsheet debt has its payments dated on the sheet's
+  cut-off (D22, D43), so an older due date would see the sales without the payments and propose
+  interest on debt already paid; Agrosoil's sheets already carry the interest they charged.
+- A proposal is **charged** or **waived**. Either way it is decided and never proposed again, even
+  if the charge is voided later (voiding it is how a charged interest is forgiven). A waived one can
+  still be charged by hand.
+- Each interest is known by the due date that set it off (the debt's own campaign, then each later
+  one), not by its day. Giving an extension, moving a campaign's due date or changing the grace days
+  after deciding moves the day but never charges the same due date twice. Two campaigns due the same
+  day are one occasion.
+- The charge is dated the day administration confirms it, so earlier receipts and statements don't
+  change; its reason keeps the rate, the base and the day it applies ("3 % por mora sobre US$
+  1.200,00 adeudados al 30/11/2026").
+- The base leaves out voided documents altogether, even when the void came after the due date.
+- Proposals are worked out again on every visit. Charging or waiving sends the amounts
+  administration saw, and fails if any of them changed meanwhile (a paper receipt typed in late),
+  so nothing is charged on a figure nobody reviewed.
+- The home page tells administration how many are waiting.
+
+**Changed on 16 November 2026: interest is monthly.** Administration's audios of 12 and 13 November
+answered the question left open on 7 November: interest runs **month by month**, not once per due
+date. Winter closes on 30 November, "todo diciembre, sin interés", and from January the customer is
+charged every month the debt stays unpaid ("enero, febrero, marzo, así hasta llegar a mayo"). The
+rate never grows: it is another 3 % each month, on capital only.
+
+- Debt in a campaign runs from the **first whole month after its due date** (or the customer's
+  extension) **plus the grace days**. The default becomes 30 days: winter debt due on 30 November
+  leaves December free and pays from January; summer debt due on 31 May leaves June free. With 0
+  days, December is charged too.
+- Each month that **ends with capital owed** earns the rate on that capital: a customer who pays in
+  full on 15 May pays January to April. A month is proposed once it has ended, so January's on
+  1 February. The "Desde" day keeps months that start before it out.
+- An interest is known by its **customer, campaign and month** (migrations 0026 and 0027 replace
+  the due-date key of 0025, which never reached staging). One proposal line per month: if nobody
+  reviews the list for three months, three lines show.
+- Months proposed but not decided count as charged for the following ones, so charging several at
+  once gives what charging them one by one would. Charging goes in month order.
+- The charge is **dated on the month's last day**, so a payment made after it covers it first (D45),
+  whenever administration clicks. Its reason names the month: "3 % por mora de enero de 2027 sobre
+  US$ 10.000,00".
+- Assumed in the scope document (version 1.1) for Agrosoil to confirm: the month of payment is not
+  charged if it ends without debt; the rate is the same for everyone, and a case with another rate
+  (the 4.5 % mentioned) is settled apart; June is free in summer as December is in winter.
+
+## D39 · Every payment shows its amount in bolivianos
+
+**Decision:** the statement, on screen and in its PDF, shows each payment in bolivianos with its
+exchange rate: the amount received when it was paid in Bs ("Pago · Transferencia · Bs 10.000,00"),
+and its equivalent (US$ × rate, rounded to the cent) when it was paid in dollars ("Pago · Efectivo ·
+equivale a Bs 4.800,00"). A payment split over two campaigns (D20) shows each campaign's part and
+the whole received ("Bs 6.000,00 de Bs 10.000,00"), so two lines never claim the same bolivianos.
+The PDF and the phone's cards add "· T/C 12,00", which the wide table shows in its own column.
+Balances stay in dollars. A payment received in bolivianos is recorded in Bs, as it can be today, so
+the customer sees exactly what they deposited.
+
+**Why:** Agrosoil (7 November 2026): customers who deposit Bs 10,000 want to see those 10,000 in
+their statement, even though the debt goes down in dollars. The proposal already promises the
+equivalent in bolivianos of every operation; until now only payments recorded in Bs showed it.
+
+## D40 · The invoice number can be added later, to several notes, and shows in the statement
+
+**Decision:** the SIN invoice number stays an optional reference. Administration can write, change
+or clear it on a confirmed or imported delivery note (permission `notes.invoice`, administration
+and management by default), and give the same number to other confirmed deliveries of the same
+customer and campaign at once, for an invoice issued at the end of the campaign. Each note that
+changes gets its own entry in the audit log. The statement shows it under its note's number ("Fact.
+4471"), on screen and in the PDF, and the note's PDF prints it with the observations, since the
+paper form has no box for it. It never changes the debt, the numbering or the ledger.
+
+**Why:** Agrosoil (7 November 2026): some companies ask for the invoice number in their statement,
+and the invoice is often issued after the deliveries, at the end of the campaign. A field only
+drafts could fill would stay empty.
+
+## D41 · Free lines keep their commercial value
+
+**Decision:** a free line (bonus or sample) keeps its unit price as its **commercial value**:
+suggested from the reference price, editable, never charged. The note and its PDF show the value
+beside "bonificación" or "muestra", and the bonuses and samples report (M11) adds it up. The line's
+total and the debt stay at zero. Rows imported with price 0 have no value.
+
+**Why:** Agrosoil (7 November 2026): products given away for a large purchase or for trials carry a
+commercial value. Saving their price as zero lost it.
+
+## D42 · The rate in force can follow the official rate each day
+
+**Decision:** Cobros gets a **"Seguir el oficial"** option, off by default. When it is on, the first
+time the rate in force is needed each day the system takes the official rate from DolarApi and
+records it as the rate in force, with the official rate's date and the system as its author. If the
+service fails or still shows an earlier date, the last rate stays in force and Cobros says so.
+Typing a rate turns the option off; "Usar oficial" still works with it on or off.
+
+The check runs when Cobros, a new payment or a note form opens, once a day at most (the day of the
+last check is stored), and a failure never stops the screen. The option lives in `app_settings`, one
+JSON value per key, which the company profile (D26) and the interest settings (D38) also use. The
+change log shows the adopted rate as done by "Sistema".
+
+**Why:** in the meeting of 7 November 2026 Agrosoil was told the official rate could be kept up to
+date without anyone typing it, and was fine with it. DolarApi republishes the central bank's rate
+and can be a day late (D36), so its date stays on screen and an old value is never shown as today's.
+
+## D43 · Agrosoil's own spreadsheets are the main way in
+
+**Decision:** Agrosoil's administration fills its sales spreadsheets in the current format, one per
+technician and campaign, and imports and converts them itself (D17, D22). Opening balances and
+historical notes (D29) remain for debt that has no sheet. For that, the import:
+
+- refuses to pass sales while any of the sheet's customers or products is missing, instead of
+  leaving rows out: the page lists what is missing and the button waits. With no row left out, the
+  reconciliation no longer works out skipped rows again from today's catalog;
+- reads the usual variants of its headers ("Fecha de venta", "Productos", "Clientes", "Cantidad",
+  "P.U.", "T/C" or "TC", "Obs.", "Nº Boleta") and reports a column it expects but can't find once,
+  at the table's header, instead of on every row;
+- gives each imported note the technician its customer has when the sales are passed (the first
+  step sets it from the sheet);
+- dates the summary's payments and returns on the day the sheet was last updated, which the
+  conversion asks for as its cut-off date, not on the end of the campaign.
+
+**Why:** Agrosoil (7 November 2026) will fill its full sheets with the same template and import them;
+the sample it sent was partial. Its data stays in its own system either way. On 7 November a
+product registered after passing the sales left three rows out on staging, and the list of skipped
+rows emptied while the difference stayed; importing every sheet makes that a real risk. Notes
+without a technician would be missing from the per-technician report (M11).
+
+## D44 · Product taken from a warehouse stays with the technician until a note covers it
+
+**Status:** agreed in principle on 7 November 2026. The details are settled when week 4 is planned,
+after Agrosoil's manager says whether technicians other than the keeper may take product.
+
+**Decision:** whoever physically takes product out of a warehouse records a **withdrawal**
+(warehouse, presentation, lot, quantity, who takes it, date): the technician, or the keeper for
+them. The product leaves the warehouse's stock and is **held by the technician** until delivery
+notes cover it or it is brought back. A delivery note takes stock from what its technician holds,
+or straight from the warehouse when the keeper dispatches it. The keeper sees every withdrawal from
+their warehouse and confirms it; an unconfirmed one stays marked. Each movement keeps its author and
+date.
+
+**Why:** the keeper answers for the warehouse's stock, but also sells and is often away, so other
+technicians load product in a hurry and hand in the notes later (7 November 2026). Agrosoil wants
+the keeper to keep control without going back to paper, and the month's notes to match what left.
+The meeting agreed on a place where the keeper and the technician record product that left without
+a note; a withdrawal is that record, and holding it under the technician also covers product taken
+to Yapacaní and brought back unsold.
+
+## D45 · A payment covers interest before capital
+
+**Decision:** within a campaign, a payment first covers the interest the customer owes at the time
+and only the rest lowers capital. Returns, campaign transfers, opening balances and price
+adjustments only move capital. The split is worked out from the ledger in order, never stored: each
+payment line of the statement says "US$ 30,00 a interés y US$ 70,00 a capital", and each campaign
+says how much of its balance is interest. Monthly interest (D38) is computed on capital alone, so
+paying interest first leaves more capital earning it. Allocation across campaigns (D20) doesn't
+change: interest is part of its campaign's debt.
+
+**Why:** administration asked for it on 13 November 2026 ("esos 100 quisiera que 50 aplique primero
+el interés, y lo que queda a capital"). It is the usual order for partial payments and the one
+Agrosoil applies by hand.
+
+## D46 · Each technician's debt is the debt of their own notes
+
+**Decision:** a customer has one technician who looks after them today, changed whenever needed,
+with the history kept. One technician's portfolio, though, holds the debt of the notes they made,
+not of the customers they look after: a delivery, its returns and its campaign transfer belong to
+the note's technician; charges and opening balances to the customer's technician of today. A
+payment goes to the note administration chose, then to the interest owed (D45), then to the oldest
+note, whoever sold it; what is left over is money in favor under today's technician. The split is
+worked out when the portfolio is read, never stored. Everyone's portfolio is unchanged.
+
+**Why:** customers move between technicians from one campaign to the next, and some buy from two
+in the same campaign (the lists of 16 November 2026 have one customer in two technicians' lists).
+Agrosoil reads each technician's sheet as the debt and the collections of their own sales, and the
+share collected is the base of their commission (proposal, M11 report 1). Following today's
+technician would hand the old debt, and the credit for collecting it, to the new one.
+
+## D47 · A sheet's names are linked to registered customers, and its notes are its technician's
+
+**Decision:** when a sheet brings a customer name that isn't registered, the conversion suggests
+the registered customers it may be a short or misspelled form of (every word of the sheet's name,
+two at least, matches a word of theirs, allowing one letter of difference in words of four letters
+or more) and preselects the best one. Administration confirms or changes each one, or leaves it as
+a new customer. A confirmed name is stored as an **alias** of that customer, so every later sheet
+finds them by it; the customer's page lists their aliases and can forget one linked by mistake. A
+name that is already a customer's own, or another customer's alias, is refused.
+
+When the sales are passed, administration chooses **the sheet's technician** (suggested from the
+sheet's name, "Ing. Favio Añez"): every imported note takes it, instead of the technician the
+customer has that day (D43). Leaving it empty keeps the customer's.
+
+**Why:** the technicians' lists arrived on 16 November 2026 with full names ("ALEXANDER JIMENEZ
+MONTERO") while the sales sheets write short ones ("Alexander Jimenez"): only 3 of the 9 debtors in
+Favio's sheet matched. Matching by exact name would have duplicated each customer and split their
+debt. The proposal's M12 already includes normalizing customers' names. A sheet is one technician's
+sales, and customers change technician between campaigns (D46), so the customer's current
+technician would put an old sale under the wrong person.
+
+## D48 · CI and NIT apart, usual payment terms and localities written one way
+
+**Decision:**
+
+- A customer has a **CI** and a **NIT**, both optional. The NIT is what invoices need; the CI keeps
+  its hyphen and letters ("E-13865035" for a foreigner, "1234567-1A" with a complement). Searches
+  find either; notes and receipts print the NIT, or the CI when there is no NIT. The receiver's CI
+  on a note starts from the customer's CI.
+- A customer may have **usual payment terms**, cash or credit. A new note suggests them when the
+  customer is chosen, and the note can still change them.
+- The **locality** field suggests the localities already written, so "4 Cañadas" and "Cuatro
+  Cañadas" stop being two places.
+- Several customers can be handed to another technician at once (Clientes → Cambiar técnico), each
+  with their history (D46).
+
+**Why:** the technicians' lists (16 November 2026) carry CI and NIT in separate columns, some
+customers with both, foreigners with "E-" CIs; one list marks each customer cash or credit; the
+same locality comes written three ways; and administration said customers move between technicians
+from one campaign to the next.

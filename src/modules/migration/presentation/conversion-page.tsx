@@ -10,7 +10,8 @@ import { normalizeForComparison } from "@/shared/domain/text";
 import { todayInBolivia } from "@/shared/presentation/business-date";
 import { Loading, Skeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import { conversionPreview } from "../application/conversion";
-import { conversionDeps } from "../infrastructure/conversion-adapters";
+import { salesReadiness } from "../application/sales-conversion";
+import { conversionDeps, salesConversionDeps } from "../infrastructure/conversion-adapters";
 import { CustomerConversion, ProductConversion } from "./conversion-forms";
 import { SalesConversion } from "./sales-conversion-forms";
 
@@ -32,6 +33,9 @@ export async function ConversionPage({ params }: { params: Promise<{ batchId: st
   const title = normalizeForComparison(preview.batch.campaignLabel ?? "");
   const suggested = campaigns.find((campaign) => title.includes(normalizeForComparison(campaign.label)));
   const conversion = preview.batch.salesConversion;
+  const readiness = conversion
+    ? { missingCustomers: [], missingProducts: [] }
+    : await salesReadiness(salesConversionDeps(getDb(), actor), actor, batchId);
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
@@ -51,6 +55,8 @@ export async function ConversionPage({ params }: { params: Promise<{ batchId: st
         batchId={preview.batch.id}
         campaigns={campaigns}
         suggestedCampaignId={suggested?.id ?? null}
+        technicians={preview.technicians}
+        suggestedTechnicianId={preview.suggestedTechnicianId}
         defaultCutoffDate={todayInBolivia()}
         conversion={
           conversion
@@ -62,6 +68,7 @@ export async function ConversionPage({ params }: { params: Promise<{ batchId: st
               }
             : null
         }
+        readiness={readiness}
       />
     </div>
   );

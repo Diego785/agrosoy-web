@@ -2,6 +2,7 @@ import type { Season } from "@/modules/campaigns/domain/campaign";
 import type { ExchangeRate } from "@/shared/domain/exchange-rate";
 import type { Money } from "@/shared/domain/money";
 import type { Allocation, CampaignBalance } from "../domain/allocation";
+import type { InterestEntry } from "../domain/interest";
 import type {
   ChargeConcept,
   ChargeDirection,
@@ -62,6 +63,74 @@ export type ChargeView = {
   voided: VoidInfo;
 };
 
+/** Debt carried in at go-live (D29); `usdAmount` is negative when it is in the customer's favor. */
+export type OpeningBalanceView = {
+  id: string;
+  status: DocumentStatus;
+  balanceDate: string;
+  customer: CustomerRef;
+  campaign: CampaignRef;
+  usdAmount: string;
+  note: string | null;
+  voided: VoidInfo;
+};
+
+export type OpeningBalanceRecord = {
+  balanceDate: string;
+  customerId: string;
+  campaignId: string;
+  /** Positive owes, negative is in favor. */
+  amount: Money;
+  note: string | null;
+};
+
+export interface OpeningBalanceRepository {
+  insert(balance: OpeningBalanceRecord, createdBy: string): Promise<{ id: string }>;
+  findById(id: string): Promise<OpeningBalanceView | undefined>;
+  list(query: DocumentQuery): Promise<{ items: OpeningBalanceView[]; total: number }>;
+  /** Whether the customer already has one in force in the campaign. */
+  hasRecorded(customerId: string, campaignId: string): Promise<boolean>;
+  markVoided(id: string, reason: string, actorId: string): Promise<void>;
+}
+
+/** An interest proposal administration decided (D38): charged, with its charge, or waived. */
+export type InterestDecision = {
+  customerId: string;
+  campaignId: string;
+  /** The month whose interest it is, "2027-01"; with the first two, what is never proposed again. */
+  month: string;
+  interestDate: string;
+  base: Money;
+  ratePercent: string;
+  outcome: "charged" | "waived";
+  chargeId: string | null;
+};
+
+/** What late-payment interest reads to work out its proposals, and where decisions are kept. */
+export interface LateInterestRepository {
+  /** Every customer's ledger in the order it happened, interest charges flagged. */
+  entries(): Promise<InterestEntry[]>;
+  campaigns(): Promise<(CampaignRef & { dueOn: string })[]>;
+  extensions(): Promise<{ customerId: string; campaignId: string; dueOn: string }[]>;
+  /** The interest already charged or waived, by `proposalKey`. */
+  decidedKeys(): Promise<Set<string>>;
+  customers(ids: readonly string[]): Promise<CustomerRef[]>;
+  /** DUPLICATE when one of them was decided meanwhile. */
+  record(decisions: readonly InterestDecision[], actorId: string): Promise<void>;
+}
+
+/** A charge the system proposes, as administration reviews it. */
+export type InterestProposalView = {
+  key: string;
+  customer: CustomerRef;
+  campaign: CampaignRef;
+  /** The month whose interest it is, "2027-01". */
+  month: string;
+  interestDate: string;
+  baseUsd: string;
+  usdAmount: string;
+};
+
 /** `text` is already normalized for comparison; it matches the customer's name or the document's number. */
 export type DocumentQuery = {
   text?: string;
@@ -104,6 +173,16 @@ export interface DailyRateRepository {
 }
 
 export type OfficialRate = { rate: string; date: string };
+
+/**
+ * Whether the rate in force follows the official one each day (D42), and the last check: the day it
+ * was made and the official rate's date then, so the service is asked once a day at most.
+ */
+export type OfficialRateSettings = {
+  followOfficial: boolean;
+  checkedOn: string | null;
+  officialDate: string | null;
+};
 
 /** The central bank's rate, from an outside service. Null when it can't be reached. */
 export interface OfficialRateSource {

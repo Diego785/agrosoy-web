@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { cn } from "cn";
+import { noteCampaigns } from "@/modules/campaigns/domain/campaign";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { contentLabel, priceUnitLabel } from "@/modules/catalog/presentation/catalog-labels";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
@@ -21,13 +22,22 @@ import {
   formatRate,
   trimDecimalZeros,
 } from "@/shared/presentation/format";
-import { ChevronRightIcon, ClipboardListIcon, PencilIcon, SproutIcon } from "lucide-react";
+import {
+  ArrowRightLeftIcon,
+  ChevronRightIcon,
+  ClipboardListIcon,
+  PencilIcon,
+  SproutIcon,
+  Undo2Icon,
+} from "lucide-react";
 import { EmptyState } from "@/shared/presentation/empty-state";
 import { PdfActions } from "@/shared/presentation/pdf-actions";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { ListPages, listHref, pageRows } from "@/shared/presentation/list-pages";
 import { FormSectionSkeleton } from "@/shared/presentation/form-section";
 import { LiveFilterForm } from "@/shared/presentation/live-filter-form";
+import { DateFilter } from "@/shared/presentation/date-filter";
+import { SearchInput } from "@/shared/presentation/search-input";
 import {
   CardListSkeleton,
   FiltersSkeleton,
@@ -48,16 +58,22 @@ import {
   TableRow,
 } from "@/shared/presentation/ui/table";
 import type { NoteStatus } from "../application/note-ports";
-import { listFollowUps } from "../application/note-follow-ups";
+import { listFollowUps, sourceLabel } from "../application/note-follow-ups";
+import { invoiceCandidates } from "../application/note-invoices";
 import type { NoteType } from "../domain/follow-up";
+import { commercialValue, type FreeReason } from "../domain/delivery-note";
+import { Quantity } from "@/shared/domain/quantity";
 import { nextNoteNumber } from "../application/note-lifecycle";
 import { getNote, listNotes } from "../application/note-use-cases";
 import { DiscardDraftButton } from "./discard-draft-button";
-import { ConfirmNoteButton, NextNumberForm, VoidNoteButton } from "./note-lifecycle-forms";
+import { NextNumberForm } from "@/shared/presentation/next-number-form";
+import { setNextNoteNumberAction } from "./note-actions";
+import { ConfirmNoteButton, VoidNoteButton } from "./note-lifecycle-forms";
 import { NoteForm } from "./note-form";
+import { NoteInvoiceButton } from "./note-invoice-button";
 import { noteDeps } from "./note-deps";
 import { loadNoteFormOptions } from "./note-form-options";
-import { NOTES_PATH, editNotePath, notePath, notePdfPath } from "./note-routes";
+import { NOTES_PATH, editNotePath, followUpPath, notePath, notePdfPath } from "./note-routes";
 
 const STATUS_LABELS: Record<NoteStatus, string> = {
   draft: "Borrador",
@@ -87,32 +103,50 @@ export async function NotesTable({
   const params = await searchParams;
   const actor = await requireActor();
   const status = first(params.status) ?? "";
+  const text = first(params.q) ?? "";
+  const from = first(params.from) ?? "";
+  const to = first(params.to) ?? "";
   const list = await listNotes(notesDeps(), actor, {
+    text,
     status: status || undefined,
+    from: from || undefined,
+    to: to || undefined,
     page: first(params.page),
     pages: first(params.pages),
   });
   const { items } = list;
   const nextNumber = await nextNoteNumber(notesDeps(), actor);
+  const isFiltered = Boolean(text || status || from || to);
 
   return (
     <div className="flex flex-col gap-4">
       {can(actor, "notes.void") ? (
-        <NextNumberForm nextNumber={nextNumber} />
+        <NextNumberForm nextNumber={nextNumber} noun="boleta" save={setNextNoteNumberAction} />
       ) : (
         <p className="text-sm text-muted-foreground">La próxima boleta será la N.º {nextNumber}.</p>
       )}
       <LiveFilterForm action={NOTES_PATH} className="flex flex-wrap items-center gap-2">
+        <SearchInput
+          name="q"
+          defaultValue={text}
+          placeholder="N.º, cliente, técnico o producto"
+          aria-label="Buscar boleta"
+        />
         <NativeSelect name="status" defaultValue={status} aria-label="Estado">
-          <NativeSelectOption value="">Todas</NativeSelectOption>
+          <NativeSelectOption value="">Sin anuladas</NativeSelectOption>
           <NativeSelectOption value="draft">Borradores</NativeSelectOption>
           <NativeSelectOption value="confirmed">Confirmadas</NativeSelectOption>
           <NativeSelectOption value="voided">Anuladas</NativeSelectOption>
+          <NativeSelectOption value="all">Todas, también anuladas</NativeSelectOption>
         </NativeSelect>
+        <span className="text-sm text-muted-foreground">Del</span>
+        <DateFilter key={`from-${from}`} name="from" label="Desde la fecha" defaultValue={from} />
+        <span className="text-sm text-muted-foreground">al</span>
+        <DateFilter key={`to-${to}`} name="to" label="Hasta la fecha" defaultValue={to} />
       </LiveFilterForm>
       {items.length === 0 ? (
-        <EmptyState icon={<ClipboardListIcon />} title="No hay boletas">
-          {status ? "Prueba con otro estado." : undefined}
+        <EmptyState icon={<ClipboardListIcon />} title={isFiltered ? "Sin resultados" : "No hay boletas"}>
+          {isFiltered ? "Prueba con otro número, nombre, estado o fechas." : undefined}
         </EmptyState>
       ) : (
         <>
@@ -123,6 +157,7 @@ export async function NotesTable({
                   <TableHead className="w-28">N.º</TableHead>
                   <TableHead className="w-28">Fecha</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Técnico</TableHead>
                   <TableHead>Pago</TableHead>
                   <TableHead className="text-right">Total US$</TableHead>
                   <TableHead>Estado</TableHead>
@@ -145,11 +180,13 @@ export async function NotesTable({
                       {note.type !== "delivery" && (
                         <span className="ml-2 text-xs text-muted-foreground">{TYPE_TITLES[note.type]}</span>
                       )}
+                      {note.imported && <span className="ml-2 text-xs text-muted-foreground">planilla</span>}
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
                       {formatDate(note.noteDate)}
                     </TableCell>
                     <TableCell className="font-medium">{note.customerName}</TableCell>
+                    <TableCell className="text-muted-foreground">{note.technicianName ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{paymentLabel(note.paymentTerms)}</TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
                       {formatMoney(note.total)}
@@ -182,7 +219,9 @@ export async function NotesTable({
                 </div>
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {note.type !== "delivery" && `${TYPE_TITLES[note.type]} · `}
+                  {note.imported && "De planilla · "}
                   {formatDate(note.noteDate)} · {paymentLabel(note.paymentTerms)}
+                  {note.technicianName && ` · ${note.technicianName}`}
                 </span>
                 <CardField label="Total US$">
                   <span className="font-medium">{formatMoney(note.total)}</span>
@@ -194,7 +233,7 @@ export async function NotesTable({
       )}
       <ListPages
         list={list}
-        href={(paging) => listHref(NOTES_PATH, { status }, paging)}
+        href={(paging) => listHref(NOTES_PATH, { q: text, status, from, to }, paging)}
         noun={["boleta", "boletas"]}
       />
     </div>
@@ -206,11 +245,12 @@ export function NotesTableSkeleton() {
   return (
     <Loading label="Cargando boletas">
       <Skeleton className="my-0.5 h-4 w-64 max-w-full" />
-      <FiltersSkeleton search={false} selects={1} />
+      <FiltersSkeleton selects={3} />
       <TableSkeleton
         columns={[
           { shape: "short", className: "w-28" },
           { shape: "short", className: "w-28" },
+          { shape: "text" },
           { shape: "text" },
           { shape: "short" },
           { shape: "short", align: "right" },
@@ -236,18 +276,30 @@ async function loadNote(params: Promise<{ id: string }>) {
     note,
     canEdit: note.status === "draft" && can(actor, "notes.manage"),
     canVoid: note.status === "confirmed" && can(actor, "notes.void"),
+    // A confirmed delivery takes its invoice number later, imported ones included (D40).
+    canInvoice: note.type === "delivery" && note.status === "confirmed" && can(actor, "notes.invoice"),
+    // What a delivery or a transfer into a campaign brought can come back or move on (D25).
+    canFollowUp: note.type !== "return" && note.status === "confirmed" && can(actor, "notes.manage"),
     actor,
   };
 }
 
 export async function NoteDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { note, canEdit, canVoid, actor } = await loadNote(params);
+  const { note, canEdit, canVoid, canInvoice, canFollowUp, actor } = await loadNote(params);
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
   const bob = note.exchangeRate ? ExchangeRate.parse(note.exchangeRate).toBob(total) : null;
   const nextNumber = canEdit ? await nextNoteNumber(notesDeps(), actor) : null;
   const isDelivery = note.type === "delivery";
   const followUps =
-    isDelivery && note.status !== "draft" ? await listFollowUps(notesDeps(), actor, note.id) : [];
+    note.type !== "return" && note.status !== "draft" ? await listFollowUps(notesDeps(), actor, note.id) : [];
+  const sourceOf = new Map(note.sources.map((source) => [source.id, sourceLabel(source)]));
+  // With more than one delivery behind it, each line says which one it came on (D25).
+  const lineSource = (line: (typeof note.lines)[number]) =>
+    note.sources.length > 1 && line.sourceNoteId ? sourceOf.get(line.sourceNoteId) : undefined;
+  const followUpTarget = { customerId: note.customer.id, campaignId: note.campaign.id };
+  const invoiceOthers = canInvoice
+    ? (await invoiceCandidates(notesDeps(), actor, note.id)).filter((other) => other.id !== note.id)
+    : [];
 
   const transport = [
     note.carrier.name,
@@ -282,13 +334,18 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               <span aria-hidden>·</span>
               <span>Campaña {campaignLabel(note.campaign)}</span>
             </p>
-            {note.original && (
+            {note.sources[0] && (
               <p className="mt-2 text-sm">
-                Sobre la{" "}
-                <Link href={notePath(note.original.id)} className="font-medium hover:text-primary">
-                  boleta N.º {note.original.number}
-                </Link>{" "}
-                de la campaña {campaignLabel(note.original.campaign)}
+                {note.sources.length === 1 ? "De la boleta " : "De las boletas "}
+                {note.sources.map((source, index) => (
+                  <Fragment key={source.id}>
+                    {index > 0 && (index === note.sources.length - 1 ? " y " : ", ")}
+                    <Link href={notePath(source.id)} className="font-medium hover:text-primary">
+                      {sourceLabel(source)}
+                    </Link>
+                  </Fragment>
+                ))}{" "}
+                de la campaña {campaignLabel(note.sources[0].campaign)}
               </p>
             )}
           </div>
@@ -313,6 +370,24 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               href={notePdfPath(note.id)}
               fileName={note.number ? `boleta-${note.number}.pdf` : "boleta-borrador.pdf"}
             />
+            {canFollowUp && (
+              <>
+                <Link
+                  href={followUpPath("return", followUpTarget)}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  <Undo2Icon aria-hidden />
+                  Devolución
+                </Link>
+                <Link
+                  href={followUpPath("transfer", followUpTarget)}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  <ArrowRightLeftIcon aria-hidden />
+                  Traspaso
+                </Link>
+              </>
+            )}
             {canVoid && note.number !== null && <VoidNoteButton noteId={note.id} number={note.number} />}
           </div>
         </header>
@@ -351,7 +426,24 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                 "Se define al cobrar"
               )}
             </Item>
-            {isDelivery && <Item label="Factura SIN">{note.taxInvoiceNumber}</Item>}
+            {isDelivery && (
+              <Item label="Factura SIN">
+                {canInvoice ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {note.taxInvoiceNumber ?? <span className="text-muted-foreground">—</span>}
+                    <span className="print:hidden">
+                      <NoteInvoiceButton
+                        noteId={note.id}
+                        current={note.taxInvoiceNumber}
+                        others={invoiceOthers}
+                      />
+                    </span>
+                  </span>
+                ) : (
+                  note.taxInvoiceNumber
+                )}
+              </Item>
+            )}
             {note.confirmed && (
               <Item label="Confirmada">
                 {formatDateTime(note.confirmed.at)}
@@ -387,11 +479,16 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                         {FREE_LABELS[line.freeOfCharge]}
                       </Badge>
                     )}
+                    {lineSource(line) && (
+                      <span className="block text-xs text-muted-foreground">
+                        De la boleta {lineSource(line)}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{formatQuantity(line.quantity)}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {line.freeOfCharge ? (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">{freeLineValue(line) ?? "—"}</span>
                     ) : (
                       <>
                         {formatMoney(line.unitPrice)}{" "}
@@ -421,7 +518,10 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               </span>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {formatQuantity(line.quantity)}
-                {line.freeOfCharge ? "" : ` × ${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
+                {line.freeOfCharge
+                  ? freeLineValue(line) && ` · ${freeLineValue(line)}`
+                  : ` × ${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
+                {lineSource(line) && ` · de la boleta ${lineSource(line)}`}
               </span>
               <CardField label="Total US$">
                 <span className="font-medium">{formatMoney(line.total)}</span>
@@ -589,6 +689,8 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
   if (!canEdit) notFound();
   const actor = await requireActor();
   const options = await loadNoteFormOptions(actor);
+  // Empty stands for the date's own campaign; anything else is the earlier one chosen (D37).
+  const dateCampaign = noteCampaigns(options.allCampaigns, note.noteDate)[0];
   return (
     <NoteForm
       options={options}
@@ -597,6 +699,7 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
         id: note.id,
         values: {
           noteDate: note.noteDate,
+          campaignId: note.campaign.id === dateCampaign?.id ? "" : note.campaign.id,
           customerId: note.customer.id,
           propertyId: note.property?.id ?? "",
           technicianId: note.technician?.id ?? "",
@@ -615,7 +718,8 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
           lines: note.lines.map((line) => ({
             presentationId: line.presentationId,
             quantity: trimDecimalZeros(line.quantity),
-            unitPrice: line.freeOfCharge ? "" : line.unitPrice,
+            // A free line's price is its commercial value (D41); an empty one stays empty.
+            unitPrice: line.freeOfCharge && Number(line.unitPrice) === 0 ? "" : line.unitPrice,
             freeOfCharge: line.freeOfCharge ?? "",
           })),
         },
@@ -712,6 +816,16 @@ function ItemSkeleton({ className }: { className?: string }) {
       <Skeleton className="my-0.5 h-4 w-32" />
     </div>
   );
+}
+
+/** "Valor comercial US$ 125,00" for a free line that carries one (D41). */
+function freeLineValue(line: { quantity: string; unitPrice: string; freeOfCharge: FreeReason | null }) {
+  const value = commercialValue({
+    quantity: Quantity.parse(line.quantity),
+    unitPrice: Money.parse(line.unitPrice),
+    freeOfCharge: line.freeOfCharge,
+  });
+  return value ? `Valor comercial US$ ${formatMoney(value.toDecimalString())}` : null;
 }
 
 function Item({ label, className, children }: { label: string; className?: string; children: ReactNode }) {

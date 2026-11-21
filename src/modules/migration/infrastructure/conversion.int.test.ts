@@ -73,13 +73,48 @@ describe("converting an imported sheet", () => {
     const batchId = await importedBatch();
     const deps = conversionDeps(testDb, admin);
 
-    expect(await convertCustomers(deps, admin, { batchId, technicianId: favioId })).toEqual({ created: 3 });
-    expect(await convertCustomers(deps, admin, { batchId, technicianId: favioId })).toEqual({ created: 0 });
+    expect(await convertCustomers(deps, admin, { batchId, technicianId: favioId })).toEqual({
+      created: 3,
+      linked: 0,
+    });
+    expect(await convertCustomers(deps, admin, { batchId, technicianId: favioId })).toEqual({
+      created: 0,
+      linked: 0,
+    });
     const { items } = await searchCustomers(customerDeps(), admin, { text: "" });
     expect(items.map((c) => [c.name, c.technicianName])).toEqual([
       ["Alexander Jimenez", "Favio Añez"],
       ["Andres Kaoru Matsudo", "Favio Añez"],
       ["Rodolfo Romero", "Favio Añez"],
+    ]);
+  });
+
+  it("links a name written another way to the registered customer, and finds it by it next time (D47)", async () => {
+    const { id: montero } = await registerCustomer(customerDeps(), admin, {
+      name: "ALEXANDER JIMENEZ  MONTERO",
+      exchangeRateKind: "daily",
+    });
+    const batchId = await importedBatch();
+    const deps = conversionDeps(testDb, admin);
+    const before = await conversionPreview(deps, admin, batchId);
+    const alexander = before.customers.find((customer) => customer.name === "Alexander Jimenez")!;
+    expect(alexander.existing).toBeNull();
+    expect(alexander.suggestions.map((customer) => customer.id)).toEqual([montero]);
+
+    expect(
+      await convertCustomers(deps, admin, {
+        batchId,
+        technicianId: "",
+        links: [{ key: alexander.key, customerId: montero }],
+      }),
+    ).toEqual({ created: 2, linked: 1 });
+    const after = await conversionPreview(deps, admin, batchId);
+    expect(after.customers.find((customer) => customer.key === alexander.key)?.existing?.id).toBe(montero);
+    const { items } = await searchCustomers(customerDeps(), admin, { text: "" });
+    expect(items.map((customer) => customer.name)).toEqual([
+      "ALEXANDER JIMENEZ MONTERO",
+      "Andres Kaoru Matsudo",
+      "Rodolfo Romero",
     ]);
   });
 

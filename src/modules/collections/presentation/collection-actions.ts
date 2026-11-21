@@ -8,6 +8,10 @@ import { runAction } from "@/shared/presentation/run-action";
 import type {
   ChargeInput,
   DailyRateInput,
+  InterestDecisionInput,
+  InterestSettingsInput,
+  NextReceiptNumberInput,
+  OpeningBalanceInput,
   PaymentInput,
   VoidReasonInput,
 } from "../application/collection-schemas";
@@ -15,11 +19,15 @@ import {
   recordCharge,
   recordPayment,
   setDailyRate,
+  setNextReceiptNumber,
   voidCharge,
   voidPayment,
 } from "../application/collection-use-cases";
-import { collectionDeps } from "./collection-deps";
-import { PAYMENTS_PATH } from "./collection-routes";
+import { chargeInterest, updateInterestSettings, waiveInterest } from "../application/late-interest";
+import { setFollowOfficialRate } from "../application/official-rate";
+import { recordOpeningBalance, voidOpeningBalance } from "../application/opening-balances";
+import { collectionDeps, lateInterestDeps } from "./collection-deps";
+import { INTEREST_PATH, PAYMENTS_PATH } from "./collection-routes";
 
 // Payments and charges change balances shown on notes, customers and statements.
 const refresh = () => revalidatePath("/", "layout");
@@ -68,11 +76,88 @@ export async function voidChargeAction(
   });
 }
 
-export async function setDailyRateAction(input: DailyRateInput): Promise<ActionResult<null>> {
+export async function recordOpeningBalanceAction(
+  input: OpeningBalanceInput,
+): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
     const actor = await requireActor();
-    await withTransaction((tx) => setDailyRate(collectionDeps(tx), actor, input));
+    const recorded = await withTransaction((tx) => recordOpeningBalance(collectionDeps(tx), actor, input));
+    refresh();
+    return recorded;
+  });
+}
+
+export async function voidOpeningBalanceAction(
+  openingBalanceId: string,
+  input: VoidReasonInput,
+): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => voidOpeningBalance(collectionDeps(tx), actor, openingBalanceId, input));
+    refresh();
+    return null;
+  });
+}
+
+export async function setNextReceiptNumberAction(input: NextReceiptNumberInput): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setNextReceiptNumber(collectionDeps(tx), actor, input));
+    revalidatePath(PAYMENTS_PATH, "layout");
+    return null;
+  });
+}
+
+export async function setDailyRateAction(
+  input: DailyRateInput,
+): Promise<ActionResult<{ stoppedFollowing: boolean }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => setDailyRate(collectionDeps(tx), actor, input));
+    revalidatePath(PAYMENTS_PATH);
+    return result;
+  });
+}
+
+export async function setFollowOfficialRateAction(input: { enabled: boolean }): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => setFollowOfficialRate(collectionDeps(tx), actor, input));
     revalidatePath(PAYMENTS_PATH);
     return null;
+  });
+}
+
+export async function updateInterestSettingsAction(
+  input: InterestSettingsInput,
+): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => updateInterestSettings(lateInterestDeps(tx), actor, input));
+    revalidatePath(INTEREST_PATH);
+    return null;
+  });
+}
+
+export async function chargeInterestAction(
+  input: InterestDecisionInput,
+): Promise<ActionResult<{ charged: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => chargeInterest(lateInterestDeps(tx), actor, input));
+    refresh();
+    return result;
+  });
+}
+
+export async function waiveInterestAction(
+  input: InterestDecisionInput,
+): Promise<ActionResult<{ waived: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => waiveInterest(lateInterestDeps(tx), actor, input));
+    revalidatePath(INTEREST_PATH);
+    revalidatePath("/");
+    return result;
   });
 }

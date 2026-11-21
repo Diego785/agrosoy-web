@@ -45,7 +45,11 @@ export function noteLine(input: {
   if (!input.quantity.isPositive()) {
     throw new DomainError("INVALID_QUANTITY", { reason: "not_positive" });
   }
-  if (input.freeOfCharge) return { ...input, unitPrice: Money.zero() };
+  // A free line keeps its unit price as its commercial value (D41); `lineTotal` never charges it.
+  if (input.freeOfCharge) {
+    if (input.unitPrice.isNegative()) throw new DomainError("INVALID_AMOUNT", { reason: "negative" });
+    return input;
+  }
   // A zero price without a reason is how the spreadsheet hid gifts ("SV"); the note must say why.
   if (!input.unitPrice.isPositive()) throw new DomainError("INVALID_AMOUNT", { reason: "price_required" });
   return input;
@@ -53,6 +57,14 @@ export function noteLine(input: {
 
 export function lineTotal(line: Pick<NoteLine, "quantity" | "unitPrice" | "freeOfCharge">): Money {
   return line.freeOfCharge ? Money.zero() : line.quantity.times(line.unitPrice);
+}
+
+/** What a free line would have cost: quantity × its unit price; null for a charged or valueless line (D41). */
+export function commercialValue(
+  line: Pick<NoteLine, "quantity" | "unitPrice" | "freeOfCharge">,
+): Money | null {
+  if (!line.freeOfCharge || !line.unitPrice.isPositive()) return null;
+  return line.quantity.times(line.unitPrice);
 }
 
 export function noteTotal(lines: readonly NoteLine[]): Money {
@@ -76,6 +88,8 @@ export type ImportedNote = {
   noteDate: string;
   customerId: string;
   campaignId: string;
+  /** The customer's technician when the sales are passed: the sheet is one technician's (D43). */
+  technicianId: string | null;
   /** Null where the sheet left it blank: it is agreed when the customer pays (D35). */
   exchangeRate: ExchangeRate | null;
   receiverName: string;

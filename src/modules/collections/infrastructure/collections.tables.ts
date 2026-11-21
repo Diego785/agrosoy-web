@@ -1,10 +1,23 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  date,
+  index,
+  integer,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
 import { deliveryNotes } from "@/modules/sales/infrastructure/notes.tables";
 import { createdAt, id, timestamps } from "@/shared/infrastructure/db/columns";
 import { CHARGE_CONCEPTS, CHARGE_DIRECTIONS, CURRENCIES, PAYMENT_METHODS } from "../domain/payment";
+
+export const LATE_INTEREST_KEY = "late_interest_decisions_month_key";
 
 const voidColumns = {
   status: text({ enum: ["recorded", "voided"] })
@@ -100,6 +113,72 @@ export const charges = pgTable(
     index().on(table.customerId),
     check("charges_amount_positive", sql`${table.usdAmount} > 0`),
     check("charges_voided_have_reason", sql`${table.status} <> 'voided' or ${table.voidReason} is not null`),
+  ],
+);
+
+/**
+ * Debt carried in at go-live for a customer and campaign, without its detail (D29). The amount is
+ * signed: positive owes, negative is in the customer's favor.
+ */
+export const openingBalances = pgTable(
+  "opening_balances",
+  {
+    id: id(),
+    balanceDate: date({ mode: "string" }).notNull(),
+    customerId: uuid()
+      .notNull()
+      .references(() => customers.id),
+    campaignId: uuid()
+      .notNull()
+      .references(() => campaigns.id),
+    usdAmount: numeric({ precision: 14, scale: 2 }).notNull(),
+    note: text(),
+    ...voidColumns,
+    createdBy: text().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index().on(table.customerId),
+    check("opening_balances_amount_not_zero", sql`${table.usdAmount} <> 0`),
+    check(
+      "opening_balances_voided_have_reason",
+      sql`${table.status} <> 'voided' or ${table.voidReason} is not null`,
+    ),
+  ],
+);
+
+/**
+ * Each late-payment interest proposal administration decided (D38): charged, with the charge it
+ * became, or waived. It is never proposed again, even if its charge is voided later or its day
+ * moves: it is known by the due date that set it off, not by the day.
+ */
+export const lateInterestDecisions = pgTable(
+  "late_interest_decisions",
+  {
+    id: id(),
+    customerId: uuid()
+      .notNull()
+      .references(() => customers.id),
+    campaignId: uuid()
+      .notNull()
+      .references(() => campaigns.id),
+    /** The month whose interest it is, "2027-01" (D38). */
+    month: text().notNull(),
+    /** The month's last day, the day its base was measured and its charge is dated. */
+    interestDate: date({ mode: "string" }).notNull(),
+    baseUsd: numeric({ precision: 14, scale: 2 }).notNull(),
+    ratePercent: numeric({ precision: 5, scale: 2 }).notNull(),
+    outcome: text({ enum: ["charged", "waived"] }).notNull(),
+    chargeId: uuid().references(() => charges.id),
+    decidedBy: text().notNull(),
+    decidedAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex(LATE_INTEREST_KEY).on(table.customerId, table.campaignId, table.month),
+    check(
+      "late_interest_decisions_charged_have_charge",
+      sql`${table.outcome} <> 'charged' or ${table.chargeId} is not null`,
+    ),
   ],
 );
 

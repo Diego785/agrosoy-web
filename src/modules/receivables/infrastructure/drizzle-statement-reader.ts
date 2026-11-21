@@ -1,7 +1,12 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
+import { campaigns, dueDateExtensions } from "@/modules/campaigns/infrastructure/campaigns.table";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
-import { charges, payments } from "@/modules/collections/infrastructure/collections.tables";
+import {
+  charges,
+  openingBalances,
+  paymentAllocations,
+  payments,
+} from "@/modules/collections/infrastructure/collections.tables";
 import { customers } from "@/modules/customers/infrastructure/customers.tables";
 import { deliveryNoteLines, deliveryNotes } from "@/modules/sales/infrastructure/notes.tables";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
@@ -11,7 +16,7 @@ import { ledgerEntries } from "./ledger.tables";
 /** Statements read across modules (domain model: read models may join), never write. */
 export function drizzleStatementReader(executor: DbExecutor): StatementReader {
   return {
-    async entries({ customerId, campaignId, technicianId }) {
+    async entries({ customerId, campaignId }) {
       const rows = await executor
         .select({ entry: ledgerEntries })
         .from(ledgerEntries)
@@ -21,7 +26,6 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
           and(
             customerId ? eq(ledgerEntries.customerId, customerId) : undefined,
             campaignId ? eq(ledgerEntries.campaignId, campaignId) : undefined,
-            technicianId ? eq(customers.technicianId, technicianId) : undefined,
           ),
         )
         // Entries written together (a payment's allocations, a cash note and its payment) share
@@ -48,9 +52,52 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
     async customers(ids) {
       if (ids.length === 0) return [];
       return executor
-        .select({ id: customers.id, code: customers.code, name: customers.name })
+        .select({
+          id: customers.id,
+          code: customers.code,
+          name: customers.name,
+          technicianId: customers.technicianId,
+        })
         .from(customers)
         .where(inArray(customers.id, [...ids]));
+    },
+
+    async shareDetails({ noteIds, paymentIds, chargeIds }) {
+      const [notes, allocations, interest] = await Promise.all([
+        noteIds.length === 0
+          ? []
+          : executor
+              .select({ id: deliveryNotes.id, technicianId: deliveryNotes.technicianId })
+              .from(deliveryNotes)
+              .where(inArray(deliveryNotes.id, [...noteIds])),
+        paymentIds.length === 0
+          ? []
+          : executor
+              .select({
+                paymentId: paymentAllocations.paymentId,
+                campaignId: paymentAllocations.campaignId,
+                noteId: paymentAllocations.noteId,
+              })
+              .from(paymentAllocations)
+              .where(inArray(paymentAllocations.paymentId, [...paymentIds])),
+        chargeIds.length === 0
+          ? []
+          : executor
+              .select({ id: charges.id })
+              .from(charges)
+              .where(and(inArray(charges.id, [...chargeIds]), eq(charges.concept, "interest"))),
+      ]);
+      return {
+        noteTechnicians: new Map(notes.map((note) => [note.id, note.technicianId])),
+        paidNotes: new Map(
+          allocations.flatMap((allocation) =>
+            allocation.noteId
+              ? [[`${allocation.paymentId}|${allocation.campaignId}`, allocation.noteId]]
+              : [],
+          ),
+        ),
+        interestCharges: new Set(interest.map((charge) => charge.id)),
+      };
     },
 
     async campaigns() {
@@ -60,9 +107,23 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
           season: campaigns.season,
           year: campaigns.year,
           startsOn: campaigns.startsOn,
+          dueOn: campaigns.dueOn,
         })
         .from(campaigns)
         .orderBy(asc(campaigns.startsOn));
+    },
+
+    async extensions(customerIds) {
+      if (customerIds.length === 0) return [];
+      return executor
+        .select({
+          customerId: dueDateExtensions.customerId,
+          campaignId: dueDateExtensions.campaignId,
+          dueOn: dueDateExtensions.dueOn,
+          reason: dueDateExtensions.reason,
+        })
+        .from(dueDateExtensions)
+        .where(inArray(dueDateExtensions.customerId, [...customerIds]));
     },
 
     async notes(ids) {
@@ -76,6 +137,7 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
             number: sql<number | null>`coalesce(${deliveryNotes.number}, ${deliveryNotes.sheetNumber})`,
             exchangeRate: deliveryNotes.exchangeRate,
             observations: deliveryNotes.observations,
+            taxInvoiceNumber: deliveryNotes.taxInvoiceNumber,
           })
           .from(deliveryNotes)
           .where(inArray(deliveryNotes.id, [...ids])),
@@ -114,12 +176,22 @@ export function drizzleStatementReader(executor: DbExecutor): StatementReader {
           method: payments.method,
           currency: payments.currency,
           amount: payments.amount,
+          usdAmount: payments.usdAmount,
           exchangeRate: payments.exchangeRate,
           reference: payments.reference,
         })
         .from(payments)
         .where(inArray(payments.id, [...ids]));
       return new Map(rows.map(({ id, ...payment }) => [id, payment]));
+    },
+
+    async openingBalances(ids) {
+      if (ids.length === 0) return new Map();
+      const rows = await executor
+        .select({ id: openingBalances.id, note: openingBalances.note })
+        .from(openingBalances)
+        .where(inArray(openingBalances.id, [...ids]));
+      return new Map(rows.map(({ id, note }) => [id, { note }]));
     },
 
     async charges(ids) {

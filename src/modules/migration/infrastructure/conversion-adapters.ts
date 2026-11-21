@@ -1,4 +1,4 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
 import {
   addPresentation,
@@ -12,8 +12,8 @@ import {
   drizzleProductRepository,
 } from "@/modules/catalog/infrastructure/drizzle-catalog-repositories";
 import { presentations, products } from "@/modules/catalog/infrastructure/catalog.tables";
-import { registerCustomer } from "@/modules/customers/application/customer-use-cases";
-import { customers } from "@/modules/customers/infrastructure/customers.tables";
+import { linkCustomerName, registerCustomer } from "@/modules/customers/application/customer-use-cases";
+import { customerAliases, customers } from "@/modules/customers/infrastructure/customers.tables";
 import { drizzleCustomerRepository } from "@/modules/customers/infrastructure/drizzle-customer-repository";
 import { drizzleZoneRepository } from "@/modules/customers/infrastructure/drizzle-zone-repository";
 import { identityTechnicianLookup } from "@/modules/customers/infrastructure/identity-technician-lookup";
@@ -49,16 +49,41 @@ export function conversionDeps(executor: DbExecutor, actor: Actor): ConversionDe
   const customerRegistry: CustomerRegistry = {
     async findByKeys(keys) {
       if (keys.length === 0) return new Map();
-      const rows = await executor
+      const fields = {
+        id: customers.id,
+        code: customers.code,
+        name: customers.name,
+        technicianId: customers.technicianId,
+      };
+      const [own, linked] = await Promise.all([
+        executor
+          .select({ ...fields, key: customers.comparisonName })
+          .from(customers)
+          .where(inArray(customers.comparisonName, keys)),
+        executor
+          .select({ ...fields, key: customerAliases.comparisonName })
+          .from(customerAliases)
+          .innerJoin(customers, eq(customers.id, customerAliases.customerId))
+          .where(inArray(customerAliases.comparisonName, keys)),
+      ]);
+      return new Map([...linked, ...own].map(({ key, ...customer }) => [key, customer]));
+    },
+    candidates() {
+      return executor
         .select({
           id: customers.id,
           code: customers.code,
           name: customers.name,
-          key: customers.comparisonName,
+          technicianId: customers.technicianId,
         })
         .from(customers)
-        .where(inArray(customers.comparisonName, keys));
-      return new Map(rows.map(({ key, ...customer }) => [key, customer]));
+        .where(eq(customers.isActive, true))
+        .orderBy(asc(customers.comparisonName));
+    },
+    async link({ customerId, name }) {
+      await linkCustomerName({ customers: drizzleCustomerRepository(executor), audit }, actor, customerId, {
+        name,
+      });
     },
     register({ name, technicianId }) {
       return registerCustomer(
@@ -188,6 +213,7 @@ export function salesConversionDeps(executor: DbExecutor, actor: Actor): SalesCo
     imports: base.imports,
     customers: base.customers,
     products: base.products,
+    technicians: base.technicians,
     campaigns: {
       async find(id) {
         const [row] = await executor

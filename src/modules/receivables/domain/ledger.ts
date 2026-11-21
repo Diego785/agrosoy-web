@@ -12,7 +12,13 @@ export const LEDGER_KINDS = [
 ] as const;
 export type LedgerKind = (typeof LEDGER_KINDS)[number];
 
-export const LEDGER_SOURCE_TYPES = ["delivery_note", "payment", "charge", "import_batch"] as const;
+export const LEDGER_SOURCE_TYPES = [
+  "delivery_note",
+  "payment",
+  "charge",
+  "import_batch",
+  "opening_balance",
+] as const;
 export type LedgerSource = { type: (typeof LEDGER_SOURCE_TYPES)[number]; id: string };
 
 /** Kinds that lower the debt. */

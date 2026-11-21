@@ -1,9 +1,16 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { actorWithRole } from "@test/actors";
 import { draftInput, noteDeps, seedNoteFixtures } from "@test/note-fixtures";
+import { createCampaign } from "@/modules/campaigns/application/campaign-use-cases";
+import { campaigns } from "@/modules/campaigns/infrastructure/campaigns.table";
+import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
+import { ledgerEntries } from "@/modules/receivables/infrastructure/ledger.tables";
+import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import { newUserAccount } from "@/modules/identity/domain/user-account";
 import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
 import { testDb } from "@test/test-database";
+import { confirmNote, voidNote } from "../application/note-lifecycle";
 import {
   createDraftNote,
   discardDraftNote,
@@ -116,6 +123,47 @@ describe("draft delivery notes", () => {
     });
   });
 
+  it("takes the campaign before the date's when chosen, while that one is open (D37)", async () => {
+    const ids = await seedNoteFixtures();
+    const campaignDeps = { campaigns: drizzleCampaignRepository(testDb), audit: drizzleAuditTrail(testDb) };
+    const winter = { season: "winter", year: 2026, startsOn: "2026-04-01", endsOn: "2026-09-30" };
+    const { id: winterId } = await createCampaign(campaignDeps, admin, winter);
+    const { id: olderId } = await createCampaign(campaignDeps, admin, {
+      ...winter,
+      year: 2025,
+      startsOn: "2025-04-01",
+      endsOn: "2025-09-30",
+    });
+
+    // The north still delivers winter product on 26 October, in summer's sales period.
+    const { id } = await createDraftNote(deps(), admin, draftInput(ids, { campaignId: winterId }));
+    expect(await getNote(deps(), admin, id)).toMatchObject({
+      noteDate: "2026-10-26",
+      campaign: { season: "winter", year: 2026 },
+    });
+    const later = (await createDraftNote(deps(), admin, draftInput(ids, { campaignId: winterId }))).id;
+    await confirmNote(deps(), admin, id, { paperNumber: "" });
+    expect(await testDb.select({ campaignId: ledgerEntries.campaignId }).from(ledgerEntries)).toEqual([
+      { campaignId: winterId },
+    ]);
+
+    // Only the campaign right before the date's, and only while it is open.
+    await expect(
+      createDraftNote(deps(), admin, draftInput(ids, { campaignId: olderId })),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { campaignId: [expect.any(String)] } },
+    });
+    await testDb.update(campaigns).set({ status: "closed" }).where(eq(campaigns.id, winterId));
+    await expect(
+      createDraftNote(deps(), admin, draftInput(ids, { campaignId: winterId })),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    await expect(confirmNote(deps(), admin, later, { paperNumber: "" })).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { noteDate: [expect.any(String)] } },
+    });
+  });
+
   it("records who hands the product over and the carrier", async () => {
     const ids = await seedNoteFixtures();
     const users = drizzleUserDirectory(testDb);
@@ -154,6 +202,66 @@ describe("draft delivery notes", () => {
       code: "VALIDATION_FAILED",
       details: { fieldErrors: { handedOverById: [expect.any(String)] } },
     });
+  });
+
+  it("keeps a free line's commercial value without charging it (D41)", async () => {
+    const ids = await seedNoteFixtures();
+    const { id } = await createDraftNote(
+      deps(),
+      admin,
+      draftInput(ids, {
+        lines: [
+          { presentationId: ids.fulvin, quantity: "200", unitPrice: "11", freeOfCharge: "" },
+          { presentationId: ids.energy, quantity: "2", unitPrice: "62.5", freeOfCharge: "bonus" },
+        ],
+      }),
+    );
+    const note = await getNote(deps(), admin, id);
+    expect(note.lines.map((line) => [line.freeOfCharge, line.unitPrice, line.total])).toEqual([
+      [null, "11.00", "2200.00"],
+      ["bonus", "62.50", "0.00"],
+    ]);
+    expect((await listNotes(deps(), admin, {})).items[0]?.total).toBe("2200.00");
+  });
+
+  it("finds notes by number, customer, technician, product and dates, without voided ones", async () => {
+    const ids = await seedNoteFixtures();
+    const { id: technicianId } = await drizzleUserDirectory(testDb).create(
+      newUserAccount({ name: "Favio Añez", username: "fanez", role: "sales_technician" }),
+      "temporary-password",
+    );
+    const confirmed = async (overrides: object) => {
+      const { id } = await createDraftNote(deps(), admin, draftInput(ids, overrides));
+      await confirmNote(deps(), admin, id, { paperNumber: "" });
+      return id;
+    };
+    const roberto = await confirmed({ noteDate: "2026-10-26", technicianId });
+    const tito = await confirmed({
+      customerId: ids.otherId,
+      propertyId: "",
+      noteDate: "2026-11-01",
+      lines: [{ presentationId: ids.energy, quantity: "4", unitPrice: "62.5", freeOfCharge: "" }],
+    });
+    const voided = await confirmed({ noteDate: "2026-11-02" });
+    await voidNote(deps(), admin, voided, { reason: "Se cargó dos veces" });
+
+    const found = async (input: object) =>
+      (await listNotes(deps(), admin, input)).items.map((item) => item.id);
+    expect(await found({})).toEqual([tito, roberto]);
+    expect(await found({ status: "all" })).toEqual([voided, tito, roberto]);
+    expect(await found({ status: "voided" })).toEqual([voided]);
+    expect(await found({ text: "2" })).toEqual([tito]);
+    expect(await found({ text: "MAMANI" })).toEqual([roberto]);
+    expect(await found({ text: "añez" })).toEqual([roberto]);
+    expect(await found({ text: "FAVIO" })).toEqual([roberto]);
+    // Roberto's note brings 4-energy as a sample; Tito's sells it.
+    expect(await found({ text: "energy" })).toEqual([tito, roberto]);
+    expect(await found({ text: "fulvin" })).toEqual([roberto]);
+    expect(await found({ from: "2026-10-30" })).toEqual([tito]);
+    expect(await found({ to: "2026-10-30" })).toEqual([roberto]);
+    expect((await listNotes(deps(), admin, { text: "fulvin" })).items).toMatchObject([
+      { id: roberto, technicianName: "Favio Añez", imported: false },
+    ]);
   });
 
   it("lets warehouse keepers read notes but not write them", async () => {

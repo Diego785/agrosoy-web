@@ -9,4 +9,5 @@ export * from "@/modules/migration/infrastructure/import.tables";
 export * from "@/modules/receivables/infrastructure/ledger.tables";
 export * from "@/modules/sales/infrastructure/notes.tables";
 export * from "@/shared/infrastructure/db/document-counters";
+export * from "@/shared/infrastructure/db/app-settings";
 export * from "@/shared/infrastructure/audit/audit-log.table";

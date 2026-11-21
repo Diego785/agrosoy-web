@@ -20,6 +20,7 @@ import type {
   CollectionLookups,
   CurrentRate,
   DailyRateRepository,
+  OpeningBalanceRepository,
   OfficialRate,
   OfficialRateSource,
   PaymentListItem,
@@ -29,17 +30,23 @@ import type {
 import {
   chargeSchema,
   dailyRateSchema,
+  nextReceiptNumberSchema,
   paymentSchema,
   chargeSearchSchema,
   paymentSearchSchema,
   voidReasonSchema,
 } from "./collection-schemas";
+import { stopFollowingOfficialRate } from "./official-rate";
 import { cancelPayment, savePayment } from "./payment-service";
+import type { SettingsStore } from "@/shared/application/settings-store";
 
 export type CollectionDeps = {
   payments: PaymentRepository;
   charges: ChargeRepository;
   rates: DailyRateRepository;
+  /** Whether the rate in force follows the official one (D42). */
+  settings: SettingsStore;
+  openingBalances: OpeningBalanceRepository;
   receipts: DocumentCounter;
   ledger: LedgerRepository;
   lookups: CollectionLookups;
@@ -93,7 +100,8 @@ export async function recordPayment(
   });
   const balances = target.kind === "oldest_debt" ? await deps.lookups.balances(data.customerId) : [];
   const allocations = allocate(payment.usdAmount, target, balances, dateCampaign.id);
-  const saved = await savePayment(deps, payment, allocations, actor.id);
+  const printedNumber = data.paperReceiptNumber ? Number(data.paperReceiptNumber) : undefined;
+  const saved = await savePayment(deps, payment, allocations, actor.id, printedNumber);
   await deps.audit.record({
     actorId: actor.id,
     action: "collections.record_payment",
@@ -101,11 +109,47 @@ export async function recordPayment(
     entityId: saved.id,
     payload: {
       number: saved.receiptNumber,
+      paperNumber: printedNumber !== undefined,
       customerId: data.customerId,
       usdAmount: payment.usdAmount.toDecimalString(),
     },
   });
   return saved;
+}
+
+/** The number the next receipt the system issues will get. */
+export async function nextReceiptNumber(
+  deps: Pick<CollectionDeps, "payments" | "receipts">,
+  actor: Actor,
+): Promise<number> {
+  assertCan(actor, "payments.manage");
+  return deps.receipts.peek((candidate) => deps.payments.receiptNumberInUse(candidate));
+}
+
+/**
+ * Where the system's receipt numbers continue: a range the paper pads won't reach, so a paper receipt
+ * typed in later never collides with one the system issued (D28).
+ */
+export async function setNextReceiptNumber(
+  deps: Pick<CollectionDeps, "payments" | "receipts" | "audit">,
+  actor: Actor,
+  input: unknown,
+): Promise<void> {
+  assertCan(actor, "payments.manage");
+  const nextNumber = Number(validateInput(nextReceiptNumberSchema, input).nextNumber);
+  if (await deps.payments.receiptNumberInUse(nextNumber)) {
+    throw new DomainError("VALIDATION_FAILED", {
+      fieldErrors: { nextNumber: ["Ese número ya lo tiene otro recibo."] },
+    });
+  }
+  await deps.receipts.set(nextNumber);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "collections.set_next_receipt_number",
+    entityType: "document_counter",
+    entityId: "receipt",
+    payload: { number: nextNumber },
+  });
 }
 
 export async function voidPayment(
@@ -263,21 +307,25 @@ export async function listCharges(
 
 /** Records a day's rate; it stays in force for customers without their own until another replaces it (D36). */
 export async function setDailyRate(
-  deps: Pick<CollectionDeps, "rates" | "audit">,
+  deps: Pick<CollectionDeps, "rates" | "audit" | "settings">,
   actor: Actor,
   input: unknown,
-): Promise<void> {
+): Promise<{ stoppedFollowing: boolean }> {
   assertCan(actor, "payments.manage");
   const data = validateInput(dailyRateSchema, input);
   const rate = ExchangeRate.parse(data.rate);
   await deps.rates.save(data.rateDate, rate, actor.id);
+  // A typed rate is administration's own: following the official one stops; "Usar oficial" doesn't (D42).
+  const stoppedFollowing =
+    data.source === "typed" && (await stopFollowingOfficialRate(deps.settings, actor.id));
   await deps.audit.record({
     actorId: actor.id,
     action: "collections.set_daily_rate",
     entityType: "daily_exchange_rate",
     entityId: data.rateDate,
-    payload: { name: `${data.rateDate}: ${rate.toDecimalString()}` },
+    payload: { name: `${data.rateDate}: ${rate.toDecimalString()}`, source: data.source, stoppedFollowing },
   });
+  return { stoppedFollowing };
 }
 
 /** The last rate administration recorded; whoever writes notes or payments may read it (D36). */

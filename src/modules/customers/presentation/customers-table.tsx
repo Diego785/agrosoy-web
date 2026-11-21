@@ -58,7 +58,7 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
         <SearchInput
           name="q"
           defaultValue={text}
-          placeholder="Nombre, código o NIT/CI"
+          placeholder="Nombre, código, NIT/CI o localidad"
           aria-label="Buscar cliente"
         />
         {zones.length > 0 && (
@@ -125,9 +125,12 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
-                      {customer.taxId ?? "—"}
+                      {customer.taxId ?? customer.identityCard ?? "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{customer.zoneName ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {customer.zoneName ?? "—"}
+                      {customer.locality && <span className="block text-xs">{customer.locality}</span>}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{customer.technicianName ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
                       {customer.phone ?? "—"}
@@ -161,12 +164,18 @@ export async function CustomersTable({ searchParams }: { searchParams: Promise<S
                   <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 </div>
                 <span className="text-muted-foreground">
-                  {[customer.zoneName, customer.technicianName].filter(Boolean).join(" · ") ||
-                    "Sin zona ni técnico"}
+                  {[customer.zoneName, customer.locality, customer.technicianName]
+                    .filter(Boolean)
+                    .join(" · ") || "Sin zona ni técnico"}
                 </span>
-                {(customer.taxId || customer.phone) && (
+                {(customer.taxId || customer.identityCard || customer.phone) && (
                   <span className="text-muted-foreground tabular-nums">
-                    {[customer.taxId && `NIT/CI ${customer.taxId}`, customer.phone]
+                    {[
+                      customer.taxId
+                        ? `NIT ${customer.taxId}`
+                        : customer.identityCard && `CI ${customer.identityCard}`,
+                      customer.phone,
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>

@@ -4,6 +4,7 @@ import {
   ClipboardListIcon,
   HourglassIcon,
   PackageIcon,
+  PercentIcon,
   PlusIcon,
   SproutIcon,
   UsersRoundIcon,
@@ -16,7 +17,9 @@ import { campaignOn } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { CAMPAIGNS_PATH } from "@/modules/campaigns/presentation/campaign-routes";
-import { NEW_PAYMENT_PATH } from "@/modules/collections/presentation/collection-routes";
+import { pendingInterest } from "@/modules/collections/application/late-interest";
+import { lateInterestDeps } from "@/modules/collections/presentation/collection-deps";
+import { INTEREST_PATH, NEW_PAYMENT_PATH } from "@/modules/collections/presentation/collection-routes";
 import { productsPage } from "@/modules/catalog/application/catalog-use-cases";
 import { catalogDeps } from "@/modules/catalog/presentation/catalog-deps";
 import { PRODUCTS_PATH } from "@/modules/catalog/presentation/catalog-routes";
@@ -150,6 +153,29 @@ export async function HomeDashboard() {
         </section>
       )}
 
+      {figures.interest && (
+        <Link
+          href={INTEREST_PATH}
+          className="group flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/8 px-4 py-3 text-sm transition-colors hover:border-warning/60"
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+            <PercentIcon className="size-4" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="font-medium">
+              {figures.interest.count === 1
+                ? "1 interés por mora por confirmar"
+                : `${formatCount(figures.interest.count)} intereses por mora por confirmar`}
+            </span>
+            <span className="text-muted-foreground"> · {formatUsd(figures.interest.totalUsd)}</span>
+          </span>
+          <ArrowRightIcon
+            className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        </Link>
+      )}
+
       {figures.items.length > 0 && (
         <section aria-label="Resumen" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {figures.items.map(({ label, value, note, href, icon: Icon }) => (
@@ -200,9 +226,11 @@ export function HomeDashboardSkeleton() {
 type Figure = { label: string; value: string; note?: string; href: string; icon: LucideIcon };
 
 /** The counts the home page shows, each only to who may see that list. */
-async function homeFigures(actor: Actor): Promise<{ campaign?: string; items: Figure[] }> {
+async function homeFigures(
+  actor: Actor,
+): Promise<{ campaign?: string; items: Figure[]; interest?: { count: number; totalUsd: string } }> {
   const db = getDb();
-  const [portfolio, drafts, customers, products, campaigns] = await Promise.all([
+  const [portfolio, drafts, customers, products, campaigns, interest] = await Promise.all([
     // A technician sees their own portfolio; everyone else, the whole company's.
     can(actor, "statements.view") ? portfolioStatement(statementDeps(), actor, {}) : undefined,
     can(actor, "notes.view")
@@ -213,12 +241,17 @@ async function homeFigures(actor: Actor): Promise<{ campaign?: string; items: Fi
     can(actor, "catalog.view")
       ? listCampaigns({ campaigns: drizzleCampaignRepository(db) }, actor)
       : undefined,
+    // Interest waiting for administration once a due date passes (D38).
+    can(actor, "payments.manage") ? pendingInterest(lateInterestDeps(db), actor) : undefined,
   ]);
   const current = campaigns && (campaignOn(campaigns, todayInBolivia()) ?? campaigns[0]);
   const items: Figure[] = [];
   if (portfolio) {
     const owing = portfolio.customers.filter((customer) => customer.totals.status === "owing").length;
-    const old = Money.sum(portfolio.customers.map((customer) => Money.parse(customer.over90 ?? "0")));
+    // Overdue is what passed its campaign's due date (D37); age alone would count winter debt as
+    // late months before it is due.
+    const overdue = Money.sum(portfolio.customers.map((customer) => Money.parse(customer.overdue ?? "0")));
+    const overdueCustomers = portfolio.customers.filter((customer) => customer.overdue !== null).length;
     items.push(
       {
         label: "Deuda total",
@@ -228,9 +261,14 @@ async function homeFigures(actor: Actor): Promise<{ campaign?: string; items: Fi
         icon: WalletIcon,
       },
       {
-        label: "Con más de 90 días",
-        value: formatUsd(old.toDecimalString()),
-        note: "De esa deuda",
+        label: "Deuda vencida",
+        value: formatUsd(overdue.toDecimalString()),
+        note:
+          overdueCustomers === 0
+            ? "Ninguna campaña vencida por cobrar"
+            : overdueCustomers === 1
+              ? "1 cliente pasó el vencimiento"
+              : `${formatCount(overdueCustomers)} clientes pasaron el vencimiento`,
         href: `${STATEMENTS_PATH}?status=owing`,
         icon: HourglassIcon,
       },
@@ -266,5 +304,12 @@ async function homeFigures(actor: Actor): Promise<{ campaign?: string; items: Fi
       href: CAMPAIGNS_PATH,
       icon: SproutIcon,
     });
-  return { campaign: current ? campaignLabel(current) : undefined, items };
+  return {
+    campaign: current ? campaignLabel(current) : undefined,
+    items,
+    interest:
+      interest && interest.proposals.length > 0
+        ? { count: interest.proposals.length, totalUsd: interest.totalUsd }
+        : undefined,
+  };
 }

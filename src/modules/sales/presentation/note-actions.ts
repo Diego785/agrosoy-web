@@ -6,11 +6,13 @@ import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
 import { registerReturn, registerTransfer } from "../application/note-follow-ups";
+import { setNoteInvoice } from "../application/note-invoices";
 import { confirmNote, setNextNoteNumber, voidNote } from "../application/note-lifecycle";
 import type {
   ConfirmNoteInput,
   DraftNoteInput,
   NextNoteNumberInput,
+  NoteInvoiceInput,
   ReturnInput,
   TransferInput,
   VoidNoteInput,
@@ -70,6 +72,19 @@ export async function voidNoteAction(noteId: string, input: VoidNoteInput): Prom
   });
 }
 
+export async function setNoteInvoiceAction(
+  noteId: string,
+  input: NoteInvoiceInput,
+): Promise<ActionResult<{ updated: number }>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    const result = await withTransaction((tx) => setNoteInvoice(deps(tx), actor, noteId, input));
+    // Statements show the invoice beside its note.
+    revalidatePath("/", "layout");
+    return result;
+  });
+}
+
 export async function setNextNoteNumberAction(input: NextNoteNumberInput): Promise<ActionResult<null>> {
   return runAction(async () => {
     const actor = await requireActor();
@@ -80,24 +95,22 @@ export async function setNextNoteNumberAction(input: NextNoteNumberInput): Promi
 }
 
 export async function registerReturnAction(
-  noteId: string,
   input: ReturnInput,
 ): Promise<ActionResult<{ id: string; number: number }>> {
   return runAction(async () => {
     const actor = await requireActor();
-    const registered = await withTransaction((tx) => registerReturn(deps(tx), actor, noteId, input));
+    const registered = await withTransaction((tx) => registerReturn(deps(tx), actor, input));
     revalidatePath("/", "layout");
     return registered;
   });
 }
 
 export async function registerTransferAction(
-  noteId: string,
   input: TransferInput,
 ): Promise<ActionResult<{ id: string; number: number }>> {
   return runAction(async () => {
     const actor = await requireActor();
-    const registered = await withTransaction((tx) => registerTransfer(deps(tx), actor, noteId, input));
+    const registered = await withTransaction((tx) => registerTransfer(deps(tx), actor, input));
     revalidatePath("/", "layout");
     return registered;
   });

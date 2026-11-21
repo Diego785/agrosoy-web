@@ -4,9 +4,19 @@ import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
+import { effectiveDueOn } from "@/modules/campaigns/domain/campaign";
+import { splitDebt, standingEntries, type DebtSplit } from "@/modules/collections/domain/interest";
 import { aging, withoutReversedPairs } from "../domain/aging";
+import { overdueByCampaign, totalOverdue } from "../domain/overdue";
 import { collectedPerMille, ledgerTotals } from "../domain/statement";
-import type { LedgerRow, StatementCampaign, StatementReader } from "./statement-ports";
+import { shareByTechnician } from "../domain/technician-share";
+import type {
+  LedgerRow,
+  StatementCampaign,
+  StatementCustomer,
+  StatementExtension,
+  StatementReader,
+} from "./statement-ports";
 import {
   agingView,
   totalsView,
@@ -50,20 +60,31 @@ export async function portfolioStatement(
       ? null
       : (filter.technicianId ?? (actor.role === "sales_technician" ? actor.id : null));
 
-  const [entries, campaigns] = await Promise.all([
-    deps.statements.entries({ campaignId: filter.campaignId, technicianId: technicianId ?? undefined }),
+  const [allEntries, campaigns] = await Promise.all([
+    deps.statements.entries({ campaignId: filter.campaignId }),
     deps.statements.campaigns(),
   ]);
+  const allCustomers = await deps.statements.customers([
+    ...new Set(allEntries.map((entry) => entry.customerId)),
+  ]);
+  const entries = technicianId
+    ? await technicianEntries(deps.statements, allEntries, allCustomers, technicianId)
+    : allEntries;
   const byCustomer = Map.groupBy(entries, (entry) => entry.customerId);
-  const customers = await deps.statements.customers([...byCustomer.keys()]);
+  const customers = allCustomers.filter((customer) => byCustomer.has(customer.id));
+  const extensions = await deps.statements.extensions([...byCustomer.keys()]);
   const today = deps.today();
+  const dueOf = dueDates(campaigns, extensions);
 
   const rows = customers
     .map((customer) => {
       const own = byCustomer.get(customer.id) ?? [];
       const totals = ledgerTotals(own.map(asMoney));
       const over90 = aging(withoutReversedPairs(own).map(asMoney), today).over90;
-      return { key: customer.id, name: customer.name, totals, over90 };
+      const overdue = totalOverdue(
+        overdueByCampaign(own.map(asMoney), (campaignId) => dueOf(customer.id, campaignId)?.dueOn, today),
+      );
+      return { key: customer.id, name: customer.name, totals, over90, overdue };
     })
     .filter((row) => filter.status === "all" || row.totals.status === "owing")
     .toSorted((a, b) => a.name.localeCompare(b.name, "es"));
@@ -76,6 +97,7 @@ export async function portfolioStatement(
       name: row.name,
       totals: totalsView(row.totals),
       over90: row.over90.isPositive() ? row.over90.toDecimalString() : null,
+      overdue: row.overdue.isPositive() ? row.overdue.toDecimalString() : null,
     })),
     totals: totalsView(totals),
     collectedPerMille: collectedPerMille(totals),
@@ -94,27 +116,47 @@ export async function customerStatement(
   assertCan(actor, "statements.view");
   const id = validateInput(z.uuid(), customerId);
   const { campaignId } = validateInput(customerStatementFilterSchema, input);
-  const [[customer], entries, campaigns] = await Promise.all([
+  const [[customer], entries, campaigns, extensions] = await Promise.all([
     deps.statements.customers([id]),
     deps.statements.entries({ customerId: id, campaignId }),
     deps.statements.campaigns(),
+    deps.statements.extensions([id]),
   ]);
   if (!customer) throw new DomainError("NOT_FOUND", { entity: "customer", id });
 
   const idsOf = (type: LedgerRow["source"]["type"]) => [
     ...new Set(entries.filter((entry) => entry.source.type === type).map((entry) => entry.source.id)),
   ];
-  const [notes, payments, charges] = await Promise.all([
+  const [notes, payments, charges, openings] = await Promise.all([
     deps.statements.notes(idsOf("delivery_note")),
     deps.statements.payments(idsOf("payment")),
     deps.statements.charges(idsOf("charge")),
+    deps.statements.openingBalances(idsOf("opening_balance")),
   ]);
 
-  const lines = entries.flatMap((entry): StatementLineView[] => {
-    const isReversal = entry.reversesEntryId !== null;
+  // Payments cover interest before capital (D45): each campaign's split, from its standing entries.
+  const splits = new Map<string, DebtSplit>();
+  const standing = standingEntries(
+    entries.map((entry) => ({
+      ...entry,
+      amount: Money.parse(entry.amount),
+      isInterest: entry.source.type === "charge" && charges.get(entry.source.id)?.concept === "interest",
+    })),
+  );
+  for (const [campaignOfEntries, own] of Map.groupBy(standing, (entry) => entry.campaignId)) {
+    splits.set(campaignOfEntries, splitDebt(own));
+  }
+  const interestPartOf = (entry: LedgerRow) => {
+    const part = splits.get(entry.campaignId)?.payments.get(entry.id)?.toInterest;
+    return part?.isPositive() ? part.toDecimalString() : null;
+  };
+
+  // A voided document and the reversal that cancels it stay off the statement the customer gets:
+  // together they add nothing, and the voided list and the change log keep them (D6).
+  const shown = withoutReversedPairs(entries);
+  const lines = shown.flatMap((entry): StatementLineView[] => {
     const base = {
       date: entry.date,
-      isReversal,
       document: null,
       noteNumber: null,
       description: "",
@@ -124,6 +166,7 @@ export async function customerStatement(
       freeOfCharge: null,
       exchangeRate: null,
       observation: null,
+      invoiceNumber: null,
       receipt: null,
       transfer: null,
       fromSheet: entry.source.type === "import_batch",
@@ -141,8 +184,8 @@ export async function customerStatement(
         const transfer = entry.kind === "campaign_transfer_out" ? "out" : "in";
         return [{ ...base, ...noteFields, kind: "other", amount: signed(entry), transfer }];
       }
-      // A voided note shows as one line that cancels it; deliveries and returns show their products.
-      if (isReversal || !note || (entry.kind !== "delivery" && entry.kind !== "return")) {
+      // Deliveries and returns show their products.
+      if (!note || (entry.kind !== "delivery" && entry.kind !== "return")) {
         return [{ ...base, ...noteFields, kind: kindOf(entry), amount: signed(entry) }];
       }
       const kind = entry.kind;
@@ -157,6 +200,7 @@ export async function customerStatement(
         freeOfCharge: line.freeOfCharge,
         amount: line.total,
         observation: index === 0 ? note.observations : null,
+        invoiceNumber: index === 0 && kind === "delivery" ? note.taxInvoiceNumber : null,
       }));
     }
     if (entry.source.type === "payment") {
@@ -166,6 +210,7 @@ export async function customerStatement(
           ...base,
           kind: "payment",
           amount: signed(entry),
+          interestPart: interestPartOf(entry),
           exchangeRate: payment?.exchangeRate ?? null,
           observation: payment?.reference ?? null,
           receipt: payment
@@ -174,6 +219,7 @@ export async function customerStatement(
                 method: payment.method,
                 currency: payment.currency,
                 amount: payment.amount,
+                usdAmount: payment.usdAmount,
               }
             : null,
           document: { type: "payment", id: entry.source.id },
@@ -192,19 +238,44 @@ export async function customerStatement(
         },
       ];
     }
+    if (entry.source.type === "opening_balance") {
+      return [
+        {
+          ...base,
+          kind: "other",
+          amount: signed(entry),
+          opening: { note: openings.get(entry.source.id)?.note ?? null },
+        },
+      ];
+    }
     return [{ ...base, kind: kindOf(entry), amount: signed(entry) }];
   });
 
+  const today = deps.today();
+  const dueOf = dueDates(campaigns, extensions);
+  const overdue = overdueByCampaign(
+    entries.map(asMoney),
+    (campaignOfEntry) => dueOf(customer.id, campaignOfEntry)?.dueOn,
+    today,
+  );
   const byCampaign = campaigns
-    .filter((campaign) => entries.some((entry) => entry.campaignId === campaign.id))
-    .map((campaign) => ({
-      campaignId: campaign.id,
-      season: campaign.season,
-      year: campaign.year,
-      totals: totalsView(
-        ledgerTotals(entries.filter((entry) => entry.campaignId === campaign.id).map(asMoney)),
-      ),
-    }));
+    .filter((campaign) => shown.some((entry) => entry.campaignId === campaign.id))
+    .map((campaign) => {
+      const due = dueOf(customer.id, campaign.id)!;
+      return {
+        campaignId: campaign.id,
+        season: campaign.season,
+        year: campaign.year,
+        totals: totalsView(
+          ledgerTotals(entries.filter((entry) => entry.campaignId === campaign.id).map(asMoney)),
+        ),
+        dueOn: due.dueOn,
+        campaignDueOn: campaign.dueOn,
+        extension: due.extension,
+        overdue: (overdue.get(campaign.id) ?? Money.zero()).toDecimalString(),
+        interestOwed: (splits.get(campaign.id)?.interest ?? Money.zero()).toDecimalString(),
+      };
+    });
 
   return {
     source: LEDGER_SOURCE,
@@ -213,8 +284,83 @@ export async function customerStatement(
     lines,
     totals: totalsView(ledgerTotals(entries.map(asMoney))),
     byCampaign,
-    aging: agingView(aging(withoutReversedPairs(entries).map(asMoney), deps.today())),
+    aging: agingView(aging(withoutReversedPairs(entries).map(asMoney), today)),
+    overdue: totalOverdue(overdue).toDecimalString(),
     campaigns,
+  };
+}
+
+/**
+ * The part of the ledger that belongs to one technician's sales (D46): their notes, with the
+ * payments and returns that settled them, and the charges of the customers they look after today.
+ * Voided documents are left out, so each piece is a plain debit or credit.
+ */
+async function technicianEntries(
+  reader: StatementReader,
+  entries: readonly LedgerRow[],
+  customers: readonly StatementCustomer[],
+  technicianId: string,
+): Promise<LedgerRow[]> {
+  const standing = withoutReversedPairs(entries);
+  const idsOf = (type: LedgerRow["source"]["type"]) => [
+    ...new Set(standing.filter((entry) => entry.source.type === type).map((entry) => entry.source.id)),
+  ];
+  const details = await reader.shareDetails({
+    noteIds: idsOf("delivery_note"),
+    paymentIds: idsOf("payment"),
+    chargeIds: idsOf("charge"),
+  });
+  const currentTechnician = new Map(customers.map((customer) => [customer.id, customer.technicianId]));
+  const shared = shareByTechnician(
+    standing.map((entry) => {
+      const noteId = entry.source.type === "delivery_note" ? entry.source.id : null;
+      return {
+        ...entry,
+        amount: Money.parse(entry.amount),
+        isInterest: entry.source.type === "charge" && details.interestCharges.has(entry.source.id),
+        noteId,
+        noteTechnicianId: noteId ? (details.noteTechnicians.get(noteId) ?? null) : null,
+        paidNoteId:
+          entry.source.type === "payment"
+            ? (details.paidNotes.get(`${entry.source.id}|${entry.campaignId}`) ?? null)
+            : null,
+      };
+    }),
+    (customerId) => currentTechnician.get(customerId) ?? null,
+  );
+  return shared
+    .filter((piece) => piece.technicianId === technicianId)
+    .map((piece) => ({
+      id: piece.id,
+      customerId: piece.customerId,
+      campaignId: piece.campaignId,
+      date: piece.date,
+      kind: piece.kind,
+      amount: piece.amount.toDecimalString(),
+      source: piece.source,
+      reversesEntryId: null,
+    }));
+}
+
+/**
+ * When a customer's debt in a campaign falls due: their extension when it is later than the
+ * campaign's date, otherwise the campaign's (D37).
+ */
+function dueDates(campaigns: readonly StatementCampaign[], extensions: readonly StatementExtension[]) {
+  const campaignDue = new Map(campaigns.map((campaign) => [campaign.id, campaign.dueOn]));
+  const extensionOf = new Map(
+    extensions.map((extension) => [`${extension.customerId}|${extension.campaignId}`, extension]),
+  );
+  return (customerId: string, campaignId: string) => {
+    const campaignDueOn = campaignDue.get(campaignId);
+    if (!campaignDueOn) return undefined;
+    const extension = extensionOf.get(`${customerId}|${campaignId}`);
+    const dueOn = effectiveDueOn(campaignDueOn, extension?.dueOn);
+    return {
+      dueOn,
+      extension:
+        extension && dueOn === extension.dueOn ? { dueOn: extension.dueOn, reason: extension.reason } : null,
+    };
   };
 }
 

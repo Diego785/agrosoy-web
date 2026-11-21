@@ -26,6 +26,13 @@ const optionalText = (max: number) =>
 
 const optionalId = z.union([z.literal(""), z.uuid()]).optional();
 
+/** A document number as typed; kept as text so the form and the use case validate the same value. */
+const documentNumber = (message: string) =>
+  z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d{0,8}$/, { error: message });
+
 export const exchangeRateField = decimal(4, "Escribe el tipo de cambio, por ejemplo 12.00.");
 
 /** How the customer paid; also what a cash note asks for when it is confirmed. */
@@ -48,6 +55,10 @@ export const paymentSchema = z
     noteId: optionalId,
     observations: optionalText(500),
     concept: optionalText(200),
+    /** Empty: the system gives the next number. Filled: a paper receipt keeps its printed number (D28). */
+    paperReceiptNumber: z
+      .union([z.literal(""), documentNumber("Escribe el número impreso, por ejemplo 2451.")])
+      .optional(),
   })
   .superRefine((payment, context) => {
     if (payment.target === "campaign" && !payment.campaignId) {
@@ -89,6 +100,25 @@ export const chargeSchema = z
     }
   });
 
+/** Debt a customer carries in at go-live in one campaign, without its detail (D29). */
+export const openingBalanceSchema = z.object({
+  customerId: z.uuid({ error: "Elige el cliente." }),
+  campaignId: z.uuid({ error: "Elige la campaña." }),
+  balanceDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
+  amount: decimal(2, "Escribe el monto en US$, por ejemplo 1500 o 1500.50."),
+  /** Most customers owe; one who paid ahead starts in their favor. */
+  direction: z.enum(["owes", "in_favor"]).default("owes"),
+  note: optionalText(300),
+});
+
+export const openingBalanceSearchSchema = z.object({
+  text: z.string().trim().max(100).catch(""),
+  status: z.enum(["recorded", "voided"]).optional().catch(undefined),
+  ...pagingFields,
+});
+
+export type OpeningBalanceInput = z.input<typeof openingBalanceSchema>;
+
 export const voidReasonSchema = z.object({
   reason: z
     .string()
@@ -97,10 +127,19 @@ export const voidReasonSchema = z.object({
     .max(500, { error: "Admite hasta 500 caracteres." }),
 });
 
+/** Where the system's receipt numbers continue (D28). */
+export const nextReceiptNumberSchema = z.object({
+  nextNumber: documentNumber("Escribe un número entero mayor que 0."),
+});
+
 export const dailyRateSchema = z.object({
   rateDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
   rate: exchangeRateField,
+  /** "Usar oficial" adopts the official rate; typing one stops following it (D42). */
+  source: z.enum(["typed", "official"]).default("typed"),
 });
+
+export const followOfficialRateSchema = z.object({ enabled: z.boolean() });
 
 export const paymentSearchSchema = z.object({
   text: z.string().trim().max(100).catch(""),
@@ -122,3 +161,36 @@ export type PaymentInput = z.input<typeof paymentSchema>;
 export type ChargeInput = z.input<typeof chargeSchema>;
 export type VoidReasonInput = z.input<typeof voidReasonSchema>;
 export type DailyRateInput = z.input<typeof dailyRateSchema>;
+export type NextReceiptNumberInput = z.input<typeof nextReceiptNumberSchema>;
+
+/** Late-payment interest as administration sets it (D38). */
+export const interestSettingsSchema = z.object({
+  ratePercent: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(",", "."))
+    .pipe(
+      z
+        .string()
+        .regex(/^\d{1,2}(\.\d{1,2})?$/, { error: "Escribe la tasa en %, por ejemplo 3 o 2,5." })
+        .refine((value) => Number(value) > 0, { error: "La tasa tiene que ser mayor que 0." }),
+    ),
+  graceDays: z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}$/, { error: "Escribe los días, por ejemplo 0, 15 o 30." })
+    .transform(Number)
+    .pipe(z.number().max(365, { error: "Admite hasta 365 días." })),
+  startsOn: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
+});
+
+/** The proposals administration charges or waives, each with the amount it saw (D38). */
+export const interestDecisionSchema = z.object({
+  proposals: z
+    .array(z.object({ key: z.string().max(120), usdAmount: z.string().max(20) }))
+    .min(1, { error: "Elige al menos un interés." })
+    .max(1000),
+});
+
+export type InterestSettingsInput = z.input<typeof interestSettingsSchema>;
+export type InterestDecisionInput = z.input<typeof interestDecisionSchema>;

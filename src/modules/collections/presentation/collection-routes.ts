@@ -2,6 +2,9 @@ export const PAYMENTS_PATH = "/payments";
 export const NEW_PAYMENT_PATH = "/payments/new";
 export const CHARGES_PATH = "/payments/charges";
 export const NEW_CHARGE_PATH = "/payments/charges/new";
+export const OPENING_BALANCES_PATH = "/payments/opening-balances";
+export const NEW_OPENING_BALANCE_PATH = "/payments/opening-balances/new";
+export const INTEREST_PATH = "/payments/interest";
 
 export function paymentPath(id: string): string {
   return `${PAYMENTS_PATH}/${id}`;

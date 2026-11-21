@@ -9,7 +9,17 @@ import {
 } from "@test/note-fixtures";
 import { testDb } from "@test/test-database";
 import { createCampaign } from "@/modules/campaigns/application/campaign-use-cases";
-import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
+import { newUserAccount } from "@/modules/identity/domain/user-account";
+import { drizzleUserDirectory } from "@/modules/identity/infrastructure/drizzle-user-directory";
+import {
+  removeDueDateExtension,
+  setDueDateExtension,
+} from "@/modules/campaigns/application/due-date-extensions";
+import {
+  customerExistence,
+  drizzleCampaignRepository,
+  drizzleDueDateExtensionRepository,
+} from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { recordCharge, recordPayment } from "@/modules/collections/application/collection-use-cases";
 import { confirmNote, voidNote } from "@/modules/sales/application/note-lifecycle";
 import { createDraftNote } from "@/modules/sales/application/note-use-cases";
@@ -64,7 +74,7 @@ async function seedHistory() {
 }
 
 describe("customer statement", () => {
-  it("lists every movement with the sheet's columns, per campaign and aged", async () => {
+  it("lists every movement with the sheet's columns, per campaign and aged, without voided ones", async () => {
     const { ids } = await seedHistory();
     const statement = await customerStatement(deps, technician, ids.customerId, {});
 
@@ -77,30 +87,23 @@ describe("customer statement", () => {
       status: "owing",
     });
     expect(
-      statement.lines.map((line) => [
-        line.date,
-        line.kind,
-        line.noteNumber,
-        line.description,
-        line.amount,
-        line.isReversal,
-      ]),
+      statement.lines.map((line) => [line.date, line.kind, line.noteNumber, line.description, line.amount]),
     ).toEqual([
-      ["2026-05-10", "delivery", 1, "Fulvin 40-22", "2200.00", false],
-      ["2026-05-10", "delivery", 1, "4-energy", "0.00", false],
-      ["2026-10-26", "delivery", 2, "Fulvin 40-22", "2200.00", false],
-      ["2026-10-26", "delivery", 2, "4-energy", "0.00", false],
-      ["2026-10-27", "delivery", 3, "4-energy", "250.00", false],
-      ["2026-10-28", "delivery", 3, "", "-250.00", true],
-      ["2026-11-01", "payment", null, "", "2200.00", false],
-      ["2026-11-01", "payment", null, "", "800.00", false],
-      ["2026-11-02", "charge", null, "Interés acordado", "50.00", false],
+      ["2026-05-10", "delivery", 1, "Fulvin 40-22", "2200.00"],
+      ["2026-05-10", "delivery", 1, "4-energy", "0.00"],
+      ["2026-10-26", "delivery", 2, "Fulvin 40-22", "2200.00"],
+      ["2026-10-26", "delivery", 2, "4-energy", "0.00"],
+      // Note 3 was voided: neither it nor its reversal reaches the customer.
+      ["2026-11-01", "payment", null, "", "2200.00"],
+      ["2026-11-01", "payment", null, "", "800.00"],
+      ["2026-11-02", "charge", null, "Interés acordado", "50.00"],
     ]);
-    expect(statement.lines[6]?.receipt).toEqual({
+    expect(statement.lines[4]?.receipt).toEqual({
       number: 1,
       method: "transfer",
       currency: "BOB",
       amount: "20880.00",
+      usdAmount: "3000.00",
     });
     expect(statement.byCampaign?.map((row) => [row.season, row.totals.balance])).toEqual([
       ["winter", "0.00"],
@@ -118,6 +121,74 @@ describe("customer statement", () => {
       balance: "0.00",
       status: "settled",
     });
+  });
+});
+
+describe("overdue debt (D37)", () => {
+  /** Roberto owes a winter note of US$ 2.200 (due 30/11/2026) and a summer one (due 31/05/2027). */
+  async function owingBoth() {
+    const ids = await seedNoteFixtures();
+    const { id: winterId } = await createCampaign(
+      { campaigns: drizzleCampaignRepository(testDb), audit: drizzleAuditTrail(testDb) },
+      admin,
+      { season: "winter", year: 2026, startsOn: "2026-04-01", endsOn: "2026-09-30" },
+    );
+    await confirmed(ids, { noteDate: "2026-05-10" });
+    await confirmed(ids, { noteDate: "2026-10-26" });
+    return { ids, winterId };
+  }
+  const on = (today: string) => ({ statements: drizzleStatementReader(testDb), today: () => today });
+  const extensions = () => ({
+    campaigns: drizzleCampaignRepository(testDb),
+    extensions: drizzleDueDateExtensionRepository(testDb),
+    customers: customerExistence(testDb),
+    audit: drizzleAuditTrail(testDb),
+  });
+
+  it("counts a campaign's balance as overdue after its due date, also in the portfolio", async () => {
+    const { ids } = await owingBoth();
+    expect((await customerStatement(on("2026-11-30"), admin, ids.customerId, {})).overdue).toBe("0.00");
+
+    const statement = await customerStatement(on("2026-12-01"), admin, ids.customerId, {});
+    expect(statement.overdue).toBe("2200.00");
+    expect(statement.byCampaign?.map((row) => [row.season, row.dueOn, row.overdue])).toEqual([
+      ["winter", "2026-11-30", "2200.00"],
+      ["summer", "2027-05-31", "0.00"],
+    ]);
+    const portfolio = await portfolioStatement(on("2026-12-01"), admin, { technicianId: "all" });
+    expect(portfolio.customers).toMatchObject([{ name: "Roberto Mamani", overdue: "2200.00" }]);
+  });
+
+  it("waits for a customer's extension, and only administration gives one", async () => {
+    const { ids, winterId } = await owingBoth();
+    const extension = {
+      customerId: ids.customerId,
+      campaignId: winterId,
+      reason: "Cosecha tarde en el norte",
+    };
+
+    await expect(
+      setDueDateExtension(extensions(), admin, { ...extension, dueOn: "2026-11-15" }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { dueOn: expect.any(Array) } },
+    });
+    await expect(
+      setDueDateExtension(extensions(), technician, { ...extension, dueOn: "2026-12-15" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await setDueDateExtension(extensions(), admin, { ...extension, dueOn: "2026-12-15" });
+
+    const extended = await customerStatement(on("2026-12-01"), admin, ids.customerId, {});
+    expect(extended.overdue).toBe("0.00");
+    expect(extended.byCampaign?.[0]).toMatchObject({
+      dueOn: "2026-12-15",
+      campaignDueOn: "2026-11-30",
+      extension: { dueOn: "2026-12-15", reason: "Cosecha tarde en el norte" },
+    });
+    expect((await customerStatement(on("2026-12-16"), admin, ids.customerId, {})).overdue).toBe("2200.00");
+
+    await removeDueDateExtension(extensions(), admin, { customerId: ids.customerId, campaignId: winterId });
+    expect((await customerStatement(on("2026-12-01"), admin, ids.customerId, {})).overdue).toBe("2200.00");
   });
 });
 
@@ -155,5 +226,40 @@ describe("portfolio statement", () => {
 
     const owing = await portfolioStatement(deps, admin, { status: "owing" });
     expect(owing.customers).toMatchObject([{ name: "Roberto Mamani", over90: "2200.00" }]);
+  });
+
+  it("gives each technician the debt of their own notes, whoever looks after the customer (D46)", async () => {
+    const ids = await seedNoteFixtures();
+    const technicianNamed = async (name: string) => {
+      const { id } = await drizzleUserDirectory(testDb).create(
+        newUserAccount({ name, username: name.toLowerCase(), role: "sales_technician" }),
+        "temporary-password",
+      );
+      return actorWithRole("sales_technician", id, name);
+    };
+    const favio = await technicianNamed("Favio");
+    const saul = await technicianNamed("Saul");
+    // Roberto bought from Favio first (US$ 2.200), then from Saúl (US$ 2.200), and paid US$ 3.000.
+    await confirmed(ids, { noteDate: "2026-10-20", technicianId: favio.id });
+    await confirmed(ids, { noteDate: "2026-10-26", technicianId: saul.id });
+    await recordPayment(collectionDeps(), admin, {
+      customerId: ids.customerId,
+      paymentDate: "2026-11-01",
+      amount: "3000",
+      exchangeRate: "6.96",
+      currency: "USD",
+      method: "transfer",
+      target: "oldest_debt",
+    });
+
+    const ofFavio = await portfolioStatement(deps, favio, {});
+    expect(ofFavio.customers).toMatchObject([
+      { name: "Roberto Mamani", totals: { delivered: "2200.00", paid: "2200.00", balance: "0.00" } },
+    ]);
+    const ofSaul = await portfolioStatement(deps, admin, { technicianId: saul.id });
+    expect(ofSaul.customers).toMatchObject([
+      { name: "Roberto Mamani", totals: { delivered: "2200.00", paid: "800.00", balance: "1400.00" } },
+    ]);
+    expect(ofSaul.collectedPerMille).toBe(364);
   });
 });

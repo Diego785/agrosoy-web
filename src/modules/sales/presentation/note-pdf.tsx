@@ -8,11 +8,13 @@ import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import { getDb } from "@/shared/infrastructure/db/client";
-import { COMPANY } from "@/shared/presentation/company-profile";
+import type { CompanyProfile } from "@/shared/domain/company-profile";
+import { loadCompanyProfile } from "@/shared/presentation/company-profile";
 import { formatDocumentNumber, formatMoney, formatQuantity, formatRate } from "@/shared/presentation/format";
 import { notFoundAsNull } from "@/shared/presentation/not-found";
 import { PDF_COLORS, PdfBlank, PdfCheck, PdfFormPage, PdfLogo, pdfResponse } from "@/shared/presentation/pdf";
 import type { NoteLineView, NoteView } from "../application/note-ports";
+import { commercialValue } from "../domain/delivery-note";
 import { getNote } from "../application/note-use-cases";
 import { noteDeps } from "./note-deps";
 
@@ -44,6 +46,17 @@ function lineMeasure(line: NoteLineView): string {
     Quantity.parse(line.quantity),
   );
   return formatQuantity(measure.toDecimalString());
+}
+
+/** "muestra" or "bonificación, valor comercial US$ 125,00": shown, never charged (D41). */
+function freeText(line: NoteLineView): string {
+  const label = line.freeOfCharge ? FREE_LABELS[line.freeOfCharge] : "";
+  const value = commercialValue({
+    quantity: Quantity.parse(line.quantity),
+    unitPrice: Money.parse(line.unitPrice),
+    freeOfCharge: line.freeOfCharge,
+  });
+  return value ? `${label}, valor comercial US$ ${formatMoney(value.toDecimalString())}` : label;
 }
 
 function noteNumber(note: NoteView): string {
@@ -81,7 +94,7 @@ function PersonBox({
 }
 
 /** The note as Agrosoil prints it: one form for delivery, return and transfer (D26). */
-export function NotePdf({ note }: { note: NoteView }) {
+export function NotePdf({ note, company }: { note: NoteView; company: CompanyProfile }) {
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
   const bob = note.exchangeRate ? ExchangeRate.parse(note.exchangeRate).toBob(total) : null;
   const [year, month, day] = note.noteDate.split("-");
@@ -99,9 +112,10 @@ export function NotePdf({ note }: { note: NoteView }) {
     documentId: note.receiver.documentId,
   };
   const emptyRows = Math.max(0, MIN_ROWS - note.lines.length);
+  // The paper form has no invoice box, so the invoice goes with the observations (D40).
   const observations = [
-    note.original &&
-      `Sobre la boleta N.º ${note.original.number ? formatDocumentNumber(note.original.number) : "—"}.`,
+    sourcesText(note.sources),
+    note.taxInvoiceNumber && `Factura N.º ${note.taxInvoiceNumber}.`,
     note.observations,
     note.voided && `Anulada: ${note.voided.reason}`,
   ]
@@ -112,6 +126,7 @@ export function NotePdf({ note }: { note: NoteView }) {
     <PdfFormPage
       title={`${PDF_TITLES[note.type]} ${noteNumber(note)}`}
       watermark={note.status === "voided" ? "ANULADA" : note.status === "draft" ? "BORRADOR" : null}
+      company={company}
     >
       <View style={{ borderWidth: 1.2, borderColor: GREEN, borderRadius: 8 }}>
         {/* Letterhead */}
@@ -147,15 +162,15 @@ export function NotePdf({ note }: { note: NoteView }) {
             </Text>
             <View style={{ flexDirection: "row", gap: 10, fontSize: 7, color: MUTED }}>
               <View style={{ flex: 1 }}>
-                <Text>Telf. Of.: {COMPANY.phone}</Text>
-                <Text>Cel.: {COMPANY.mobile}</Text>
-                <Text>{COMPANY.email}</Text>
+                <Text>Telf. Of.: {company.phone}</Text>
+                <Text>Cel.: {company.mobile}</Text>
+                <Text>{company.email}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text>Facebook: {COMPANY.facebook}</Text>
-                <Text>{COMPANY.website}</Text>
+                <Text>Facebook: {company.facebook}</Text>
+                <Text>{company.website}</Text>
                 <Text>
-                  {COMPANY.city} - {COMPANY.country}
+                  {company.city} - {company.country}
                 </Text>
               </View>
             </View>
@@ -247,7 +262,7 @@ export function NotePdf({ note }: { note: NoteView }) {
             key={line.id}
             cells={[
               formatQuantity(line.quantity),
-              `${line.productName}${line.freeOfCharge ? ` (${FREE_LABELS[line.freeOfCharge]})` : ""}`,
+              `${line.productName}${line.freeOfCharge ? ` (${freeText(line)})` : ""}`,
               contentLabel(line),
               lineMeasure(line),
               line.freeOfCharge ? "—" : formatMoney(line.unitPrice),
@@ -359,7 +374,19 @@ export async function notePdfResponse(noteId: string): Promise<Response> {
   const note = await getNote(noteDeps(getDb()), actor, noteId).catch(notFoundAsNull);
   if (!note) return new Response("No encontrado", { status: 404 });
   return pdfResponse(
-    <NotePdf note={note} />,
+    <NotePdf note={note} company={await loadCompanyProfile()} />,
     note.number ? `boleta-${formatDocumentNumber(note.number)}.pdf` : "boleta-borrador.pdf",
   );
+}
+
+/** "De las boletas N.º 001250 y N.º 45 (planilla)." for a return or transfer (D25). */
+function sourcesText(sources: NoteView["sources"]): string | null {
+  if (sources.length === 0) return null;
+  const labels = sources.map((source) =>
+    source.imported
+      ? `N.º ${source.sheetNumber ?? "—"} (planilla)`
+      : `N.º ${source.number ? formatDocumentNumber(source.number) : "—"}`,
+  );
+  const list = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} y ${labels.at(-1)}`;
+  return `De ${labels.length === 1 ? "la boleta" : "las boletas"} ${list}.`;
 }

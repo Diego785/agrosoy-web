@@ -9,6 +9,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
@@ -17,6 +18,9 @@ import { presentations } from "@/modules/catalog/infrastructure/catalog.tables";
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
 import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { id, timestamps } from "@/shared/infrastructure/db/columns";
+
+/** A number belongs to one standing note; a voided note's printed number can be typed again (D28). */
+export const NOTE_NUMBER_KEY = "delivery_notes_number_key";
 
 /**
  * Delivery notes ("boletas", M5): drafts are edited freely; confirming gives the number and posts
@@ -32,10 +36,8 @@ export const deliveryNotes = pgTable(
     type: text({ enum: ["delivery", "return", "campaign_transfer"] })
       .notNull()
       .default("delivery"),
-    /** Assigned on confirmation, continuing the paper pad; unique once set. */
-    number: integer().unique(),
-    /** Returns and campaign transfers: the delivery note they act on. */
-    originalNoteId: uuid().references((): AnyPgColumn => deliveryNotes.id),
+    /** Assigned on confirmation; unique among notes that aren't voided. */
+    number: integer(),
     /** Notes brought in from a spreadsheet (M12): confirmed without a system number. */
     imported: boolean().notNull().default(false),
     importBatchId: uuid(),
@@ -75,11 +77,9 @@ export const deliveryNotes = pgTable(
   (table) => [
     index().on(table.customerId),
     index().on(table.status, table.noteDate),
-    index().on(table.originalNoteId),
-    check(
-      "delivery_notes_follow_ups_have_original",
-      sql`(${table.type} = 'delivery') = (${table.originalNoteId} is null)`,
-    ),
+    uniqueIndex(NOTE_NUMBER_KEY)
+      .on(table.number)
+      .where(sql`${table.status} <> 'voided'`),
     check(
       "delivery_notes_confirmed_have_number",
       sql`${table.status} = 'draft' or ${table.number} is not null or ${table.imported}`,
@@ -111,7 +111,10 @@ export const deliveryNoteLines = pgTable(
     unitPrice: numeric({ precision: 14, scale: 2 }).notNull(),
     freeOfCharge: text({ enum: ["bonus", "sample"] }),
     total: numeric({ precision: 14, scale: 2 }).notNull(),
-    /** Returns and campaign transfers: the delivered line they give back or move. */
+    /**
+     * Returns and campaign transfers: the line they give back or move, from any delivery or transfer
+     * of the customer in the campaign (D25); its note is where the product came from.
+     */
     originalLineId: uuid().references((): AnyPgColumn => deliveryNoteLines.id),
   },
   (table) => [index().on(table.noteId), index().on(table.originalLineId)],

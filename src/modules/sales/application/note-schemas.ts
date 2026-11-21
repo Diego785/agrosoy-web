@@ -39,6 +39,8 @@ export const noteLineSchema = z.object({
 export const draftNoteSchema = z
   .object({
     noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
+    /** Empty for the date's campaign; the one before it can be chosen while it is open (D37). */
+    campaignId: z.union([z.literal(""), z.uuid({ error: "Elige la campaña." })]).optional(),
     customerId: z.uuid({ error: "Elige el cliente." }),
     propertyId: z.union([z.literal(""), z.uuid()]).optional(),
     technicianId: z.union([z.literal(""), z.uuid()]).optional(),
@@ -102,9 +104,16 @@ export const draftNoteSchema = z
 export type DraftNoteInput = z.input<typeof draftNoteSchema>;
 export type NoteLineInput = z.input<typeof noteLineSchema>;
 
+/**
+ * The notes list's filters (M5): a number (system or sheet), customer, technician or product, and a
+ * date range. Without a status, voided notes are left out; "all" brings them back.
+ */
 export const noteSearchSchema = z.object({
-  status: z.enum(["draft", "confirmed", "voided"]).optional().catch(undefined),
+  text: z.string().trim().max(100).catch(""),
+  status: z.enum(["draft", "confirmed", "voided", "all"]).optional().catch(undefined),
   customerId: z.uuid().optional().catch(undefined),
+  from: z.iso.date().optional().catch(undefined),
+  to: z.iso.date().optional().catch(undefined),
   ...pagingFields,
 });
 
@@ -118,6 +127,10 @@ const noteNumber = (message: string) =>
 export const confirmNoteSchema = z.object({
   /** Empty: the system gives the next number. Filled: a paper note typed in later keeps its printed number. */
   paperNumber: z.union([z.literal(""), noteNumber("Escribe el número impreso, por ejemplo 1250.")]),
+  /** A cash note paid with a paper receipt keeps the receipt's printed number (D28). */
+  paperReceiptNumber: z
+    .union([z.literal(""), noteNumber("Escribe el número impreso del recibo, por ejemplo 3480.")])
+    .default(""),
   /** How a cash note was paid; its amount is the note's total. */
   payment: z
     .object(paymentMethodFields)
@@ -145,6 +158,14 @@ export const nextNoteNumberSchema = z.object({
   nextNumber: noteNumber("Escribe un número entero mayor que 0."),
 });
 
+/** The SIN invoice of a confirmed note (D40); empty clears it. */
+export const noteInvoiceSchema = z.object({
+  taxInvoiceNumber: z.string().trim().max(30, { error: "Admite hasta 30 caracteres." }),
+  /** Other deliveries of the same customer and campaign that the same invoice covers. */
+  alsoNoteIds: z.array(z.uuid()).max(500).default([]),
+});
+
+export type NoteInvoiceInput = z.input<typeof noteInvoiceSchema>;
 export type ConfirmNoteInput = z.input<typeof confirmNoteSchema>;
 export type VoidNoteInput = z.input<typeof voidNoteSchema>;
 export type NextNoteNumberInput = z.input<typeof nextNoteNumberSchema>;
@@ -159,7 +180,13 @@ const optionalDecimal = (decimals: number, message: string) =>
 
 const paperNumberField = z.union([z.literal(""), noteNumber("Escribe el número impreso, por ejemplo 1250.")]);
 
-export const returnSchema = z.object({
+/** Whose consigned product, and from which campaign, a return or transfer takes (D25). */
+export const followUpTargetSchema = z.object({
+  customerId: z.uuid({ error: "Elige el cliente." }),
+  campaignId: z.uuid({ error: "Elige la campaña." }),
+});
+
+export const returnSchema = followUpTargetSchema.extend({
   noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
   /** Who brought the product back. */
   receiverName: z
@@ -167,6 +194,11 @@ export const returnSchema = z.object({
     .trim()
     .min(2, { error: "Escribe quién devuelve." })
     .max(120, { error: "Admite hasta 120 caracteres." }),
+  /** Who receives the product for Agrosoil, and who brings it (D26). */
+  handedOverById: z.union([z.literal(""), z.uuid()]).optional(),
+  carrierName: optionalText(80),
+  carrierVehicle: optionalText(40),
+  carrierDocumentId: optionalText(20),
   observations: optionalText(500),
   paperNumber: paperNumberField,
   lines: z
@@ -179,8 +211,8 @@ export const returnSchema = z.object({
     .min(1),
 });
 
-export const transferSchema = z
-  .object({
+export const transferSchema = followUpTargetSchema
+  .extend({
     noteDate: z.iso.date({ error: "Escribe la fecha como dd/mm/aaaa." }),
     exchangeRate: decimal(4, "Escribe el tipo de cambio, por ejemplo 12.00."),
     observations: optionalText(500),
@@ -207,5 +239,6 @@ export const transferSchema = z
     });
   });
 
+export type FollowUpTarget = z.input<typeof followUpTargetSchema>;
 export type ReturnInput = z.input<typeof returnSchema>;
 export type TransferInput = z.input<typeof transferSchema>;
