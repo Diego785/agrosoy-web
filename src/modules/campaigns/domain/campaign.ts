@@ -59,6 +59,19 @@ export function previousCampaign<T extends CampaignPeriod & { id: string }>(
     );
 }
 
+/** The campaign that starts right after this one ends. */
+export function nextCampaign<T extends CampaignPeriod & { id: string }>(
+  campaigns: readonly T[],
+  campaign: T,
+): T | undefined {
+  return campaigns
+    .filter((other) => other.startsOn > campaign.endsOn)
+    .reduce<T | undefined>(
+      (earliest, other) => (!earliest || other.startsOn < earliest.startsOn ? other : earliest),
+      undefined,
+    );
+}
+
 export function campaignOn<T extends CampaignPeriod>(
   campaigns: readonly T[],
   isoDate: string,
@@ -67,9 +80,12 @@ export function campaignOn<T extends CampaignPeriod>(
 }
 
 /**
- * The campaigns a note dated on this day can belong to: the date's own first, then the one right
- * before it while that is still open. The north is still selling winter product when the east has
- * started summer (D37, amended on 20 November 2026). Expects every campaign, closed ones included.
+ * The campaigns a note dated on this day can belong to: the date's own first, then the ones right
+ * before and right after it, each while it is open. Zones change season on different days: the
+ * east starts summer while the north still sells winter product, so whichever day summer starts
+ * on, one of them needs the neighbor (D37, amended on 20 November 2026). A date in a closed
+ * campaign takes no neighbor: closing blocks new documents dated in it. Expects every campaign,
+ * closed ones included.
  */
 export function noteCampaigns<T extends CampaignPeriod & { id: string; status: "open" | "closed" }>(
   campaigns: readonly T[],
@@ -77,6 +93,7 @@ export function noteCampaigns<T extends CampaignPeriod & { id: string; status: "
 ): T[] {
   const own = campaignOn(campaigns, isoDate);
   if (!own) return [];
-  const before = previousCampaign(campaigns, own);
-  return before?.status === "open" ? [own, before] : [own];
+  if (own.status === "closed") return [own];
+  const neighbors = [previousCampaign(campaigns, own), nextCampaign(campaigns, own)];
+  return [own, ...neighbors.filter((neighbor): neighbor is T => neighbor?.status === "open")];
 }

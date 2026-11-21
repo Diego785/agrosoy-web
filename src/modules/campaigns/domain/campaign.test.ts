@@ -5,6 +5,7 @@ import {
   campaignRecord,
   defaultDueOn,
   effectiveDueOn,
+  nextCampaign,
   noteCampaigns,
   overlaps,
   previousCampaign,
@@ -60,7 +61,15 @@ describe("campaigns", () => {
     expect(previousCampaign(all, older)).toBeUndefined();
   });
 
-  it("lets a note take the campaign before its date's while that one is open (D37)", () => {
+  it("finds the campaign after", () => {
+    const older = { id: "w25", ...winter, year: 2025, startsOn: "2025-04-01", endsOn: "2025-09-30" };
+    const all = [{ id: "s26", ...summer }, { id: "w26", ...winter }, older];
+    expect(nextCampaign(all, older)?.id).toBe("w26");
+    expect(nextCampaign(all, all[1]!)?.id).toBe("s26");
+    expect(nextCampaign(all, all[0]!)).toBeUndefined();
+  });
+
+  it("lets a note take the campaign before or after its date's while that one is open (D37)", () => {
     const open = { status: "open" as const };
     const summer26 = { id: "s26", ...summer, ...open };
     const winter26 = { id: "w26", ...winter, ...open };
@@ -84,10 +93,14 @@ describe("campaigns", () => {
     type Choice = { id: string; startsOn: string; endsOn: string; status: "open" | "closed" };
     const ids = (date: string, campaigns: readonly Choice[] = all) =>
       noteCampaigns(campaigns, date).map((one) => one.id);
+    // The date's own first, then the open neighbors: before, then after. Summer 2025 is closed and
+    // winter 2025 is open but two campaigns away, so a winter 2026 date only gets summer 2026.
     expect(ids("2026-10-26")).toEqual(["s26", "w26"]);
-    // Only the one right before, and only while it is open: winter 2025 is open but older.
-    expect(ids("2026-06-01")).toEqual(["w26"]);
+    expect(ids("2026-06-01")).toEqual(["w26", "s26"]);
     expect(ids("2026-10-26", [summer26, { ...winter26, status: "closed" }])).toEqual(["s26"]);
+    expect(ids("2026-06-01", [{ ...summer26, status: "closed" }, winter26])).toEqual(["w26"]);
+    // Closing blocks new documents dated in the campaign: its dates take no neighbor either.
+    expect(ids("2026-01-15")).toEqual(["s25"]);
     expect(ids("2027-04-01")).toEqual([]);
   });
 });

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { actorWithRole } from "@test/actors";
 import { testDb } from "@test/test-database";
+import { auditLog } from "@/shared/infrastructure/audit/audit-log.table";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import {
   campaignOnDate,
   createCampaign,
   listCampaigns,
+  setCampaignStatus,
   updateCampaign,
 } from "../application/campaign-use-cases";
 import { drizzleCampaignRepository } from "./drizzle-campaign-repository";
@@ -75,6 +77,32 @@ describe("campaigns", () => {
   it("only lets catalog managers change campaigns", async () => {
     await expect(createCampaign(deps(), actorWithRole("sales_technician"), winter)).rejects.toMatchObject({
       code: "FORBIDDEN",
+    });
+    const { id } = await createCampaign(deps(), admin, winter);
+    await expect(
+      setCampaignStatus(deps(), actorWithRole("sales_technician"), id, "closed"),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("closes a campaign by hand and reopens it, both in the change log (D37)", async () => {
+    const { id } = await createCampaign(deps(), admin, winter);
+    await setCampaignStatus(deps(), admin, id, "closed");
+    expect(await campaignOnDate(deps(), admin, "2026-06-01")).toMatchObject({ id, status: "closed" });
+
+    // Closed, its dates can't change; closing it again changes nothing.
+    const later = { ...winter, endsOn: "2026-10-31" };
+    await expect(updateCampaign(deps(), admin, id, later)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await setCampaignStatus(deps(), admin, id, "closed");
+
+    await setCampaignStatus(deps(), admin, id, "open");
+    await updateCampaign(deps(), admin, id, later);
+    expect(await campaignOnDate(deps(), admin, "2026-10-15")).toMatchObject({ id, status: "open" });
+    const actions = await testDb.select({ action: auditLog.action }).from(auditLog);
+    expect(actions.map((row) => row.action).sort()).toEqual(
+      ["campaigns.create", "campaigns.close", "campaigns.reopen", "campaigns.update"].sort(),
+    );
+    await expect(setCampaignStatus(deps(), admin, id, "finished")).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
     });
   });
 });

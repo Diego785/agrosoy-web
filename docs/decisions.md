@@ -560,6 +560,16 @@ It works the same in every zone: a customer's zone is optional, and the note and
 campaign. Campaigns still don't overlap, payments are still applied as D20 says, returns go back to
 the campaign the product came from, and a transfer still moves it on (D25).
 
+The same day the choice widened to the open campaign right **after** the date's too: administration
+moved summer's start to December so the north's notes would fall in winter, which left the east's
+October and November sales without summer. Zones change season on different days, and with both
+neighbors offered, whichever day a campaign starts on, the zone that is ahead or behind can still
+pick its own. Never a campaign further away, nor a closed one, and a date inside a closed campaign
+takes no neighbor. Nothing closes a campaign on its own, neither its end nor its due date:
+administration closes it by hand from its page once no zone sells in it (and can reopen it), which
+blocks new documents dated in it, taking it on a note and new charges in it; its debt is still
+collected and its interest still proposed. Both are in the change log.
+
 ## D38 · Late-payment interest is proposed month by month
 
 **Decision:** administration sets the interest rate (3 %, the same for every customer) and how many

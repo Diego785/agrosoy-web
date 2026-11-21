@@ -87,7 +87,8 @@ export const NoteForm = resetOnLeave(function NoteForm({ options, today, draft }
     });
 
   const customer = options.customers.find((option) => option.id === customerId);
-  // The date's campaign, or the open one before it if chosen: the north still sells winter (D37).
+  // The date's campaign, or an open one right before or after it if chosen: zones change season on
+  // different days (D37).
   const campaignChoices = noteCampaigns(options.allCampaigns, noteDate ?? "").filter(
     (choice) => choice.status === "open",
   );

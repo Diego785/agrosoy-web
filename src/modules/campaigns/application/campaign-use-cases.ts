@@ -48,6 +48,31 @@ export async function updateCampaign(
   });
 }
 
+/**
+ * Administration closes a campaign by hand once no zone sells in it any more, and can reopen it.
+ * Nothing closes on its own: zones finish a season on different days (D37). Closing blocks new
+ * documents dated in it and taking it on a note; its debt is still collected.
+ */
+export async function setCampaignStatus(
+  deps: CampaignDeps,
+  actor: Actor,
+  campaignId: unknown,
+  status: unknown,
+): Promise<void> {
+  assertCan(actor, "catalog.manage");
+  const existing = await findCampaign(deps.campaigns, campaignId);
+  const next = validateInput(z.enum(["open", "closed"]), status);
+  if (existing.status === next) return;
+  await deps.campaigns.setStatus(existing.id, next);
+  await deps.audit.record({
+    actorId: actor.id,
+    action: next === "closed" ? "campaigns.close" : "campaigns.reopen",
+    entityType: "campaign",
+    entityId: existing.id,
+    payload: { season: existing.season, year: existing.year },
+  });
+}
+
 export async function listCampaigns(
   deps: Pick<CampaignDeps, "campaigns">,
   actor: Actor,

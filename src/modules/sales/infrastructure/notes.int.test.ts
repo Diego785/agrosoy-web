@@ -123,7 +123,7 @@ describe("draft delivery notes", () => {
     });
   });
 
-  it("takes the campaign before the date's when chosen, while that one is open (D37)", async () => {
+  it("takes the campaign before or after the date's when chosen, while that one is open (D37)", async () => {
     const ids = await seedNoteFixtures();
     const campaignDeps = { campaigns: drizzleCampaignRepository(testDb), audit: drizzleAuditTrail(testDb) };
     const winter = { season: "winter", year: 2026, startsOn: "2026-04-01", endsOn: "2026-09-30" };
@@ -147,7 +147,19 @@ describe("draft delivery notes", () => {
       { campaignId: winterId },
     ]);
 
-    // Only the campaign right before the date's, and only while it is open.
+    // The east has started summer before the day summer was given: a September note can take it.
+    const [summer] = await testDb
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(eq(campaigns.season, "summer"));
+    const east = draftInput(ids, { noteDate: "2026-09-15", campaignId: summer!.id });
+    const { id: eastId } = await createDraftNote(deps(), admin, east);
+    expect(await getNote(deps(), admin, eastId)).toMatchObject({
+      noteDate: "2026-09-15",
+      campaign: { season: "summer", year: 2026 },
+    });
+
+    // Only the campaigns right next to the date's, and only while open.
     await expect(
       createDraftNote(deps(), admin, draftInput(ids, { campaignId: olderId })),
     ).rejects.toMatchObject({
@@ -159,6 +171,11 @@ describe("draft delivery notes", () => {
       createDraftNote(deps(), admin, draftInput(ids, { campaignId: winterId })),
     ).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
     await expect(confirmNote(deps(), admin, later, { paperNumber: "" })).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      details: { fieldErrors: { noteDate: [expect.any(String)] } },
+    });
+    // Closing blocks new documents dated in it, even when they would take its neighbor.
+    await expect(createDraftNote(deps(), admin, east)).rejects.toMatchObject({
       code: "VALIDATION_FAILED",
       details: { fieldErrors: { noteDate: [expect.any(String)] } },
     });

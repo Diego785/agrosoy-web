@@ -26,11 +26,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/presentation/ui/table";
+import type { Campaign } from "../application/campaign-ports";
 import { getCampaign, listCampaigns } from "../application/campaign-use-cases";
 import { campaignOn, type Season } from "../domain/campaign";
 import { drizzleCampaignRepository } from "../infrastructure/drizzle-campaign-repository";
 import { CampaignForm } from "./campaign-form";
 import { campaignLabel } from "./campaign-labels";
+import { CampaignStatusButton } from "./campaign-status-button";
 import { editCampaignPath } from "./campaign-routes";
 
 const SEASON_LOOK: Record<Season, { icon: LucideIcon; tile: string }> = {
@@ -57,10 +59,10 @@ export async function CampaignsTable() {
   if (campaigns.length === 0) {
     return <EmptyState icon={<CalendarRangeIcon />} title="Todavía no hay campañas." />;
   }
-  const editable = (campaign: (typeof campaigns)[number]) => canEdit && campaign.status === "open";
-  // An open campaign opens its edit form; the link covers the row, so the whole row is clickable.
+  // Each campaign opens its page: the form while open, reopening once closed. The link covers the
+  // row, so the whole row is clickable.
   const name = (campaign: (typeof campaigns)[number]) =>
-    editable(campaign) ? (
+    canEdit ? (
       <Link
         href={editCampaignPath(campaign.id)}
         className="font-medium group-hover:text-primary after:absolute after:inset-0"
@@ -96,7 +98,7 @@ export async function CampaignsTable() {
           </TableHeader>
           <TableBody>
             {campaigns.map((campaign) => (
-              <TableRow key={campaign.id} className={editable(campaign) ? "group relative" : undefined}>
+              <TableRow key={campaign.id} className={canEdit ? "group relative" : undefined}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <SeasonMark season={campaign.season} />
@@ -113,7 +115,7 @@ export async function CampaignsTable() {
                 <TableCell className="tabular-nums">{formatDate(campaign.dueOn)}</TableCell>
                 <TableCell>{status(campaign)}</TableCell>
                 <TableCell className="text-muted-foreground">
-                  {editable(campaign) && (
+                  {canEdit && (
                     <ChevronRightIcon
                       className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
                       aria-hidden
@@ -127,7 +129,7 @@ export async function CampaignsTable() {
       </WideOnly>
       <CardList label="Campañas">
         {campaigns.map((campaign) => (
-          <CardListItem key={campaign.id} className={editable(campaign) ? "relative gap-2" : "gap-2"}>
+          <CardListItem key={campaign.id} className={canEdit ? "relative gap-2" : "gap-2"}>
             <div className="flex items-center gap-3">
               <SeasonMark season={campaign.season} />
               <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -135,9 +137,7 @@ export async function CampaignsTable() {
                 {campaign.id === current?.id && currentBadge}
               </span>
               {status(campaign)}
-              {editable(campaign) && (
-                <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              )}
+              {canEdit && <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
             </div>
             <CardField label="Del">
               {formatDate(campaign.startsOn)} al {formatDate(campaign.endsOn)}
@@ -180,7 +180,50 @@ export async function EditCampaign({ params }: { params: Promise<{ id: string }>
       throw error;
     },
   );
-  return <CampaignForm campaign={campaign} />;
+  if (campaign.status === "closed") return <ClosedCampaign campaign={campaign} />;
+  return (
+    <div className="flex max-w-xl flex-col gap-6">
+      <CampaignForm campaign={campaign} />
+      <section className="flex flex-col gap-3 rounded-xl border bg-card p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h3 className="text-sm font-semibold">Cierre</h3>
+          <p className="text-sm text-muted-foreground">
+            No se cierra sola: ciérrala cuando ninguna zona venda más en ella.
+          </p>
+        </div>
+        <CampaignStatusButton campaign={campaign} />
+      </section>
+    </div>
+  );
+}
+
+/** A closed campaign can't be edited: its dates, and the way back to using it. */
+function ClosedCampaign({ campaign }: { campaign: Campaign }) {
+  return (
+    <section className="flex max-w-xl flex-col gap-4 rounded-xl border bg-card p-5 shadow-xs">
+      <div className="flex items-center gap-3">
+        <SeasonMark season={campaign.season} />
+        <span className="font-medium">{campaignLabel(campaign)}</span>
+        <Badge variant="neutral">Cerrada</Badge>
+      </div>
+      <div className="flex flex-col gap-1 text-sm">
+        <span>
+          Del <span className="tabular-nums">{formatDate(campaign.startsOn)}</span> al{" "}
+          <span className="tabular-nums">{formatDate(campaign.endsOn)}</span>
+        </span>
+        <span>
+          Vence la deuda el <span className="tabular-nums">{formatDate(campaign.dueOn)}</span>
+        </span>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        No admite documentos nuevos con fecha dentro de ella; su deuda se sigue cobrando. Para cambiar sus
+        fechas o volver a usarla, reábrela.
+      </p>
+      <div>
+        <CampaignStatusButton campaign={campaign} />
+      </div>
+    </section>
+  );
 }
 
 /** The campaign form while it loads, section by section like `CampaignForm`. */
