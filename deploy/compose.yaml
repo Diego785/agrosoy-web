@@ -7,7 +7,7 @@ name: agrosoy-${ENVIRONMENT:?set ENVIRONMENT in .env}
 
 services:
   app:
-    image: ghcr.io/soluti0n-tech/agrosoy-web:${IMAGE_TAG:-main}
+    image: ghcr.io/diego785/agrosoy-web:${IMAGE_TAG:-main}
     container_name: agrosoy-${ENVIRONMENT}
     restart: unless-stopped
     env_file: .env

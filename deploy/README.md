@@ -32,7 +32,7 @@ production and any move to another domain repeat them:
 ## How it fits together
 
 ```
-GitHub (push to main) ──CI──▶ check + build ──▶ image ghcr.io/soluti0n-tech/agrosoy-web:<sha> and :main
+GitHub (push to main) ──CI──▶ check + build ──▶ image ghcr.io/diego785/agrosoy-web:<sha> and :main
                                                      │
 Server  /home/apps/www/solution/agrosoy/staging      │
         ├─ compose.yaml + compose.ip.yaml            │
@@ -67,9 +67,10 @@ Each step says how to check it and how to undo it.
 
 ### A1 · Registry access (once per server)
 
-The image is private. Create a GitHub **classic** token with only the `read:packages` scope and an
-expiry date (GitHub → Settings → Developer settings → Personal access tokens); if the
-SOLUTI0N-TECH organization asks to approve it, approve it. On the server:
+The image is private and lives under the repository's owner, `Diego785` (it moved there from the
+SOLUTI0N-TECH organization on 20 November 2026). Create a GitHub **classic** token on that account
+with only the `read:packages` scope and an expiry date (GitHub → Settings → Developer settings →
+Personal access tokens). On the server:
 
 ```bash
 docker login ghcr.io -u <github-user>      # password: paste the token

@@ -14,7 +14,11 @@ up without re-reading the whole history.
     migration 0029).
 - **Not built**: "void and correct" (a voided note copied into a new draft), and the same number
   rule for paper receipts. Both wait for administration to ask.
-- Nothing pushed yet.
+- **Image under the repository's new owner**: CI and `deploy/compose.yaml` now name
+  `ghcr.io/diego785/agrosoy-web`, so pushing to `main` can publish it. The server's `compose.yaml`
+  takes the same line when week 3 is deployed.
+- **Week 3 to staging**: migrations 0019–0029 rehearsed on a copy of staging's database taken
+  before the deploy (`agrosoy_staging_copia`, local); `feature/week-3` merged into `main`.
 
 ## 2026-11-16 to 2026-11-19 (branch `feature/week-3`)
 
