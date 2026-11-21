@@ -20,6 +20,57 @@ How to operate the deployment itself is in [README.md](README.md).
 
 ---
 
+## 2026-11-21 · Week 3 deployed; image under the repository's new owner
+
+At 01:42–01:45 server time (the evening of 20 November in Bolivia). The repository moved to
+another GitHub owner, so the image is now `ghcr.io/diego785/agrosoy-web`. Week 3 (`main` at
+`f902dbe`) brings migrations 0019–0029. They were rehearsed first on a local copy of this
+database, restored from a dump taken the same evening: every existing table kept its rows, and
+only five new, empty tables appeared.
+
+### Summary
+
+| Type                  | What                                                                                                                                                                                                     |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Changed, our folder   | `compose.yaml`: the app's image `ghcr.io/soluti0n-tech/agrosoy-web` → `ghcr.io/diego785/agrosoy-web` (one line, with `sed`). App recreated with `docker compose pull app` and `docker compose up -d app` |
+| Changed, our database | Migrations 0019–0029 applied on start: new tables, columns, constraints and indexes. The database container was not recreated                                                                            |
+| Added, our folder     | `backups/antes-semana3.dump`, taken right before, outside the 30-day rotation; `compose.yaml.antes-diego785`                                                                                             |
+| Left on the server    | The previous image, `ghcr.io/soluti0n-tech/agrosoy-web:main`, for a rollback                                                                                                                             |
+| Not touched           | nginx and its files, certificates, the registry login (the existing one pulled the new image), crontab, firewall, every other project                                                                    |
+
+### Verification
+
+| Check                                                           | Result                                                                    |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `docker compose ps`                                             | app `Up (healthy)` on `ghcr.io/diego785/agrosoy-web:main`; db not touched |
+| `docker compose logs app`                                       | `Migrations applied`, Next.js 16.4.3 ready                                |
+| `docker exec nginx curl http://agrosoy-staging:3000/api/health` | `{"status":"ok","database":true}`                                         |
+| From outside, `https://agrosoil.marketia.store/api/health`      | same                                                                      |
+| From outside, `https://agrosoil.marketia.store/`                | `307` to `/login`, which answers `200`                                    |
+
+### Pending
+
+1. **Cleanup, once week 3 is confirmed working:** `compose.yaml.antes-diego785` and the previous
+   image (`docker image rm ghcr.io/soluti0n-tech/agrosoy-web:main`). Keep `antes-semana3.dump`
+   until staging's data is no longer needed.
+2. `antes-semana3.dump` is `644` (copied by hand); `backups/` is `700`, so other users can't read it.
+
+### Undo
+
+Migrations are never undone automatically: going back means the previous image and the database
+as it was before.
+
+```bash
+cd /home/apps/www/solution/agrosoy/staging
+docker compose stop app
+docker compose exec -T db psql -U agrosoy -d postgres -c 'DROP DATABASE agrosoy WITH (FORCE)' -c 'CREATE DATABASE agrosoy'
+docker compose exec -T db pg_restore -U agrosoy -d agrosoy < backups/antes-semana3.dump
+cp -p compose.yaml.antes-diego785 compose.yaml
+docker compose up -d app
+```
+
+---
+
 ## 2026-11-12 · Staging moved to `agrosoil.marketia.store`
 
 `market-ia.shop` expired on 2026-11-09 and was not renewed; from 2026-11-10 its DNS pointed to a

@@ -18,7 +18,11 @@ up without re-reading the whole history.
   `ghcr.io/diego785/agrosoy-web`, so pushing to `main` can publish it. The server's `compose.yaml`
   takes the same line when week 3 is deployed.
 - **Week 3 to staging**: migrations 0019–0029 rehearsed on a copy of staging's database taken
-  before the deploy (`agrosoy_staging_copia`, local); `feature/week-3` merged into `main`.
+  before the deploy (`agrosoy_staging_copia`, local); `feature/week-3` merged into `main`, both
+  pushed, CI green and the image published. Deployed the same evening (`deploy/server-log.md`,
+  2026-11-21): healthy, migrations applied, `/api/health` ok from outside.
+- **Next on staging:** check Tito Cruz's statement in the browser, and administration types the
+  voided note's number again in winter.
 
 ## 2026-11-16 to 2026-11-19 (branch `feature/week-3`)
 
