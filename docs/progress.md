@@ -29,7 +29,14 @@ up without re-reading the whole history.
   both open neighbors of its date's campaign, before and after, so the start date no longer has to
   be right; and a campaign is closed and reopened by hand from its page ("Cerrar campaña"), never by
   its dates. Checked in the browser on the local review database (`agrosoy_listas_revision`).
-  Not deployed yet.
+- **Prices copied from the campaign after, too:** staging's winter 2026 had no reference prices
+  (only summer had), so transfers and notes in winter suggested none. "Copiar precios de" still
+  offers the campaign before, and now the one after too, but only to a sheet without a single price
+  while that one has some: in production it should hardly ever show. On winter 2026 it fills the
+  empty prices with summer's, sheet by sheet (general and each zone), saved with "Guardar precios".
+- **Transfers don't name the campaign they go to** (the transfer date's), and their suggested prices
+  come from today's campaign even when the date changes. Proposed a "Pasa a" choice like the note's;
+  waiting for the go-ahead.
 
 ## 2026-11-16 to 2026-11-19 (branch `feature/week-3`)
 

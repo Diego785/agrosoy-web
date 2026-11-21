@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { listCampaigns } from "@/modules/campaigns/application/campaign-use-cases";
-import { campaignOn, previousCampaign } from "@/modules/campaigns/domain/campaign";
+import { campaignOn, nextCampaign, previousCampaign } from "@/modules/campaigns/domain/campaign";
 import { drizzleCampaignRepository } from "@/modules/campaigns/infrastructure/drizzle-campaign-repository";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
 import { listAllZones } from "@/modules/customers/application/customer-use-cases";
@@ -496,12 +496,22 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
   const deps = catalogDeps(db);
   const canEdit = can(actor, "catalog.manage");
   const previous = previousCampaign(campaigns, campaign);
-  const copyFrom = canEdit && previous && first(params.copyFrom) === previous.id ? previous : undefined;
-  const [sheet, general, copied] = await Promise.all([
+  const next = nextCampaign(campaigns, campaign);
+  const wanted = first(params.copyFrom);
+  const [sheet, general, previousSheet, nextSheet] = await Promise.all([
     priceSheet(deps, actor, { campaignId: campaign.id, zoneId }),
     zoneId ? priceSheet(deps, actor, { campaignId: campaign.id }) : Promise.resolve([]),
-    copyFrom ? priceSheet(deps, actor, { campaignId: copyFrom.id, zoneId }) : Promise.resolve([]),
+    canEdit && previous && wanted === previous.id
+      ? priceSheet(deps, actor, { campaignId: previous.id, zoneId })
+      : Promise.resolve([]),
+    canEdit && next ? priceSheet(deps, actor, { campaignId: next.id, zoneId }) : Promise.resolve([]),
   ]);
+  // Prices carry over from the campaign before. The one after is offered only to a sheet without a
+  // single price while it has some, as staging's winter 2026 was after summer got its prices.
+  const offerNext = sheet.every((row) => !row.price) && nextSheet.some((row) => row.price);
+  const sources = [previous, offerNext ? next : undefined].filter((source) => source !== undefined);
+  const copyFrom = canEdit ? sources.find((source) => source.id === wanted) : undefined;
+  const copied = !copyFrom ? [] : copyFrom === next ? nextSheet : previousSheet;
   const generalByPresentation = new Map(general.map((row) => [row.presentation.id, row.price]));
   // Copied prices only fill the empty ones; nothing is saved until "Guardar precios".
   const copiedByPresentation = new Map(copied.map((row) => [row.presentation.id, row.price]));
@@ -532,14 +542,19 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
             </button>
           </form>
         </ResetOnLeave>
-        {canEdit && previous && sheet.length > 0 && !copyFrom && (
-          <Link
-            href={`${PRICES_PATH}?${new URLSearchParams({ campaign: campaign.id, zone: zoneId, copyFrom: previous.id })}`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            <CopyIcon aria-hidden />
-            Copiar precios de {campaignLabel(previous)}
-          </Link>
+        {canEdit && sources.length > 0 && sheet.length > 0 && !copyFrom && (
+          <div className="flex flex-wrap gap-2">
+            {sources.map((source) => (
+              <Link
+                key={source.id}
+                href={`${PRICES_PATH}?${new URLSearchParams({ campaign: campaign.id, zone: zoneId, copyFrom: source.id })}`}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <CopyIcon aria-hidden />
+                Copiar precios de {campaignLabel(source)}
+              </Link>
+            ))}
+          </div>
         )}
       </div>
       {zoneId && (
