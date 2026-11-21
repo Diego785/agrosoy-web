@@ -495,17 +495,23 @@ export async function PriceSheet({ searchParams }: { searchParams: SearchParams 
   const zoneId = zones.some((zone) => zone.id === first(params.zone)) ? (first(params.zone) ?? "") : "";
   const deps = catalogDeps(db);
   const canEdit = can(actor, "catalog.manage");
-  // Prices usually carry over from the campaign before; the one after serves a campaign set up
-  // later than it, as winter 2026 was after summer.
-  const sources = [previousCampaign(campaigns, campaign), nextCampaign(campaigns, campaign)].filter(
-    (source) => source !== undefined,
-  );
-  const copyFrom = canEdit ? sources.find((source) => source.id === first(params.copyFrom)) : undefined;
-  const [sheet, general, copied] = await Promise.all([
+  const previous = previousCampaign(campaigns, campaign);
+  const next = nextCampaign(campaigns, campaign);
+  const wanted = first(params.copyFrom);
+  const [sheet, general, previousSheet, nextSheet] = await Promise.all([
     priceSheet(deps, actor, { campaignId: campaign.id, zoneId }),
     zoneId ? priceSheet(deps, actor, { campaignId: campaign.id }) : Promise.resolve([]),
-    copyFrom ? priceSheet(deps, actor, { campaignId: copyFrom.id, zoneId }) : Promise.resolve([]),
+    canEdit && previous && wanted === previous.id
+      ? priceSheet(deps, actor, { campaignId: previous.id, zoneId })
+      : Promise.resolve([]),
+    canEdit && next ? priceSheet(deps, actor, { campaignId: next.id, zoneId }) : Promise.resolve([]),
   ]);
+  // Prices carry over from the campaign before. The one after is offered only to a sheet without a
+  // single price while it has some, as staging's winter 2026 was after summer got its prices.
+  const offerNext = sheet.every((row) => !row.price) && nextSheet.some((row) => row.price);
+  const sources = [previous, offerNext ? next : undefined].filter((source) => source !== undefined);
+  const copyFrom = canEdit ? sources.find((source) => source.id === wanted) : undefined;
+  const copied = !copyFrom ? [] : copyFrom === next ? nextSheet : previousSheet;
   const generalByPresentation = new Map(general.map((row) => [row.presentation.id, row.price]));
   // Copied prices only fill the empty ones; nothing is saved until "Guardar precios".
   const copiedByPresentation = new Map(copied.map((row) => [row.presentation.id, row.price]));
