@@ -170,4 +170,47 @@ describe("parseSalesSheet", () => {
     expect(result.lines).toEqual([]);
     expect(result.issues).toEqual([{ row: null, code: "HEADER_NOT_FOUND", details: { sheet: "Notas" } }]);
   });
+
+  it("keeps the sheet's price to 4 decimals and its own line total, flagging only a total off by more than a cent (D60)", () => {
+    const grid = sheet();
+    const rows = grid.rows.map((cells) => [...cells]);
+    // 300 L at Excel's 7.883333… make 2,365.00; the price rounded to 2 decimals would make 2,364.00.
+    rows[4] = [
+      _,
+      day("2026-04-30"),
+      "Fulvin 40-22(20lts.)",
+      "Alexander Jimenez ",
+      300,
+      7.883333333,
+      2365,
+      6.96,
+      _,
+      11737,
+    ];
+    // A total typed by hand that doesn't follow from its price is still worth a look.
+    rows[5] = [
+      _,
+      day("2026-08-11"),
+      "Fulvin 40-22(20lts.)",
+      "Alexander Jimenez ",
+      200,
+      8.5,
+      1705,
+      _,
+      "MP",
+      12135,
+    ];
+    const result = parseSalesSheet({ ...grid, rows });
+    const [precise, typed] = result.lines;
+    expect([precise?.unitPrice.toDecimalString(), precise?.total.toDecimalString()]).toEqual([
+      "7.8833",
+      "2365.00",
+    ]);
+    expect(typed?.total.toDecimalString()).toBe("1705.00");
+    const mismatches = result.issues
+      .filter((issue) => issue.code === "LINE_TOTAL_MISMATCH")
+      .map((issue) => issue.row);
+    expect(mismatches).toEqual([6]);
+    expect(result.issues.filter((issue) => issue.code === "ROUNDED_VALUE")).toEqual([]);
+  });
 });

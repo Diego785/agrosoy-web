@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { DomainError } from "@/shared/domain/domain-error";
-import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import { commercialValue, lineTotal, noteLine, noteTotal } from "./delivery-note";
 
 const line = (quantity: string, price: string, freeOfCharge: "bonus" | "sample" | null = null) =>
   noteLine({
     presentationId: "p",
     quantity: Quantity.parse(quantity),
-    unitPrice: Money.parse(price),
+    unitPrice: UnitPrice.parse(price),
     freeOfCharge,
   });
 
@@ -20,7 +20,7 @@ describe("delivery note lines", () => {
 
   it("charges nothing for a free line but keeps its commercial value (D41)", () => {
     const sample = line("2", "36", "sample");
-    expect(sample.unitPrice.toDecimalString()).toBe("36.00");
+    expect(sample.unitPrice.toDecimalString()).toBe("36.0000");
     expect(lineTotal(sample).toDecimalString()).toBe("0.00");
     expect(commercialValue(sample)?.toDecimalString()).toBe("72.00");
     expect(commercialValue(line("2", "0", "bonus"))).toBeNull();

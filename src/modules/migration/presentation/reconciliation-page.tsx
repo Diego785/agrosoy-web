@@ -9,6 +9,7 @@ import { getDb } from "@/shared/infrastructure/db/client";
 import { formatMoney } from "@/shared/presentation/format";
 import { notFoundAsNull } from "@/shared/presentation/not-found";
 import { Loading, Skeleton, TableSkeleton } from "@/shared/presentation/skeletons";
+import { Badge } from "@/shared/presentation/ui/badge";
 import { buttonVariants } from "@/shared/presentation/ui/button";
 import {
   Table,
@@ -21,7 +22,7 @@ import {
 } from "@/shared/presentation/ui/table";
 import { salesReconciliation } from "../application/sales-conversion";
 import { salesConversionDeps } from "../infrastructure/conversion-adapters";
-import { importConversionPath, importReviewPath } from "./migration-routes";
+import { importConversionPath, importReviewPath, sheetEntriesPath } from "./migration-routes";
 
 /** Each customer's debt per the sheet next to what was converted; differences need an explanation. */
 export async function ReconciliationPage({ params }: { params: Promise<{ batchId: string }> }) {
@@ -87,6 +88,19 @@ export async function ReconciliationPage({ params }: { params: Promise<{ batchId
                     <span className="text-xs text-muted-foreground">(no está en el sistema)</span>
                   </>
                 )}
+                {row.corrected && (
+                  <Badge variant="info" className="ml-2">
+                    Corregido
+                  </Badge>
+                )}
+                {row.customerId && (
+                  <Link
+                    href={sheetEntriesPath(batch.id, row.customerId)}
+                    className="block text-xs text-muted-foreground hover:text-primary hover:underline"
+                  >
+                    Corregir pagos y devoluciones
+                  </Link>
+                )}
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {formatMoney(row.sheet.balance.toDecimalString())}
@@ -121,8 +135,9 @@ export async function ReconciliationPage({ params }: { params: Promise<{ batchId
       {differing > 0 && (
         <p className="text-sm text-muted-foreground">
           Las ventas solo se pasan con todos los clientes y productos de la planilla, así que una diferencia
-          viene de algo que cambió después, como un cliente renombrado o un pago corregido en la planilla.
-          Para volver a pasarla, deshaz el paso de ventas y pagos.
+          viene de algo que cambió después: un cliente renombrado, o una boleta, un pago o una devolución
+          corregidos en el sistema (marcados «Corregido»). Una boleta se corrige desde la boleta; un pago o
+          una devolución, desde «Corregir pagos y devoluciones» de su cliente.
         </p>
       )}
       <div className="flex flex-wrap gap-2">

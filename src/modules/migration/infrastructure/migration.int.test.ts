@@ -89,7 +89,7 @@ describe("spreadsheet import", () => {
         date: "2026-05-29",
         noteNumber: 11599,
         quantity: "20.000",
-        unitPrice: "39.00",
+        unitPrice: "39.0000",
         amount: "780.00",
         exchangeRate: "6.9600",
       }),

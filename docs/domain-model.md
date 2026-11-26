@@ -125,9 +125,12 @@ A note has a header and lines.
   checked.
 - **Historical notes (D29):** paper notes dated before the cut-off date, typed with their printed
   number; they post their debt but never move stock.
-- **Line:** presentation, lot, quantity, unit price in USD, line total, and a free-of-charge flag
-  with its reason (`bonus` or `sample`). A free line keeps its unit price as its commercial value
-  and totals 0 (D41).
+- **Line:** presentation, lot, quantity, unit price in USD with up to 4 decimals (D60), line total
+  rounded to the cent, and a free-of-charge flag with its reason (`bonus` or `sample`). A free line
+  keeps its unit price as its commercial value and totals 0 (D41).
+- **Imported notes (D60):** voided one by one like any note; a confirmed imported delivery is also
+  corrected (quantities and prices, with a reason), its debt reversed and posted again at the
+  note's own date.
 - **States:** `draft` → `confirmed` → `voided` (with reason). Only drafts can be edited.
 - **Numbering (D19, D28):** one gapless counter, shared by the three types, given on confirmation.
   Paper notes typed in later keep their printed number; the counter skips numbers already taken and
@@ -298,7 +301,8 @@ Each sheet with a sales table becomes an _import batch_ (D17):
 - The sales table, the returns table ("DEVOLUCIONES") and the per-customer summary (Entrega,
   Pago, Dev., Deuda) are found by their header text, so other technicians' sheets with shifted
   columns read the same way.
-- Line totals are recomputed as quantity × price; the sheet's own totals are only compared.
+- Prices keep up to 4 decimals, and a line takes the sheet's own total when it has one, so a note
+  adds up to what Excel shows (D60); a total more than a cent from quantity × price is flagged.
 - Payments come from the summary's "Pago" column and have no date. Summary names are matched to
   the sales lines even when shortened ("ANDRES KAORU" → "Andres Kaoru Matsudo").
 - Findings for administration: sales with no exchange rate (normal for customers whose rate is
@@ -307,6 +311,8 @@ Each sheet with a sales table becomes an _import batch_ (D17):
   totals that differ from the lines, rounded or unreadable values.
 - The account-statement preview reads these batches and renders with the same components the
   ledger-based statement (M7) will use.
+- After a sheet is passed, "Conciliación con la planilla" compares each customer's debt with the
+  sheet's; a customer's payments and returns from the sheet are corrected there, one by one (D60).
 
 **Conversion (weeks 2–3), on the "Pasar al sistema" page of each sheet, in three steps:**
 

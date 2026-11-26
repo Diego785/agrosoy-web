@@ -1,6 +1,7 @@
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import { cleanText, normalizeForComparison } from "@/shared/domain/text";
 import { spreadsheetNumberToDecimal } from "./spreadsheet-number";
 
@@ -39,8 +40,9 @@ export type SalesLine = {
   customerName: string;
   customerKey: string;
   quantity: Quantity;
-  unitPrice: Money;
-  /** Recomputed as quantity × price; the sheet's own total is only compared. */
+  /** Up to 4 decimals, as the sheet keeps it (D60). */
+  unitPrice: UnitPrice;
+  /** The sheet's own line total when it has one, so a note adds up to what Excel shows (D60); otherwise quantity × price. */
   total: Money;
   exchangeRate: ExchangeRate | null;
   observation: string | null;
@@ -203,7 +205,9 @@ function readSection(grid: SheetGrid, header: LineHeader, issues: ImportIssue[])
     if (!product && !customerName) continue;
 
     const quantity = decimalFrom(at("quantity"), 3, row, "quantity", issues);
-    const price = decimalFrom(at("price"), 2, row, "price", issues);
+    const sheetTotal = moneyFrom(at("total"));
+    // With the sheet's own total, a price beyond 4 decimals changes nothing owed: no need to report it.
+    const price = decimalFrom(at("price"), 4, row, "price", sheetTotal ? [] : issues);
     if (!product || !customerName || quantity === undefined || price === undefined) {
       issues.push({
         row,
@@ -229,8 +233,8 @@ function readSection(grid: SheetGrid, header: LineHeader, issues: ImportIssue[])
       customerName,
       customerKey: normalizeForComparison(customerName),
       quantity: Quantity.parse(quantity),
-      unitPrice: Money.parse(price),
-      total: Quantity.parse(quantity).times(Money.parse(price)),
+      unitPrice: UnitPrice.parse(price),
+      total: sheetTotal ?? Quantity.parse(quantity).times(UnitPrice.parse(price)),
       // A table without a rate column is reported once, not on every row.
       exchangeRate: rateFrom(
         at("rate"),
@@ -243,12 +247,14 @@ function readSection(grid: SheetGrid, header: LineHeader, issues: ImportIssue[])
     };
     if (line.unitPrice.isZero())
       issues.push({ row, code: "ZERO_PRICE", details: { observation: line.observation ?? "" } });
-    const sheetTotal = moneyFrom(at("total"));
-    if (sheetTotal && !sheetTotal.equals(line.total)) {
+    // A cent apart is Excel's longer price; more than that is a total typed by hand, worth a look.
+    const computed = line.quantity.times(line.unitPrice);
+    const apart = line.total.subtract(computed);
+    if (sheetTotal && (apart.compare(CENT) > 0 || apart.compare(CENT.negate()) < 0)) {
       issues.push({
         row,
         code: "LINE_TOTAL_MISMATCH",
-        details: { sheet: sheetTotal.toDecimalString(), computed: line.total.toDecimalString() },
+        details: { sheet: sheetTotal.toDecimalString(), computed: computed.toDecimalString() },
       });
     }
     lines.push(line);
@@ -415,6 +421,8 @@ function decimalFrom(cell: CellValue, decimals: number, row: number, field: stri
     });
   return converted.value;
 }
+
+const CENT = Money.parse("0.01");
 
 function moneyFrom(cell: CellValue): Money | undefined {
   if (typeof cell !== "number") return undefined;

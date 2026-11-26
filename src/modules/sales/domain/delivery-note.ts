@@ -2,6 +2,7 @@ import { DomainError } from "@/shared/domain/domain-error";
 import type { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import type { UnitPrice } from "@/shared/domain/unit-price";
 
 export const PAYMENT_TERMS = ["cash", "credit"] as const;
 export type PaymentTerms = (typeof PAYMENT_TERMS)[number];
@@ -13,7 +14,7 @@ export type FreeReason = (typeof FREE_REASONS)[number];
 export type NoteLine = {
   presentationId: string;
   quantity: Quantity;
-  unitPrice: Money;
+  unitPrice: UnitPrice;
   freeOfCharge: FreeReason | null;
 };
 
@@ -39,7 +40,7 @@ export type Carrier = { name: string | null; vehicle: string | null; documentId:
 export function noteLine(input: {
   presentationId: string;
   quantity: Quantity;
-  unitPrice: Money;
+  unitPrice: UnitPrice;
   freeOfCharge: FreeReason | null;
 }): NoteLine {
   if (!input.quantity.isPositive()) {
@@ -94,5 +95,5 @@ export type ImportedNote = {
   exchangeRate: ExchangeRate | null;
   receiverName: string;
   observations: string | null;
-  lines: { presentationId: string; quantity: Quantity; unitPrice: Money; total: Money }[];
+  lines: { presentationId: string; quantity: Quantity; unitPrice: UnitPrice; total: Money }[];
 };

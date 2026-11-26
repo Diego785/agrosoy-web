@@ -4,7 +4,11 @@ import { Fragment, type ReactNode } from "react";
 import { cn } from "cn";
 import { noteCampaigns } from "@/modules/campaigns/domain/campaign";
 import { campaignLabel } from "@/modules/campaigns/presentation/campaign-labels";
-import { contentLabel, priceUnitLabel } from "@/modules/catalog/presentation/catalog-labels";
+import {
+  contentLabel,
+  priceUnitLabel,
+  quantityUnitLabel,
+} from "@/modules/catalog/presentation/catalog-labels";
 import { formatCustomerCode } from "@/modules/customers/domain/customer";
 import { customerPath } from "@/modules/customers/presentation/customer-routes";
 import { requireActor } from "@/modules/identity/presentation/current-user";
@@ -18,8 +22,10 @@ import {
   formatDate,
   formatDateTime,
   formatMoney,
+  formatPrice,
   formatQuantity,
   formatRate,
+  priceInputValue,
   trimDecimalZeros,
 } from "@/shared/presentation/format";
 import {
@@ -27,6 +33,7 @@ import {
   ChevronRightIcon,
   ClipboardListIcon,
   PencilIcon,
+  PenLineIcon,
   SproutIcon,
   Undo2Icon,
 } from "lucide-react";
@@ -63,7 +70,10 @@ import { invoiceCandidates } from "../application/note-invoices";
 import type { NoteType } from "../domain/follow-up";
 import { commercialValue, type FreeReason } from "../domain/delivery-note";
 import { Quantity } from "@/shared/domain/quantity";
-import { nextNoteNumber } from "../application/note-lifecycle";
+import { UnitPrice } from "@/shared/domain/unit-price";
+import { canCorrectImportedNote } from "../application/note-corrections";
+import { nextNoteNumber, noteReference } from "../application/note-lifecycle";
+import { NoteCorrectionForm } from "./note-correction-form";
 import { getNote, listNotes } from "../application/note-use-cases";
 import { DiscardDraftButton } from "./discard-draft-button";
 import { NextNumberForm } from "@/shared/presentation/next-number-form";
@@ -73,7 +83,14 @@ import { NoteForm } from "./note-form";
 import { NoteInvoiceButton } from "./note-invoice-button";
 import { noteDeps } from "./note-deps";
 import { loadNoteFormOptions } from "./note-form-options";
-import { NOTES_PATH, editNotePath, followUpPath, notePath, notePdfPath } from "./note-routes";
+import {
+  NOTES_PATH,
+  correctNotePath,
+  editNotePath,
+  followUpPath,
+  notePath,
+  notePdfPath,
+} from "./note-routes";
 
 const STATUS_LABELS: Record<NoteStatus, string> = {
   draft: "Borrador",
@@ -280,12 +297,14 @@ async function loadNote(params: Promise<{ id: string }>) {
     canInvoice: note.type === "delivery" && note.status === "confirmed" && can(actor, "notes.invoice"),
     // What a delivery or a transfer into a campaign brought can come back or move on (D25).
     canFollowUp: note.type !== "return" && note.status === "confirmed" && can(actor, "notes.manage"),
+    // An imported delivery is corrected instead of undoing its whole sheet (D60).
+    canCorrect: canCorrectImportedNote(actor, note),
     actor,
   };
 }
 
 export async function NoteDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { note, canEdit, canVoid, canInvoice, canFollowUp, actor } = await loadNote(params);
+  const { note, canEdit, canVoid, canInvoice, canFollowUp, canCorrect, actor } = await loadNote(params);
   const total = Money.sum(note.lines.map((line) => Money.parse(line.total)));
   const bob = note.exchangeRate ? ExchangeRate.parse(note.exchangeRate).toBob(total) : null;
   const nextNumber = canEdit ? await nextNoteNumber(notesDeps(), actor) : null;
@@ -388,7 +407,13 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                 </Link>
               </>
             )}
-            {canVoid && note.number !== null && <VoidNoteButton noteId={note.id} number={note.number} />}
+            {canCorrect && (
+              <Link href={correctNotePath(note.id)} className={buttonVariants({ variant: "outline" })}>
+                <PenLineIcon aria-hidden />
+                Corregir
+              </Link>
+            )}
+            {canVoid && <VoidNoteButton noteId={note.id} reference={noteReference(note)} />}
           </div>
         </header>
         {note.voided && (
@@ -398,6 +423,15 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
               {note.voided.byName && ` por ${note.voided.byName}`}
             </p>
             <p className="mt-1 text-muted-foreground">Motivo: {note.voided.reason}</p>
+          </div>
+        )}
+        {note.corrected && !note.voided && (
+          <div className="border-b border-info/25 bg-info/5 px-5 py-3 text-sm">
+            <p className="font-medium">
+              Corregida el {formatDateTime(note.corrected.at)}
+              {note.corrected.byName && ` por ${note.corrected.byName}`}
+            </p>
+            <p className="mt-1 text-muted-foreground">Motivo: {note.corrected.reason}</p>
           </div>
         )}
         <div className="grid gap-6 p-5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -491,7 +525,7 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                       <span className="text-xs text-muted-foreground">{freeLineValue(line) ?? "—"}</span>
                     ) : (
                       <>
-                        {formatMoney(line.unitPrice)}{" "}
+                        {formatPrice(line.unitPrice)}{" "}
                         <span className="text-xs text-muted-foreground">por {priceUnitLabel(line)}</span>
                       </>
                     )}
@@ -520,7 +554,7 @@ export async function NoteDetail({ params }: { params: Promise<{ id: string }> }
                 {formatQuantity(line.quantity)}
                 {line.freeOfCharge
                   ? freeLineValue(line) && ` · ${freeLineValue(line)}`
-                  : ` × ${formatMoney(line.unitPrice)} por ${priceUnitLabel(line)}`}
+                  : ` × ${formatPrice(line.unitPrice)} por ${priceUnitLabel(line)}`}
                 {lineSource(line) && ` · de la boleta ${lineSource(line)}`}
               </span>
               <CardField label="Total US$">
@@ -719,7 +753,8 @@ export async function EditNote({ params }: { params: Promise<{ id: string }> }) 
             presentationId: line.presentationId,
             quantity: trimDecimalZeros(line.quantity),
             // A free line's price is its commercial value (D41); an empty one stays empty.
-            unitPrice: line.freeOfCharge && Number(line.unitPrice) === 0 ? "" : line.unitPrice,
+            unitPrice:
+              line.freeOfCharge && Number(line.unitPrice) === 0 ? "" : priceInputValue(line.unitPrice),
             freeOfCharge: line.freeOfCharge ?? "",
           })),
         },
@@ -822,7 +857,7 @@ function ItemSkeleton({ className }: { className?: string }) {
 function freeLineValue(line: { quantity: string; unitPrice: string; freeOfCharge: FreeReason | null }) {
   const value = commercialValue({
     quantity: Quantity.parse(line.quantity),
-    unitPrice: Money.parse(line.unitPrice),
+    unitPrice: UnitPrice.parse(line.unitPrice),
     freeOfCharge: line.freeOfCharge,
   });
   return value ? `Valor comercial US$ ${formatMoney(value.toDecimalString())}` : null;
@@ -843,4 +878,31 @@ function NoteStatusBadge({ status }: { status: NoteStatus }) {
 
 function paymentLabel(terms: string): string {
   return terms === "cash" ? "Contado" : "Crédito";
+}
+
+/** Correcting an imported note's lines (D60); 404 for any note that can't be corrected. */
+export async function CorrectNote({ params }: { params: Promise<{ id: string }> }) {
+  const { note, canCorrect } = await loadNote(params);
+  if (!canCorrect) notFound();
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        Boleta {noteReference(note)} de {note.customer.name}, {formatDate(note.noteDate)}. Cambia la cantidad
+        o el precio que vino mal de la planilla; la deuda se corrige desde la fecha de la boleta y el cambio
+        queda en el registro de cambios.
+      </p>
+      <NoteCorrectionForm
+        noteId={note.id}
+        lines={note.lines.map((line) => ({
+          id: line.id,
+          label: `${line.productName} · ${contentLabel(line)}`,
+          quantityUnit: quantityUnitLabel(line),
+          priceUnit: priceUnitLabel(line),
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          total: line.total,
+        }))}
+      />
+    </div>
+  );
 }

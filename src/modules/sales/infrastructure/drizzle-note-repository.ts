@@ -8,6 +8,7 @@ import {
   gte,
   ilike,
   inArray,
+  isNotNull,
   lte,
   ne,
   or,
@@ -20,8 +21,8 @@ import { presentations, products } from "@/modules/catalog/infrastructure/catalo
 import { customerProperties, customers } from "@/modules/customers/infrastructure/customers.tables";
 import { users } from "@/modules/identity/infrastructure/auth.tables";
 import { DomainError } from "@/shared/domain/domain-error";
-import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import type { DbExecutor } from "@/shared/infrastructure/db/client";
 import { comparableText } from "@/shared/infrastructure/db/comparable-text";
 import { violatedUniqueConstraint } from "@/shared/infrastructure/db/postgres-errors";
@@ -31,6 +32,7 @@ import { deliveryNoteLines, deliveryNotes, NOTE_NUMBER_KEY } from "./notes.table
 
 const confirmer = alias(users, "confirmer");
 const voider = alias(users, "voider");
+const corrector = alias(users, "corrector");
 const sourceNote = alias(deliveryNotes, "source_note");
 const sourceLine = alias(deliveryNoteLines, "source_line");
 const sourceCampaign = alias(campaigns, "source_campaign");
@@ -108,6 +110,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           technicianName: users.name,
           confirmerName: confirmer.name,
           voiderName: voider.name,
+          correctorName: corrector.name,
           handedOverBy: {
             id: handedOverBy.id,
             name: handedOverBy.name,
@@ -122,6 +125,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
         .leftJoin(users, eq(users.id, deliveryNotes.technicianId))
         .leftJoin(confirmer, sql`${confirmer.id}::text = ${deliveryNotes.confirmedBy}`)
         .leftJoin(voider, sql`${voider.id}::text = ${deliveryNotes.voidedBy}`)
+        .leftJoin(corrector, sql`${corrector.id}::text = ${deliveryNotes.correctedBy}`)
         .leftJoin(handedOverBy, eq(handedOverBy.id, deliveryNotes.handedOverById))
         .where(eq(deliveryNotes.id, id));
       if (!row) return undefined;
@@ -206,7 +210,36 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
           note.voidedAt && note.voidReason
             ? { at: note.voidedAt, byName: row.voiderName, reason: note.voidReason }
             : null,
+        corrected:
+          note.correctedAt && note.correctionReason
+            ? { at: note.correctedAt, byName: row.correctorName, reason: note.correctionReason }
+            : null,
       };
+    },
+
+    async correctLines(id, lines, reason, actorId) {
+      const updated = await executor
+        .update(deliveryNotes)
+        .set({ correctedAt: new Date(), correctedBy: actorId, correctionReason: reason })
+        .where(
+          and(
+            eq(deliveryNotes.id, id),
+            eq(deliveryNotes.status, "confirmed"),
+            isNotNull(deliveryNotes.importBatchId),
+          ),
+        )
+        .returning({ id: deliveryNotes.id });
+      if (updated.length === 0) throw new DomainError("INVALID_STATE", { entity: "delivery_note", id });
+      for (const line of lines) {
+        await executor
+          .update(deliveryNoteLines)
+          .set({
+            quantity: line.quantity.toDecimalString(),
+            unitPrice: line.unitPrice.toDecimalString(),
+            total: line.total.toDecimalString(),
+          })
+          .where(and(eq(deliveryNoteLines.id, line.id), eq(deliveryNoteLines.noteId, id)));
+      }
     },
 
     async markConfirmed(id, number, actorId) {
@@ -304,7 +337,7 @@ export function drizzleNoteRepository(executor: DbExecutor): NoteRepository {
       return rows.map((row) => ({
         ...row,
         quantity: Quantity.parse(row.quantity),
-        unitPrice: Money.parse(row.unitPrice),
+        unitPrice: UnitPrice.parse(row.unitPrice),
         settled: Quantity.parse(row.settled),
       }));
     },

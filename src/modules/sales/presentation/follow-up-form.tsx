@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
 import { applyActionError } from "@/shared/presentation/form-errors";
-import { formatMoney, formatQuantity } from "@/shared/presentation/format";
+import { formatMoney, formatPrice, formatQuantity } from "@/shared/presentation/format";
 import { Button, buttonVariants } from "@/shared/presentation/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/presentation/ui/field";
 import { Input } from "@/shared/presentation/ui/input";
@@ -175,7 +175,7 @@ export const FollowUpForm = resetOnLeave(function FollowUpForm({
                   <TableCell className="text-right tabular-nums">{formatQuantity(line.delivered)}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatQuantity(line.remaining)}</TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {line.isFree ? "—" : formatMoney(line.unitPrice)}
+                    {line.isFree ? "—" : formatPrice(line.unitPrice)}
                   </TableCell>
                   <TableCell>
                     <Input

@@ -236,6 +236,8 @@ export function salesConversionDeps(executor: DbExecutor, actor: Actor): SalesCo
             customerId: ledgerEntries.customerId,
             kind: ledgerEntries.kind,
             amount: ledgerEntries.amount,
+            reversesEntryId: ledgerEntries.reversesEntryId,
+            createdAt: ledgerEntries.createdAt,
           })
           .from(ledgerEntries)
           .where(
@@ -247,7 +249,11 @@ export function salesConversionDeps(executor: DbExecutor, actor: Actor): SalesCo
               ),
             ),
           );
-        return rows.map((row) => ({ ...row, amount: Money.parse(row.amount) }));
+        return rows.map(({ reversesEntryId, ...row }) => ({
+          ...row,
+          amount: Money.parse(row.amount),
+          isReversal: reversesEntryId !== null,
+        }));
       },
     },
     audit: base.audit,

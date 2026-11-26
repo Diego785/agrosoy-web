@@ -11,13 +11,20 @@ import { randomPasswordGenerator } from "@/modules/identity/infrastructure/rando
 import { customerStatement } from "@/modules/receivables/application/statement-use-cases";
 import { drizzleStatementReader } from "@/modules/receivables/infrastructure/drizzle-statement-reader";
 import { getNote } from "@/modules/sales/application/note-use-cases";
+import { correctImportedNote } from "@/modules/sales/application/note-corrections";
+import { voidNote } from "@/modules/sales/application/note-lifecycle";
+import { drizzleNoteRepository } from "@/modules/sales/infrastructure/drizzle-note-repository";
+import { drizzleLedgerRepository } from "@/modules/receivables/infrastructure/drizzle-ledger-repository";
+import { noteDeps } from "@test/note-fixtures";
 import { drizzleAuditTrail } from "@/shared/infrastructure/audit/drizzle-audit-trail";
 import { conversionPreview, convertCustomers, convertProducts } from "../application/conversion";
 import { importSalesWorkbook } from "../application/import-use-cases";
 import {
   convertSales,
+  correctSheetEntry,
   salesReadiness,
   salesReconciliation,
+  sheetEntriesOf,
   undoSalesConversion,
 } from "../application/sales-conversion";
 import { conversionDeps, salesConversionDeps } from "./conversion-adapters";
@@ -214,5 +221,119 @@ describe("converting a sheet's sales and payments", () => {
         salesInput(batchId, campaignId),
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("correcting what a sheet brought in (D60)", () => {
+  const correctionDeps = () => ({
+    notes: drizzleNoteRepository(testDb),
+    ledger: drizzleLedgerRepository(testDb),
+    audit: drizzleAuditTrail(testDb),
+  });
+
+  /** The sheet converted, and Rodolfo Romero: his imported note and his statement. */
+  async function converted() {
+    const { batchId, campaignId } = await sheetReadyForSales();
+    await convertSales(salesConversionDeps(testDb, admin), admin, salesInput(batchId, campaignId));
+    const { rows } = await salesReconciliation(salesConversionDeps(testDb, admin), admin, batchId);
+    const customerId = rows.find((row) => row.customerName === "Rodolfo Romero")!.customerId!;
+    const statement = () => customerStatement(statements, admin, customerId, {});
+    const noteId = (await statement()).lines.find((line) => line.kind === "delivery")!.document!.id;
+    return { batchId, customerId, noteId, statement };
+  }
+
+  it("corrects an imported note's price from its own date, and the conciliation marks the customer", async () => {
+    const { batchId, noteId, statement } = await converted();
+    const [line] = (await getNote(noteDeps(), admin, noteId)).lines;
+    const input = {
+      reason: "El técnico lo vendió a 38.50",
+      lines: [{ lineId: line!.id, quantity: "20", unitPrice: "38.5" }],
+    };
+    await correctImportedNote(correctionDeps(), admin, noteId, input);
+
+    const note = await getNote(noteDeps(), admin, noteId);
+    expect(note.lines.map((corrected) => [corrected.unitPrice, corrected.total])).toEqual([
+      ["38.5000", "770.00"],
+    ]);
+    expect(note.corrected).toMatchObject({ reason: "El técnico lo vendió a 38.50" });
+    // One delivery on the note's own date: the reversed pair stays off the statement.
+    expect((await statement()).lines.map((shown) => [shown.date, shown.kind, shown.amount])).toEqual([
+      ["2026-05-29", "delivery", "770.00"],
+      ["2026-09-30", "payment", "100.50"],
+    ]);
+    const { rows } = await salesReconciliation(salesConversionDeps(testDb, admin), admin, batchId);
+    expect(rows.find((row) => row.customerName === "Rodolfo Romero")).toMatchObject({ corrected: true });
+    expect(rows.find((row) => row.customerName === "Alexander Jimenez")).toMatchObject({ corrected: false });
+
+    await expect(
+      correctImportedNote(correctionDeps(), admin, noteId, {
+        ...input,
+        lines: [{ ...input.lines[0]!, unitPrice: "38.50" }],
+      }),
+    ).rejects.toMatchObject({
+      details: { fieldErrors: { root: ["No cambiaste ningún precio ni cantidad."] } },
+    });
+    await expect(
+      correctImportedNote(correctionDeps(), actorWithRole("sales_technician"), noteId, input),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("doesn't mark a sheet undone and passed again as corrected", async () => {
+    const { batchId, campaignId } = await sheetReadyForSales();
+    const deps = salesConversionDeps(testDb, admin);
+    await convertSales(deps, admin, salesInput(batchId, campaignId));
+    await undoSalesConversion(deps, admin, { batchId, reason: "Se corrige la planilla" });
+    await convertSales(deps, admin, salesInput(batchId, campaignId));
+    const { rows } = await salesReconciliation(deps, admin, batchId);
+    expect(rows.map((row) => row.corrected)).toEqual(rows.map(() => false));
+  });
+
+  it("voids an imported note on its own", async () => {
+    const { noteId, statement } = await converted();
+    await voidNote(noteDeps(), admin, noteId, { reason: "Se cargó por error en la planilla" });
+    expect((await getNote(noteDeps(), admin, noteId)).status).toBe("voided");
+    expect((await statement()).lines.map((shown) => shown.kind)).toEqual(["payment"]);
+  });
+
+  it("corrects a payment the sheet brought in, and zero leaves it out", async () => {
+    const { batchId, customerId, statement } = await converted();
+    const entries = async () =>
+      (await sheetEntriesOf(salesConversionDeps(testDb, admin), admin, { batchId, customerId })).entries;
+    const [payment] = await entries();
+    expect(payment).toMatchObject({ kind: "payment", date: "2026-09-30", amount: "100.50" });
+
+    const correct = (amount: string) =>
+      correctSheetEntry(salesConversionDeps(testDb, admin), admin, {
+        batchId,
+        entryId: payment!.id,
+        amount,
+        reason: "El pago fue de 120",
+      });
+    await correct("120");
+    expect((await statement()).totals.balance).toBe("660.00");
+    const [corrected] = await entries();
+    await expect(
+      correctSheetEntry(salesConversionDeps(testDb, admin), admin, {
+        batchId,
+        entryId: corrected!.id,
+        amount: "120.00",
+        reason: "Otra vez",
+      }),
+    ).rejects.toMatchObject({ details: { fieldErrors: { amount: ["Es el mismo monto."] } } });
+    await correctSheetEntry(salesConversionDeps(testDb, admin), admin, {
+      batchId,
+      entryId: corrected!.id,
+      amount: "0",
+      reason: "No hubo pago",
+    });
+    expect(await entries()).toEqual([]);
+    expect((await statement()).totals.balance).toBe("780.00");
+
+    // Undoing the sheet still reverses everything it left standing.
+    await undoSalesConversion(salesConversionDeps(testDb, admin), admin, {
+      batchId,
+      reason: "Se vuelve a importar",
+    });
+    expect((await statement()).totals.balance).toBe("0.00");
   });
 });

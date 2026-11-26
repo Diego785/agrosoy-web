@@ -316,7 +316,7 @@ describe("campaign transfers", () => {
       campaignId: (await getNote(noteDeps(), admin, transferId)).campaign.id,
     };
     const [moved] = await followUpOptions(noteDeps(), admin, summer);
-    expect(moved && [moved.source.id, moved.unitPrice.toDecimalString()]).toEqual([transferId, "12.50"]);
+    expect(moved && [moved.source.id, moved.unitPrice.toDecimalString()]).toEqual([transferId, "12.5000"]);
 
     await registerReturn(
       noteDeps(),

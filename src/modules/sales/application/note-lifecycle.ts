@@ -157,7 +157,7 @@ export async function voidNote(
     await cancelPayment(
       deps,
       paymentId,
-      `Anulación de la boleta N.º ${note.number}: ${reason}`,
+      `Anulación de la boleta ${noteReference(note)}: ${reason}`,
       deps.today(),
       actor.id,
     );
@@ -200,6 +200,12 @@ export async function setNextNoteNumber(
     entityId: "delivery_note",
     payload: { number: nextNumber },
   });
+}
+
+/** "N.º 152", or "N.º 12333 (de planilla)" for a note brought in from a sheet (D60). */
+export function noteReference(note: Pick<NoteView, "number" | "imported">): string {
+  if (note.number !== null) return `N.º ${note.number}`;
+  return note.imported ? `N.º ${note.imported.sheetNumber ?? "—"} (de planilla)` : "sin número";
 }
 
 async function existingNote(notes: NoteRepository, id: string): Promise<NoteView> {

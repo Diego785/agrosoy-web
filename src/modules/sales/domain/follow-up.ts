@@ -1,6 +1,7 @@
 import { DomainError } from "@/shared/domain/domain-error";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import type { DraftNote, FreeReason } from "./delivery-note";
 
 export const NOTE_TYPES = ["delivery", "return", "campaign_transfer"] as const;
@@ -15,7 +16,7 @@ export type OriginalLine = {
   id: string;
   presentationId: string;
   quantity: Quantity;
-  unitPrice: Money;
+  unitPrice: UnitPrice;
   freeOfCharge: FreeReason | null;
   /** Already returned or transferred by confirmed follow-up notes. */
   settled: Quantity;
@@ -26,7 +27,7 @@ export type FollowUpLine = {
   presentationId: string;
   quantity: Quantity;
   /** Returns: the original price. Transfers: the price in the new campaign. */
-  unitPrice: Money;
+  unitPrice: UnitPrice;
   freeOfCharge: FreeReason | null;
   /** What the line is worth at its unit price. */
   total: Money;
@@ -90,14 +91,14 @@ export function returnLines(
  */
 export function transferLines(
   original: readonly OriginalLine[],
-  requested: readonly (Requested & { unitPrice: Money })[],
+  requested: readonly (Requested & { unitPrice: UnitPrice })[],
 ): FollowUpLine[] {
   const prices = new Map(requested.map((request) => [request.originalLineId, request.unitPrice]));
   return chosenLines(original, requested).map(({ line, quantity }) => {
     if (line.freeOfCharge) {
       throw new DomainError("VALIDATION_FAILED", { fieldErrors: { lines: ["free_not_transferable"] } });
     }
-    const unitPrice = prices.get(line.id) ?? Money.zero();
+    const unitPrice = prices.get(line.id) ?? UnitPrice.zero();
     if (!unitPrice.isPositive()) throw new DomainError("INVALID_AMOUNT", { reason: "price_required" });
     return {
       originalLineId: line.id,
