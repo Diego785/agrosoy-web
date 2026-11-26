@@ -75,37 +75,50 @@ and a return asks who receives for Agrosoil and the carrier. The signed note's p
 where travel allowances bring the file storage both use. Waiting on Agrosoil: when 4.5 % applies instead of 3 %, whether
 the month of payment is charged, and the owners of the estates "Suelo Rico" and "Palmarito II".
 
-## Hotfix of 26 November 2026: correcting an imported note
+## Hotfix of 26 November 2026: correcting what a sheet brought in
 
-Asked by administration on 26 November (audio, and a screenshot of note "N.º 12333 (de planilla)":
-Solfiagro, winter 2026, 300 L of Fulvin 40-22 20 L at US$ 7.88). After importing a sheet, a note
-whose price the technician changed can't be corrected, so the customer's debt doesn't match. It
-goes out on its own, ahead of week 4, because staging already holds real imported sheets.
+Asked by administration on 26 November, in two audios and a screenshot of note "N.º 12333 (de
+planilla)" (Solfiagro, winter 2026, 300 L of Fulvin 40-22 20 L at US$ 7.88):
 
-**Why it can't be done today:**
+- nothing a sheet brought in can be changed afterwards: not its notes, payments or returns;
+- a technician sold at 36 what the system has at 37, and the customer complained;
+- the system keeps prices with 2 decimals while Excel keeps 3 to 5 so that totals come out right,
+  so the debt doesn't match the sheet;
+- importing the whole sheet again for one customer isn't worth it. For today's urgent statement,
+  administration undoes the sheet and imports it again corrected.
+
+It goes out on its own, ahead of week 4, because staging already holds real imported sheets.
+
+**Why, in the code:**
 
 - A confirmed note is never edited (D6); the way out is voiding it. The note's page shows "Anular"
   only to notes with a system number, and an imported note keeps the sheet's number instead, so it
   has no button. That is a bug: the void itself accepts imported notes.
-- "Deshacer ventas pasadas" undoes the whole sheet, every note of it, to import it again corrected:
-  too much for one price.
+- The import reads the price with 2 decimals and recomputes each line as quantity × rounded price;
+  a sheet total that differs is only reported as a warning (`LINE_TOTAL_MISMATCH`). 300 L at
+  7.88 makes 2,364.00 where Excel's 7.8833… makes 2,365.00. Importing again rounds the same way.
+- The sheet's payments and returns become ledger entries per customer (source `import_batch`); only
+  "Deshacer" on the whole sheet reverses them.
 
 **What the hotfix does (D60, numbered after week 4's D49–D59):**
 
-| #   | Piece                      | What it includes                                                                                                                                                                                                                                                                                                                                          |
-| --- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | "Anular" on imported notes | The button shows for them too and names "N.º 12333 (de planilla)"; a payment it cancels says the sheet's number instead of "N.º null". Undoing the sheet later skips notes already voided (already true).                                                                                                                                                 |
-| 2   | Correct an imported note   | On a confirmed imported delivery, "Corregir" lets administration (`imports.manage`, whoever imports) change each line's unit price and quantity, with a reason. The note keeps its sheet number, date, customer and campaign. Free lines (bonus, sample) keep price 0. Refused while the note has confirmed returns or campaign transfers, as voiding is. |
-| 3   | The debt follows the note  | The note's delivery entry is reversed and the new total posted, both dated the note's own date, so balances, aging and interest from then on use the corrected amount; the ledger stays append-only (D6) and the change log keeps the old and new prices and the reason. The statement shows the corrected lines once (the reversed pair stays off it).   |
-| 4   | It shows                   | The note's page: "Corregida el 26/11/26 por YANINE: motivo". The sheet's reconciliation shows that customer's difference, which the correction explains. Interest already confirmed on the old amount is not recalculated; an "Ajuste de precio" covers it if needed.                                                                                     |
-| 5   | Tests, check and ship      | Unit and integration tests; a browser check on a copy of staging; `hotfix/imported-note-correction` into `main` with the developer's OK and deployed alone (week 4's migrations don't go with it); then `main` merged forward into `feature/week-4`. Migration: three nullable columns on `delivery_notes` (corrected at, by, reason).                    |
+| #   | Piece                               | What it includes                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Anular" on imported notes          | The button shows for them too and names "N.º 12333 (de planilla)"; a payment it cancels names the sheet's number instead of "N.º null". Undoing the sheet later skips notes already voided (already true).                                                                                                                                                                                                                            |
+| 2   | Prices with up to 4 decimals        | A note line keeps its unit price with up to 4 decimals, typed or imported; its total rounds to the cent. The import keeps the sheet's price as written and, where the sheet has a line total, that total, so each note adds up to what Excel shows. Campaign price sheets stay at 2 decimals. Migration: `unit_price` numeric(14,4) on note lines and imported lines; returns and campaign transfers value lines with the same price. |
+| 3   | Correct an imported note            | On a confirmed imported delivery, "Corregir" lets administration (`imports.manage`, whoever imports) change each line's quantity and unit price, with a reason. The note keeps its sheet number, date, customer and campaign; free lines (bonus, sample) keep price 0. Refused while the note has confirmed returns or campaign transfers, as voiding is.                                                                             |
+| 4   | The debt follows the note           | The note's delivery entry is reversed and the new total posted, both dated the note's own date, so balances, aging and interest from then on use the corrected amount; the ledger stays append-only (D6) and the change log keeps the old and new prices and the reason. The statement shows the corrected lines once (the reversed pair stays off it).                                                                               |
+| 5   | Correct a sheet's payments, returns | On "Conciliación con la planilla", each customer's row opens what the sheet brought in for them besides notes: its payments and returns, each with its date and amount. Administration changes an amount with a reason; that entry is reversed and posted again with the same date and kind. Today only undoing the whole sheet can.                                                                                                  |
+| 6   | It shows                            | The note's page: "Corregida el 26/11/26 por YANINE: motivo"; the conciliation marks corrected customers. Interest already confirmed on an old amount is not recalculated; an "Ajuste de precio" covers it if needed.                                                                                                                                                                                                                  |
+| 7   | Tests, check and ship               | Unit and integration tests; a browser check on a copy of staging; `hotfix/imported-note-correction` into `main` with the developer's OK and deployed alone (week 4's migrations don't go with it); then `main` merged forward into `feature/week-4`. Migrations: three nullable columns on `delivery_notes` (corrected at, by, reason), and the price's 4 decimals. About a day, plus the deploy.                                     |
 
 **Left as it is:** notes with a system number are printed and handed over, so they are still voided
-and done again; the correction is for imported notes only.
+and done again; the correction is for imported notes only. Notes already imported keep the price
+they were imported with; a sheet imported again after the hotfix comes in with Excel's decimals.
 
-**Until it's deployed:** Cobros → Cargos, an "Ajuste de precio" for the difference (credit to lower
-the debt, debit to raise it) balances the customer today without code; the note keeps showing the old
-price.
+**Until it's deployed:** a wrong price or amount is fixed in the Excel, the sheet undone and imported
+again (what administration does on 26 November); the cents a rounded price still leaves are balanced
+with an "Ajuste de precio" in Cobros → Cargos (credit to lower the debt, debit to raise it).
 
 ## Foundation steps (week 1)
 
