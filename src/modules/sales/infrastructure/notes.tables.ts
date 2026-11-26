@@ -72,6 +72,10 @@ export const deliveryNotes = pgTable(
     voidedAt: timestamp({ withTimezone: true }),
     voidedBy: text(),
     voidReason: text(),
+    /** The last correction of an imported note's prices or quantities (D60); the change log keeps each. */
+    correctedAt: timestamp({ withTimezone: true }),
+    correctedBy: text(),
+    correctionReason: text(),
     ...timestamps,
   },
   (table) => [
@@ -108,7 +112,8 @@ export const deliveryNoteLines = pgTable(
       .notNull()
       .references(() => presentations.id),
     quantity: numeric({ precision: 12, scale: 3 }).notNull(),
-    unitPrice: numeric({ precision: 14, scale: 2 }).notNull(),
+    /** US dollars per sale unit, up to 4 decimals as Agrosoil's sheets keep them (D60). */
+    unitPrice: numeric({ precision: 14, scale: 4 }).notNull(),
     freeOfCharge: text({ enum: ["bonus", "sample"] }),
     total: numeric({ precision: 14, scale: 2 }).notNull(),
     /**

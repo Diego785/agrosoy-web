@@ -2,6 +2,7 @@ import { formatScaled, parseScaled } from "./decimal-text";
 import { DomainError } from "./domain-error";
 import { Money } from "./money";
 import { divideRoundingHalfUp } from "./rounding";
+import { UnitPrice } from "./unit-price";
 
 const DECIMALS = 3;
 const SCALE = 10n ** BigInt(DECIMALS);
@@ -70,8 +71,15 @@ export class Quantity {
     return new Quantity(divideRoundingHalfUp(this.thousandths, BigInt(divisor)));
   }
 
-  /** Line total = quantity × unit price, rounded half up to the cent. */
-  times(unitPrice: Money): Money {
+  /** Line total = quantity × unit price, rounded half up to the cent; a UnitPrice is in dollars (D60). */
+  times(unitPrice: Money | UnitPrice): Money {
+    if (unitPrice instanceof UnitPrice) {
+      // Thousandths × ten-thousandths are 10⁷ per dollar; cents are 10².
+      return Money.ofCents(
+        divideRoundingHalfUp(this.thousandths * unitPrice.tenThousandths, SCALE * 100n),
+        "USD",
+      );
+    }
     return Money.ofCents(divideRoundingHalfUp(this.thousandths * unitPrice.cents, SCALE), unitPrice.currency);
   }
 

@@ -5,7 +5,14 @@ import { Badge } from "@/shared/presentation/ui/badge";
 import { paymentPath } from "@/modules/collections/presentation/collection-routes";
 import { notePath } from "@/modules/sales/presentation/note-routes";
 import { Money } from "@/shared/domain/money";
-import { formatDate, formatMoney, formatQuantity, formatRate, formatUsd } from "@/shared/presentation/format";
+import {
+  formatDate,
+  formatMoney,
+  formatPrice,
+  formatQuantity,
+  formatRate,
+  formatUsd,
+} from "@/shared/presentation/format";
 import { CardField, CardList, CardListItem, WideOnly } from "@/shared/presentation/responsive-list";
 import { CardListSkeleton, TableSkeleton } from "@/shared/presentation/skeletons";
 import {
@@ -108,7 +115,7 @@ export function CustomerStatement({
                       {line.quantity ? formatQuantity(line.quantity) : ""}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {line.unitPrice ? formatMoney(line.unitPrice) : ""}
+                      {line.unitPrice ? formatPrice(line.unitPrice) : ""}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {line.exchangeRate ? formatRate(line.exchangeRate) : ""}
@@ -164,7 +171,7 @@ export function CustomerStatement({
                 </span>
                 {line.quantity && line.unitPrice && (
                   <span className="text-xs text-muted-foreground tabular-nums">
-                    {formatQuantity(line.quantity)} × {formatMoney(line.unitPrice)}
+                    {formatQuantity(line.quantity)} × {formatPrice(line.unitPrice)}
                     {line.exchangeRate && ` · T/C ${formatRate(line.exchangeRate)}`}
                   </span>
                 )}

@@ -50,7 +50,7 @@ export const importedSalesLines = pgTable(
     customerName: text().notNull(),
     customerKey: text().notNull(),
     quantity: numeric({ precision: 12, scale: 3 }).notNull(),
-    unitPrice: numeric({ precision: 14, scale: 2 }).notNull(),
+    unitPrice: numeric({ precision: 14, scale: 4 }).notNull(),
     total: numeric({ precision: 14, scale: 2 }).notNull(),
     exchangeRate: numeric({ precision: 10, scale: 4 }),
     observation: text(),

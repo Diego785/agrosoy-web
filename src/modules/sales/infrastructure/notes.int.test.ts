@@ -47,11 +47,33 @@ describe("draft delivery notes", () => {
         line.total,
       ]),
     ).toEqual([
-      ["Fulvin 40-22", "200.000", "11.00", null, "2200.00"],
-      ["4-energy", "2.000", "0.00", "sample", "0.00"],
+      ["Fulvin 40-22", "200.000", "11.0000", null, "2200.00"],
+      ["4-energy", "2.000", "0.0000", "sample", "0.00"],
     ]);
     const { items } = await listNotes(deps(), admin, {});
     expect(items).toMatchObject([{ id, customerName: "Roberto Mamani", total: "2200.00", status: "draft" }]);
+  });
+
+  it("keeps a typed price to 4 decimals and rounds the line to the cent (D60)", async () => {
+    const ids = await seedNoteFixtures();
+    const { id } = await createDraftNote(
+      deps(),
+      admin,
+      draftInput(ids, {
+        lines: [{ presentationId: ids.fulvin, quantity: "300", unitPrice: "7,8833", freeOfCharge: "" }],
+      }),
+    );
+    const note = await getNote(deps(), admin, id);
+    expect(note.lines.map((line) => [line.unitPrice, line.total])).toEqual([["7.8833", "2364.99"]]);
+    await expect(
+      createDraftNote(
+        deps(),
+        admin,
+        draftInput(ids, {
+          lines: [{ presentationId: ids.fulvin, quantity: "1", unitPrice: "7.88333", freeOfCharge: "" }],
+        }),
+      ),
+    ).rejects.toMatchObject({ details: { fieldErrors: { "lines.0.unitPrice": [expect.any(String)] } } });
   });
 
   it("leaves a credit note's rate for the payment only when marked, never a cash one's (D35)", async () => {
@@ -235,8 +257,8 @@ describe("draft delivery notes", () => {
     );
     const note = await getNote(deps(), admin, id);
     expect(note.lines.map((line) => [line.freeOfCharge, line.unitPrice, line.total])).toEqual([
-      [null, "11.00", "2200.00"],
-      ["bonus", "62.50", "0.00"],
+      [null, "11.0000", "2200.00"],
+      ["bonus", "62.5000", "0.00"],
     ]);
     expect((await listNotes(deps(), admin, {})).items[0]?.total).toBe("2200.00");
   });

@@ -6,6 +6,7 @@ type DecimalString = `${number}` | string;
 const money = new Intl.NumberFormat("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const quantity = new Intl.NumberFormat("es-BO", { maximumFractionDigits: 3 });
 const rate = new Intl.NumberFormat("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+const price = new Intl.NumberFormat("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const percent = new Intl.NumberFormat("es-BO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const integer = new Intl.NumberFormat("es-BO");
 
@@ -15,6 +16,11 @@ const exact = (value: DecimalString) => value as unknown as number;
 /** "34.238,89" */
 export function formatMoney(value: DecimalString): string {
   return money.format(exact(value));
+}
+
+/** A unit price: "7,88", or "7,8833" when it has more decimals (D60). */
+export function formatPrice(value: DecimalString): string {
+  return price.format(exact(value));
 }
 
 /** "US$ 34.238,89" */
@@ -123,6 +129,13 @@ export function formatDateTime(moment: Date): string {
 }
 
 /** "6.9600" → "6.96", "200.000" → "200", "100" stays "100": for prefilling inputs. */
+/** A stored price as a form shows it: "62.5000" → "62.50", "7.8833" stays (D60). */
+export function priceInputValue(value: string): string {
+  const [whole = "0", fraction = ""] = value.split(".");
+  const kept = fraction.replace(/0+$/, "").padEnd(2, "0");
+  return `${whole}.${kept}`;
+}
+
 export function trimDecimalZeros(value: string): string {
   return value.includes(".") ? value.replace(/0+$/, "").replace(/\.$/, "") : value;
 }

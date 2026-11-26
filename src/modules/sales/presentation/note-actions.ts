@@ -6,6 +6,7 @@ import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
 import { registerReturn, registerTransfer } from "../application/note-follow-ups";
+import { correctImportedNote } from "../application/note-corrections";
 import { setNoteInvoice } from "../application/note-invoices";
 import { confirmNote, setNextNoteNumber, voidNote } from "../application/note-lifecycle";
 import type {
@@ -113,5 +114,15 @@ export async function registerTransferAction(
     const registered = await withTransaction((tx) => registerTransfer(deps(tx), actor, input));
     revalidatePath("/", "layout");
     return registered;
+  });
+}
+
+export async function correctImportedNoteAction(noteId: string, input: unknown): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => correctImportedNote(deps(tx), actor, noteId, input));
+    // The note, its customer's statement and the sheet's conciliation all change.
+    revalidatePath("/", "layout");
+    return null;
   });
 }

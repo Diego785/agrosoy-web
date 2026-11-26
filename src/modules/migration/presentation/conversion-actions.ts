@@ -6,7 +6,8 @@ import { withTransaction } from "@/shared/infrastructure/db/client";
 import type { ActionResult } from "@/shared/presentation/action-result";
 import { runAction } from "@/shared/presentation/run-action";
 import { convertCustomers, convertProducts } from "../application/conversion";
-import { convertSales, undoSalesConversion } from "../application/sales-conversion";
+import { convertSales, correctSheetEntry, undoSalesConversion } from "../application/sales-conversion";
+import type { CorrectSheetEntryInput } from "../application/sheet-entry-schemas";
 import { conversionDeps, salesConversionDeps } from "../infrastructure/conversion-adapters";
 
 export async function convertCustomersAction(
@@ -63,5 +64,14 @@ export async function undoSalesConversionAction(input: {
     );
     revalidatePath("/", "layout");
     return result;
+  });
+}
+
+export async function correctSheetEntryAction(input: CorrectSheetEntryInput): Promise<ActionResult<null>> {
+  return runAction(async () => {
+    const actor = await requireActor();
+    await withTransaction((tx) => correctSheetEntry(salesConversionDeps(tx, actor), actor, input));
+    revalidatePath("/", "layout");
+    return null;
   });
 }

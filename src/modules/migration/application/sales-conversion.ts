@@ -1,7 +1,13 @@
 import { z } from "zod";
 import type { LedgerRepository } from "@/modules/receivables/application/ledger-ports";
 import { postToLedger, reverseInLedger } from "@/modules/receivables/application/ledger-service";
-import { posting, type LedgerKind, type LedgerPosting } from "@/modules/receivables/domain/ledger";
+import { withoutReversedPairs } from "@/modules/receivables/domain/aging";
+import {
+  posting,
+  reversalsOf,
+  type LedgerKind,
+  type LedgerPosting,
+} from "@/modules/receivables/domain/ledger";
 import { ledgerTotals, type StatementTotals } from "@/modules/receivables/domain/statement";
 import { recordImportedNote, voidImportedNotes } from "@/modules/sales/application/note-imports";
 import type { NoteRepository } from "@/modules/sales/application/note-ports";
@@ -14,6 +20,7 @@ import { DomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import { parseProductLabel } from "../domain/product-label";
 import type {
   CampaignLookup,
@@ -22,6 +29,7 @@ import type {
   TechnicianOptions,
 } from "./conversion-ports";
 import { findBatch } from "./import-use-cases";
+import { correctSheetEntrySchema } from "./sheet-entry-schemas";
 import type { ImportBatch, ImportRepository, StoredLine } from "./ports";
 import { sheetTotalsFor } from "./statement-preview";
 
@@ -35,7 +43,13 @@ export type SalesConversionDeps = {
   notes: NoteRepository;
   ledger: LedgerRepository;
   /** What the conversion recorded per customer, for the reconciliation. */
-  converted: { entries(batchId: string): Promise<{ customerId: string; kind: LedgerKind; amount: Money }[]> };
+  converted: {
+    entries(
+      batchId: string,
+    ): Promise<
+      { customerId: string; kind: LedgerKind; amount: Money; isReversal: boolean; createdAt: Date }[]
+    >;
+  };
   audit: AuditTrail;
   /** Today's business date in Bolivia; undoing is dated the day it happens. */
   today: () => string;
@@ -198,6 +212,8 @@ export type ReconciliationRow = {
   converted: StatementTotals | null;
   /** Sheet debt minus converted debt; zero when they agree. */
   difference: Money;
+  /** Something of the customer's was corrected or voided after the conversion (D60): it explains a difference. */
+  corrected: boolean;
 };
 
 /**
@@ -213,6 +229,7 @@ export async function salesReconciliation(
   assertCan(actor, "imports.manage");
   const batch = await findBatch(deps.imports, batchId);
   if (!batch.salesConversion) throw new DomainError("INVALID_STATE", { reason: "not_converted" });
+  const convertedAt = batch.salesConversion.at;
 
   const [lines, summary, entries] = await Promise.all([
     deps.imports.lines(batch.id),
@@ -237,6 +254,14 @@ export async function salesReconciliation(
         sheet,
         converted,
         difference: sheet.balance.subtract(converted?.balance ?? Money.zero()),
+        // Undoing a sheet reverses everything before it is passed again; only reversals written
+        // since the last conversion are corrections or voids (D60).
+        corrected: customer
+          ? entries.some(
+              (entry) =>
+                entry.customerId === customer.id && entry.isReversal && entry.createdAt > convertedAt,
+            )
+          : false,
       };
     })
     .toSorted((a, b) => a.customerName.localeCompare(b.customerName, "es"));
@@ -278,8 +303,15 @@ async function planSales(
         return [];
       }
       const quantity = Quantity.parse(line.quantity);
-      const unitPrice = Money.parse(line.unitPrice);
-      return [{ presentationId, quantity, unitPrice, total: quantity.times(unitPrice) }];
+      // The sheet's own total when it has one, so each note adds up to what Excel shows (D60).
+      return [
+        {
+          presentationId,
+          quantity,
+          unitPrice: UnitPrice.parse(line.unitPrice),
+          total: Money.parse(line.total),
+        },
+      ];
     });
     if (noteLines.length === 0) continue;
     const rate = group.find((line) => line.exchangeRate)?.exchangeRate;
@@ -349,4 +381,93 @@ async function presentationResolver(
         (presentation) => presentation.unit === product.unit && presentation.content === content,
       )?.id;
   };
+}
+
+/** A payment or return a sheet brought in for a customer, as it stands now (D60). */
+export type SheetEntry = { id: string; kind: "payment" | "return"; date: string; amount: string };
+
+const SHEET_ENTRY_KINDS = new Set<LedgerKind>(["payment", "return"]);
+
+/** What a converted sheet brought in for one customer besides notes: its payments and returns (D60). */
+export async function sheetEntriesOf(
+  deps: Pick<SalesConversionDeps, "imports" | "ledger">,
+  actor: Actor,
+  input: unknown,
+): Promise<{ batch: ImportBatch; entries: SheetEntry[] }> {
+  assertCan(actor, "imports.manage");
+  const { batchId, customerId } = validateInput(z.object({ batchId: z.uuid(), customerId: z.uuid() }), input);
+  const batch = await findBatch(deps.imports, batchId);
+  if (!batch.salesConversion) throw new DomainError("INVALID_STATE", { reason: "not_converted" });
+  const standing = withoutReversedPairs(await deps.ledger.entriesOf({ type: "import_batch", id: batch.id }));
+  const entries = standing
+    .filter((entry) => entry.customerId === customerId && SHEET_ENTRY_KINDS.has(entry.kind))
+    .map((entry) => ({
+      id: entry.id,
+      kind: entry.kind as SheetEntry["kind"],
+      date: entry.date,
+      // Credits are stored negative; the sheet wrote them as amounts.
+      amount: entry.amount.negate().toDecimalString(),
+    }))
+    .toSorted((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
+  return { batch, entries };
+}
+
+/**
+ * Administration corrects one payment or return a sheet brought in (D60), instead of undoing the
+ * whole sheet: the entry is reversed and posted again with the new amount, the same date and kind;
+ * zero leaves it out. The ledger stays append-only (D6).
+ */
+export async function correctSheetEntry(
+  deps: Pick<SalesConversionDeps, "imports" | "ledger" | "audit">,
+  actor: Actor,
+  input: unknown,
+): Promise<void> {
+  assertCan(actor, "imports.manage");
+  const data = validateInput(correctSheetEntrySchema, input);
+  const batch = await findBatch(deps.imports, data.batchId);
+  if (!batch.salesConversion) throw new DomainError("INVALID_STATE", { reason: "not_converted" });
+  const source = { type: "import_batch" as const, id: batch.id };
+  const entry = withoutReversedPairs(await deps.ledger.entriesOf(source)).find(
+    (candidate) => candidate.id === data.entryId && SHEET_ENTRY_KINDS.has(candidate.kind),
+  );
+  if (!entry) throw new DomainError("NOT_FOUND", { entity: "ledger_entry", id: data.entryId });
+  const before = entry.amount.negate();
+  const after = Money.parse(data.amount);
+  if (after.equals(before)) {
+    throw new DomainError("VALIDATION_FAILED", { fieldErrors: { amount: ["Es el mismo monto."] } });
+  }
+  await postToLedger(
+    deps.ledger,
+    [
+      ...reversalsOf([entry], entry.date),
+      ...(after.isPositive()
+        ? [
+            posting({
+              customerId: entry.customerId,
+              campaignId: entry.campaignId,
+              date: entry.date,
+              kind: entry.kind,
+              amount: after,
+              source,
+            }),
+          ]
+        : []),
+    ],
+    actor.id,
+  );
+  await deps.audit.record({
+    actorId: actor.id,
+    action: "migration.correct_sheet_entry",
+    entityType: "import_batch",
+    entityId: batch.id,
+    payload: {
+      sheetName: batch.sheetName,
+      customerId: entry.customerId,
+      kind: entry.kind,
+      date: entry.date,
+      amountBefore: before.toDecimalString(),
+      amountAfter: after.toDecimalString(),
+      reason: data.reason,
+    },
+  });
 }

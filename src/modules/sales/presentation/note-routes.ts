@@ -27,3 +27,8 @@ export function followUpPath(
   const path = mode === "return" ? RETURN_PATH : TRANSFER_PATH;
   return target ? `${path}?customer=${target.customerId}&campaign=${target.campaignId}` : path;
 }
+
+/** Correcting an imported note's prices or quantities (D60). */
+export function correctNotePath(noteId: string): string {
+  return `${notePath(noteId)}/correct`;
+}

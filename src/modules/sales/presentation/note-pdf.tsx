@@ -7,10 +7,17 @@ import { requireActor } from "@/modules/identity/presentation/current-user";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import { getDb } from "@/shared/infrastructure/db/client";
 import type { CompanyProfile } from "@/shared/domain/company-profile";
 import { loadCompanyProfile } from "@/shared/presentation/company-profile";
-import { formatDocumentNumber, formatMoney, formatQuantity, formatRate } from "@/shared/presentation/format";
+import {
+  formatDocumentNumber,
+  formatMoney,
+  formatPrice,
+  formatQuantity,
+  formatRate,
+} from "@/shared/presentation/format";
 import { notFoundAsNull } from "@/shared/presentation/not-found";
 import { PDF_COLORS, PdfBlank, PdfCheck, PdfFormPage, PdfLogo, pdfResponse } from "@/shared/presentation/pdf";
 import type { NoteLineView, NoteView } from "../application/note-ports";
@@ -53,7 +60,7 @@ function freeText(line: NoteLineView): string {
   const label = line.freeOfCharge ? FREE_LABELS[line.freeOfCharge] : "";
   const value = commercialValue({
     quantity: Quantity.parse(line.quantity),
-    unitPrice: Money.parse(line.unitPrice),
+    unitPrice: UnitPrice.parse(line.unitPrice),
     freeOfCharge: line.freeOfCharge,
   });
   return value ? `${label}, valor comercial US$ ${formatMoney(value.toDecimalString())}` : label;
@@ -265,7 +272,7 @@ export function NotePdf({ note, company }: { note: NoteView; company: CompanyPro
               `${line.productName}${line.freeOfCharge ? ` (${freeText(line)})` : ""}`,
               contentLabel(line),
               lineMeasure(line),
-              line.freeOfCharge ? "—" : formatMoney(line.unitPrice),
+              line.freeOfCharge ? "—" : formatPrice(line.unitPrice),
               formatMoney(line.total),
             ]}
           />

@@ -8,6 +8,7 @@ import { DomainError, isDomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import { optionalText } from "@/shared/domain/text";
 import {
   remaining,
@@ -148,7 +149,7 @@ export async function registerTransfer(
       data.lines.map((line) => ({
         originalLineId: line.originalLineId,
         quantity: Quantity.parse(line.quantity),
-        unitPrice: Money.parse(line.unitPrice),
+        unitPrice: UnitPrice.parse(line.unitPrice),
       })),
     ),
   );

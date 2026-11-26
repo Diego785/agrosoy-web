@@ -3,6 +3,32 @@
 What has been done, newest first. Each working session adds an entry, so the next one can pick
 up without re-reading the whole history.
 
+## 2026-11-26 (branch `hotfix/imported-note-correction`, from `main`)
+
+- **Hotfix (D60), from administration's audios of 26 November:** nothing a sheet brought in could be
+  changed, and the import rounded Excel's prices to 2 decimals and recomputed the totals.
+  - Prices with up to 4 decimals on note lines (`UnitPrice`); the import keeps the sheet's price and
+    its own line total; a total more than a cent off is still flagged.
+  - "Anular" shows on imported notes too ("N.º 12333 (de planilla)"); a payment it cancels names the
+    sheet number.
+  - "Corregir" on a confirmed imported delivery: quantities and prices with a reason; the debt is
+    reversed and posted again at the note's date; the note shows the correction.
+  - "Corregir pagos y devoluciones" per customer on the conciliation; corrected customers marked
+    (only reversals written since the sheet was last passed).
+  - Migration 0030: `unit_price` numeric(14,4) on note and imported lines; `corrected_at`, `_by`,
+    `correction_reason` on notes.
+- Checked in the browser on a copy of staging (`agrosoy_hotfix_rehearsal`, from
+  `agrosoy_staging_copia` at 0029, migrated to 0030): note 11737 (de planilla) corrected to 10.8833
+  per liter (2,176.66, conciliation "Corregido", difference 23.34); Carlos Romero's sheet payment
+  176.60 → 180.00 (statement shows it once); note 11735 (de planilla) voided; both corrections named
+  in the change log. A local review admin exists only in that copy.
+- **Before merging forward into `feature/week-4`:** drizzle applies only migrations newer than the
+  last one applied, so week 4's 0030–0037 (stamped 23–25 November) would be skipped on a staging
+  that already ran this hotfix (26 November). On the merge, week 4's migrations become 0031–0038,
+  re-stamped after the hotfix's, with their snapshots chained after it; the week 4 rehearsal is
+  then repeated on a staging copy at 0030.
+- Waiting for the developer's approval to merge into `main` and deploy.
+
 ## 2026-11-20 (branch `feature/week-3`)
 
 - **Administration's audio of 20 November**, after trying staging: a winter note for the north

@@ -112,6 +112,8 @@ It goes out on its own, ahead of week 4, because staging already holds real impo
 | 6   | It shows                            | The note's page: "Corregida el 26/11/26 por YANINE: motivo"; the conciliation marks corrected customers. Interest already confirmed on an old amount is not recalculated; an "Ajuste de precio" covers it if needed.                                                                                                                                                                                                                  |
 | 7   | Tests, check and ship               | Unit and integration tests; a browser check on a copy of staging; `hotfix/imported-note-correction` into `main` with the developer's OK and deployed alone (week 4's migrations don't go with it); then `main` merged forward into `feature/week-4`. Migrations: three nullable columns on `delivery_notes` (corrected at, by, reason), and the price's 4 decimals. About a day, plus the deploy.                                     |
 
+**Built on 26 November** (D60); waiting for the developer's approval to ship.
+
 **Left as it is:** notes with a system number are printed and handed over, so they are still voided
 and done again; the correction is for imported notes only. Notes already imported keep the price
 they were imported with; a sheet imported again after the hotfix comes in with Excel's decimals.

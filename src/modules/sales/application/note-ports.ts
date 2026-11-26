@@ -2,6 +2,9 @@ import type { ContentUnit, SaleUnit } from "@/modules/catalog/domain/product";
 import type { Season } from "@/modules/campaigns/domain/campaign";
 import type { Carrier, DraftNote, FreeReason, ImportedNote, PaymentTerms } from "../domain/delivery-note";
 import type { FollowUpNote, NoteType, OriginalLine } from "../domain/follow-up";
+import type { Money } from "@/shared/domain/money";
+import type { Quantity } from "@/shared/domain/quantity";
+import type { UnitPrice } from "@/shared/domain/unit-price";
 
 export type NoteStatus = "draft" | "confirmed" | "voided";
 
@@ -73,7 +76,12 @@ export type NoteView = {
   /** byName is null when the user no longer exists (imports run by scripts). */
   confirmed: { at: Date; byName: string | null } | null;
   voided: { at: Date; byName: string | null; reason: string } | null;
+  /** The last time administration corrected an imported note's prices or quantities (D60). */
+  corrected: { at: Date; byName: string | null; reason: string } | null;
 };
+
+/** A line of an imported note as a correction leaves it (D60). */
+export type CorrectedLine = { id: string; quantity: Quantity; unitPrice: UnitPrice; total: Money };
 
 /** A return or transfer that took product from a note. */
 export type FollowUpItem = {
@@ -120,6 +128,8 @@ export interface NoteRepository {
   markConfirmed(id: string, number: number, actorId: string): Promise<void>;
   /** Confirmed → voided. INVALID_STATE if it isn't confirmed. */
   markVoided(id: string, reason: string, actorId: string): Promise<void>;
+  /** Rewrites lines of a confirmed imported note. INVALID_STATE when it isn't one any more. */
+  correctLines(id: string, lines: readonly CorrectedLine[], reason: string, actorId: string): Promise<void>;
   /** Any note has the number, voided ones included: the counter never gives it again. */
   numberInUse(number: number): Promise<boolean>;
   /** A note that isn't voided has the number; a voided note's printed number can be typed again (D28). */

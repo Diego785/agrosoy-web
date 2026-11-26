@@ -803,3 +803,36 @@ technician would put an old sale under the wrong person.
 customers with both, foreigners with "E-" CIs; one list marks each customer cash or credit; the
 same locality comes written three ways; and administration said customers move between technicians
 from one campaign to the next.
+
+## D60 · What a sheet brought in can be corrected; prices keep 4 decimals
+
+Numbered after week 4's D49–D59, which reach `main` with week 4; this one shipped first, as a
+hotfix of 26 November 2026.
+
+**Decision:**
+
+- **Prices with up to 4 decimals.** A note line keeps its unit price with up to 4 decimals, typed or
+  imported (`UnitPrice`, `numeric(14,4)`); its total rounds half up to the cent. An import keeps the
+  sheet's price as written and, where the sheet has a line total, that total, so each imported note
+  adds up to what Excel shows. A sheet total more than a cent away from quantity × price is still
+  flagged. Campaign price sheets stay at 2 decimals.
+- **Imported notes can be voided** one by one, like any other: the button names them "N.º 12333 (de
+  planilla)".
+- **An imported delivery can be corrected** by administration (`imports.manage`): each line's
+  quantity and unit price, with a reason. It keeps its sheet number, date, customer and campaign.
+  Its delivery entry is reversed and the new total posted, both dated the note's own date, so
+  balances, aging and interest from then on use the corrected amount; the note shows "Corregida el
+  … por …: motivo" and the change log keeps the old and new figures. It is refused while the note
+  has confirmed returns or campaign transfers, as voiding is.
+- **A sheet's payments and returns can be corrected** per customer from "Conciliación con la
+  planilla": each one is reversed and posted again with the new amount, the same date and kind; zero
+  leaves it out. The conciliation marks customers corrected since the sheet was last passed.
+- Notes with a system number keep their rule: printed and handed over, they are voided and done
+  again.
+
+**Why:** on 26 November administration found that nothing a sheet brought in could be changed: a
+technician had sold at 36 what the sheet had at 37, and the import rounded Excel's prices to 2
+decimals and recomputed the totals (300 L at 7.88 makes 2,364.00 where Excel made 2,365.00), so the
+debt didn't match the sheet, and only undoing the whole sheet could fix one price. Reversing and
+posting again at the document's own date keeps the ledger append-only (D6) while the statement and
+interest read as if the figure had been right from the start.

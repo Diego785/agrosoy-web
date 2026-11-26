@@ -30,7 +30,7 @@ export const noteLineSchema = z.object({
     .pipe(
       z.union([
         z.literal(""),
-        z.string().regex(/^\d+(\.\d{1,2})?$/, { error: "Escribe el precio, por ejemplo 9.50." }),
+        z.string().regex(/^\d+(\.\d{1,4})?$/, { error: "Escribe el precio, por ejemplo 9.50 o 7.8833." }),
       ]),
     ),
   freeOfCharge: z.union([z.literal(""), z.enum(FREE_REASONS)]),
@@ -222,7 +222,7 @@ export const transferSchema = followUpTargetSchema
         z.object({
           originalLineId: z.uuid(),
           quantity: optionalDecimal(3, "Escribe la cantidad, por ejemplo 20 o 2.5."),
-          unitPrice: optionalDecimal(2, "Escribe el precio, por ejemplo 9.50."),
+          unitPrice: optionalDecimal(4, "Escribe el precio, por ejemplo 9.50 o 7.8833."),
         }),
       )
       .min(1),
@@ -242,3 +242,23 @@ export const transferSchema = followUpTargetSchema
 export type FollowUpTarget = z.input<typeof followUpTargetSchema>;
 export type ReturnInput = z.input<typeof returnSchema>;
 export type TransferInput = z.input<typeof transferSchema>;
+
+/** Correcting an imported note (D60): each line's quantity and price, and why. */
+export const correctImportedNoteSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(5, { error: "Explica por qué se corrige." })
+    .max(500, { error: "Admite hasta 500 caracteres." }),
+  lines: z
+    .array(
+      z.object({
+        lineId: z.uuid(),
+        quantity: decimal(3, "Escribe la cantidad, por ejemplo 20 o 2.5."),
+        unitPrice: decimal(4, "Escribe el precio, por ejemplo 9.50 o 7.8833."),
+      }),
+    )
+    .min(1),
+});
+
+export type CorrectImportedNoteInput = z.input<typeof correctImportedNoteSchema>;

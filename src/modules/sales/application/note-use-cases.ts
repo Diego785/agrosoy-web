@@ -6,8 +6,8 @@ import { assertCan } from "@/shared/application/permissions";
 import { validateInput } from "@/shared/application/validate-input";
 import { DomainError } from "@/shared/domain/domain-error";
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
-import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import { normalizeForComparison, optionalText } from "@/shared/domain/text";
 import { draftNote, noteLine, type DraftNote } from "../domain/delivery-note";
 import type { NoteListItem, NoteLookups, NoteRepository, NoteView } from "./note-ports";
@@ -151,7 +151,7 @@ async function validNote(lookups: NoteLookups, input: unknown): Promise<DraftNot
       noteLine({
         presentationId: line.presentationId,
         quantity: Quantity.parse(line.quantity),
-        unitPrice: line.unitPrice ? Money.parse(line.unitPrice) : Money.zero(),
+        unitPrice: line.unitPrice ? UnitPrice.parse(line.unitPrice) : UnitPrice.zero(),
         freeOfCharge: line.freeOfCharge || null,
       }),
     ),

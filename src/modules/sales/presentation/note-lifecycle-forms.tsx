@@ -213,10 +213,11 @@ export const ConfirmNoteButton = resetOnLeave(function ConfirmNoteButton({
 
 export const VoidNoteButton = resetOnLeave(function VoidNoteButton({
   noteId,
-  number,
+  reference,
 }: {
   noteId: string;
-  number: number;
+  /** "N.º 152" or "N.º 12333 (de planilla)" (D60). */
+  reference: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -229,7 +230,7 @@ export const VoidNoteButton = resetOnLeave(function VoidNoteButton({
       const result = await voidNoteAction(noteId, values);
       if (!result.ok) return applyActionError(form, result.error);
       setOpen(false);
-      toast.success(`Boleta N.º ${number} anulada`);
+      toast.success(`Boleta ${reference} anulada`);
       router.refresh();
     }),
   );
@@ -248,7 +249,7 @@ export const VoidNoteButton = resetOnLeave(function VoidNoteButton({
         <AlertDialogContent>
           <form onSubmit={submit} noValidate className="flex flex-col gap-4">
             <AlertDialogHeader>
-              <AlertDialogTitle>¿Anular la boleta N.º {number}?</AlertDialogTitle>
+              <AlertDialogTitle>¿Anular la boleta {reference}?</AlertDialogTitle>
               <AlertDialogDescription>
                 Se descuenta su monto de la deuda del cliente con fecha de hoy. La boleta queda en el sistema
                 como anulada, con su número y el motivo.

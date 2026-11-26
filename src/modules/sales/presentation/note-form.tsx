@@ -14,6 +14,7 @@ import { presentationLabel, quantityUnitLabel } from "@/modules/catalog/presenta
 import { ExchangeRate } from "@/shared/domain/exchange-rate";
 import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import { DateInput } from "@/shared/presentation/date-input";
 import { applyActionError } from "@/shared/presentation/form-errors";
 import { formatMoney, formatQuantity, trimDecimalZeros } from "@/shared/presentation/format";
@@ -545,7 +546,7 @@ function lineMoney(line: NoteLineInput | undefined): Money {
     if (!line?.quantity) return Money.zero();
     return lineTotal({
       quantity: Quantity.parse(line.quantity.replace(",", ".")),
-      unitPrice: line.unitPrice ? Money.parse(line.unitPrice.replace(",", ".")) : Money.zero(),
+      unitPrice: line.unitPrice ? UnitPrice.parse(line.unitPrice.replace(",", ".")) : UnitPrice.zero(),
       freeOfCharge: line.freeOfCharge || null,
     });
   } catch {

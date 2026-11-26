@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "@/shared/domain/money";
 import { Quantity } from "@/shared/domain/quantity";
+import { UnitPrice } from "@/shared/domain/unit-price";
 import { returnLines, shared, transferLines, type OriginalLine } from "./follow-up";
 
 const original: OriginalLine[] = [
@@ -8,7 +8,7 @@ const original: OriginalLine[] = [
     id: "fulvin",
     presentationId: "p1",
     quantity: Quantity.parse("200"),
-    unitPrice: Money.parse("11"),
+    unitPrice: UnitPrice.parse("11"),
     freeOfCharge: null,
     settled: Quantity.parse("40"),
   },
@@ -16,7 +16,7 @@ const original: OriginalLine[] = [
     id: "sample",
     presentationId: "p2",
     quantity: Quantity.parse("2"),
-    unitPrice: Money.zero(),
+    unitPrice: UnitPrice.zero(),
     freeOfCharge: "sample",
     settled: Quantity.zero(),
   },
@@ -49,18 +49,18 @@ describe("returns", () => {
 
 describe("campaign transfers", () => {
   it("charge the new price and credit the old one", () => {
-    const [line] = transferLines(original, [{ ...ask("fulvin", "100"), unitPrice: Money.parse("12.5") }]);
+    const [line] = transferLines(original, [{ ...ask("fulvin", "100"), unitPrice: UnitPrice.parse("12.5") }]);
     expect(line?.total.toDecimalString()).toBe("1250.00");
     expect(line?.originalTotal.toDecimalString()).toBe("1100.00");
   });
 
   it("need a new price and leave free products out", () => {
-    expect(() => transferLines(original, [{ ...ask("fulvin", "1"), unitPrice: Money.zero() }])).toThrow(
+    expect(() => transferLines(original, [{ ...ask("fulvin", "1"), unitPrice: UnitPrice.zero() }])).toThrow(
       "INVALID_AMOUNT",
     );
-    expect(() => transferLines(original, [{ ...ask("sample", "1"), unitPrice: Money.parse("1") }])).toThrow(
-      "VALIDATION_FAILED",
-    );
+    expect(() =>
+      transferLines(original, [{ ...ask("sample", "1"), unitPrice: UnitPrice.parse("1") }]),
+    ).toThrow("VALIDATION_FAILED");
   });
 });
 

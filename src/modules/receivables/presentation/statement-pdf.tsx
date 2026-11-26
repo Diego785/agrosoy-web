@@ -5,7 +5,7 @@ import type { CompanyProfile } from "@/shared/domain/company-profile";
 import { Money } from "@/shared/domain/money";
 import { bankAccountLines, bankAccountsHeading } from "@/shared/presentation/bank-accounts";
 import { loadCompanyProfile } from "@/shared/presentation/company-profile";
-import { formatDate, formatMoney, formatQuantity } from "@/shared/presentation/format";
+import { formatDate, formatMoney, formatPrice, formatQuantity } from "@/shared/presentation/format";
 import { PdfFields, PdfPage, PdfTable, pdfResponse, pdfStyles } from "@/shared/presentation/pdf";
 import { requireActor } from "@/modules/identity/presentation/current-user";
 import { todayInBolivia } from "@/shared/presentation/business-date";
@@ -120,7 +120,7 @@ export function StatementPdf({
               invoice ? `${documentLabel(line)}\n${invoice}` : documentLabel(line),
               note ? `${text}\n${note}` : text,
               line.quantity ? formatQuantity(line.quantity) : "",
-              line.unitPrice ? formatMoney(line.unitPrice) : "",
+              line.unitPrice ? formatPrice(line.unitPrice) : "",
               isCredit ? "" : formatMoney(line.amount),
               isCredit ? formatMoney(line.amount) : "",
               formatMoney(balance),
